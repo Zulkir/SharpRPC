@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{2C63C96E-39CB-4812-A105-866BBEA4D6B3}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SharpRpc</RootNamespace>
+    <AssemblyName>SharpRpc</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\Build\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\Build\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Ninject">
+      <HintPath>..\..\Dependencies\Ninject\Ninject.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ClientSide\IOutgoingMethodCallProcessor.cs" />
+    <Compile Include="ClientSide\IRequestSenderContainer.cs" />
+    <Compile Include="ClientSide\IServiceProxyContainer.cs" />
+    <Compile Include="ClientSide\IServiceProxyClassFactory.cs" />
+    <Compile Include="ClientSide\OutgoingMethodCallProcessor.cs" />
+    <Compile Include="ClientSide\RequestSenderContainer.cs" />
+    <Compile Include="ClientSide\ServiceProxyContainer.cs" />
+    <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
+    <Compile Include="Codecs\CodecContainer.cs" />
+    <Compile Include="Codecs\EmittingCodecExtensions.cs" />
+    <Compile Include="Codecs\ExceptionCodec.cs" />
+    <Compile Include="Codecs\ICodec.cs" />
+    <Compile Include="Codecs\IEmittingCodec.cs" />
+    <Compile Include="Codecs\ICodecContainer.cs" />
+    <Compile Include="Codecs\ILGeneratorExtensions.cs" />
+    <Compile Include="Codecs\ILocalVariableCollection.cs" />
+    <Compile Include="Codecs\IManualCodec.cs" />
+    <Compile Include="Codecs\LocalVariableCollection.cs" />
+    <Compile Include="Codecs\ManualCodec.cs" />
+    <Compile Include="Codecs\ManualCodecExtensions.cs" />
+    <Compile Include="Codecs\PointableStructCodec.cs" />
+    <Compile Include="Codecs\StringCodec.cs" />
+    <Compile Include="ServiceHostSettings.cs" />
+    <Compile Include="Reflection\TypeExtensions.cs" />
+    <Compile Include="ServerSide\InvalidImplementationException.cs" />
+    <Compile Include="ServerSide\IRequestReceiverContainer.cs" />
+    <Compile Include="ServerSide\IServiceMethodHandlerFactory.cs" />
+    <Compile Include="ServerSide\RequestReceiverContainer.cs" />
+    <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
+    <Compile Include="Topology.cs" />
+    <Compile Include="Utility\CommonImmuables.cs" />
+    <Compile Include="IServiceHostSettings.cs" />
+    <Compile Include="InterfaceImplementationTypePair.cs" />
+    <Compile Include="IRpcClient.cs" />
+    <Compile Include="IRpcHost.cs" />
+    <Compile Include="IRpcKernel.cs" />
+    <Compile Include="RpcKernel.cs" />
+    <Compile Include="ServerSide\InvalidPathException.cs" />
+    <Compile Include="ServerSide\ServiceNotFoundException.cs" />
+    <Compile Include="ServiceImplementationState.cs" />
+    <Compile Include="ServiceNetworkException.cs" />
+    <Compile Include="ServerSide\HttpRequestReceiver.cs" />
+    <Compile Include="ClientSide\HttpRequestSender.cs" />
+    <Compile Include="Interaction\ServicePath.cs" />
+    <Compile Include="ServerSide\Delegates.cs" />
+    <Compile Include="ServerSide\IServiceMethodHandlerContainer.cs" />
+    <Compile Include="ServerSide\IRequestReceiver.cs" />
+    <Compile Include="ClientSide\IRequestSender.cs" />
+    <Compile Include="Interaction\Request.cs" />
+    <Compile Include="ServerSide\ServiceMethodHandlerContainer.cs" />
+    <Compile Include="ServerSide\IncomingRequestProcessor.cs" />
+    <Compile Include="Interaction\Response.cs" />
+    <Compile Include="Interaction\ResponseStatus.cs" />
+    <Compile Include="Reflection\Expressions.cs" />
+    <Compile Include="Reflection\IServiceDescriptionBuilder.cs" />
+    <Compile Include="Reflection\IMethodDescriptionBuilder.cs" />
+    <Compile Include="Reflection\ServiceDescription.cs" />
+    <Compile Include="Reflection\ServiceDescriptionBuilder.cs" />
+    <Compile Include="Reflection\MethodDescription.cs" />
+    <Compile Include="Reflection\MethodDescriptionBuilder.cs" />
+    <Compile Include="Reflection\MethodParameterDescription.cs" />
+    <Compile Include="Reflection\MethodParameterWay.cs" />
+    <Compile Include="Reflection\SubserviceDescription.cs" />
+    <Compile Include="IServiceImplementation.cs" />
+    <Compile Include="ITopology.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ServerSide\IIncomingRequestProcessor.cs" />
+    <Compile Include="ServerSide\IServiceImplementationContainer.cs" />
+    <Compile Include="ServerSide\ServiceImplementationContainer.cs" />
+    <Compile Include="ServerSide\ServiceImplementationInfo.cs" />
+    <Compile Include="ServiceEndPoint.cs" />
+    <Compile Include="ServiceTopologyException.cs" />
+    <Compile Include="Utility\ThreadGuard.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
