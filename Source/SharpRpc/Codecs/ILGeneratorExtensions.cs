@@ -83,7 +83,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Stloc, dataPointerVar);
         }
 
-        public static void Emit_IncreasePointerDynamic(this ILGenerator il, LocalBuilder dataPointerVar, LocalBuilder distanceVar)
+        public static void Emit_IncreasePointer(this ILGenerator il, LocalBuilder dataPointerVar, LocalBuilder distanceVar)
         {
             il.Emit(OpCodes.Ldloc, dataPointerVar);
             il.Emit(OpCodes.Ldloc, distanceVar);
@@ -99,7 +99,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Stloc, remainingBytesVal);
         }
 
-        public static void Emit_DecreaseIntegerDynamic(this ILGenerator il, LocalBuilder remainingBytesVal, LocalBuilder distanceVar)
+        public static void Emit_DecreaseInteger(this ILGenerator il, LocalBuilder remainingBytesVal, LocalBuilder distanceVar)
         {
             il.Emit(OpCodes.Ldloc, remainingBytesVal);
             il.Emit(OpCodes.Ldloc, distanceVar);
@@ -151,35 +151,36 @@ namespace SharpRpc.Codecs
             Emit_LoadSize(il, codec, lil => lil.Emit(OpCodes.Ldloc, localVar));
         }
 
-        private static LocalBuilder Emit_PinArray(this ILGenerator il, LocalVariableCollection locals, Action<ILGenerator> load)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, Action<ILGenerator> load)
         {
-            var argsDataPointerVar = locals.GetOrAdd("pinnedDataPointer",
-                lil => lil.DeclareLocal(typeof(byte*), true));
+            var argsDataPointerVar = locals.GetOrAdd("pinnedArray" + elementType.FullName,
+                lil => lil.DeclareLocal(elementType.MakePointerType(), true));
             load(il);
             il.Emit_Ldc_I4(0);
-            il.Emit(OpCodes.Ldelema, typeof(byte));
+            il.Emit(OpCodes.Ldelema, elementType);
             il.Emit(OpCodes.Stloc, argsDataPointerVar);
             return argsDataPointerVar;
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, LocalVariableCollection locals)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals)
         {
-            return Emit_PinArray(il, locals, lil => { });
+            return Emit_PinArray(il, elementType, locals, lil => { });
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, LocalVariableCollection locals, LocalBuilder localVar)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, LocalBuilder localVar)
         {
-            return Emit_PinArray(il, locals, lil => lil.Emit(OpCodes.Ldloc, localVar));
+            return Emit_PinArray(il, elementType, locals, lil => lil.Emit(OpCodes.Ldloc, localVar));
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, LocalVariableCollection locals, int argIndex)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, int argIndex)
         {
-            return Emit_PinArray(il, locals, lil => lil.Emit_Ldarg(argIndex));
+            return Emit_PinArray(il, elementType, locals, lil => lil.Emit_Ldarg(argIndex));
         }
 
         public static void Emit_UnpinArray(this ILGenerator il, LocalBuilder pinnedPointerVar)
         {
-            il.Emit(OpCodes.Ldnull);
+            il.Emit_Ldc_I4(0);
+            il.Emit(OpCodes.Conv_U);
             il.Emit(OpCodes.Stloc, pinnedPointerVar);
         }
     }

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Globalization;
 using NUnit.Framework;
 using SharpRpc.Codecs;
 
@@ -33,7 +34,7 @@ namespace SharpRpc.Tests.Codecs
     {
         private void DoTest<T>(T[] value) where T : struct
         {
-            DoTest(new PointableStructArrayCodec(), value, (a1, a2) =>
+            DoTest(new PointableStructArrayCodec(typeof(T)), value, (a1, a2) =>
                 {
                     if (a2 == null)
                         Assert.That(a1, Is.Null);
@@ -49,7 +50,7 @@ namespace SharpRpc.Tests.Codecs
 
             public bool Equals(MySimpleStruct other)
             {
-                return A == other.A && B == other.B;
+                return (A == other.A || (double.IsNaN(A) && double.IsNaN(other.A))) && B == other.B;
             }
 
             public override bool Equals(object obj)
@@ -60,6 +61,11 @@ namespace SharpRpc.Tests.Codecs
             public override int GetHashCode()
             {
                 return 0;
+            }
+
+            public override string ToString()
+            {
+                return A.ToString(CultureInfo.InvariantCulture) + "-" + B;
             }
         }
 
@@ -100,7 +106,8 @@ namespace SharpRpc.Tests.Codecs
                 {
                     new MySimpleStruct { A = 123.123, B = 9873 }, 
                     new MySimpleStruct { A = -985.189, B = 999 },
-                    new MySimpleStruct { A = double.NaN, B = ushort.MaxValue }
+                    new MySimpleStruct { A = double.NaN, B = ushort.MaxValue },
+                    new MySimpleStruct { A = double.PositiveInfinity, B = ushort.MinValue }
                 });
         }
     }

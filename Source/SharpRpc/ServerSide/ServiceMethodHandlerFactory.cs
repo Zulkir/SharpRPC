@@ -81,7 +81,7 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Ldlen);
                 il.Emit(OpCodes.Stloc, locals.RemainingBytes);
                 var dataPointerVar =                            // var pinned dataPointer = pin(arg_1)
-                    il.Emit_PinArray(locals, 1);
+                    il.Emit_PinArray(typeof(byte), locals, 1);
                 il.Emit(OpCodes.Ldloc, dataPointerVar);         // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
@@ -110,7 +110,7 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Newarr, typeof(byte));
                 il.Emit(OpCodes.Stloc, dataArrayVar);
                 var dataPointerVar =                            // var pinned dataPointer = pin(dataArrayVar)
-                    il.Emit_PinArray(locals, dataArrayVar);
+                    il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
                 il.Emit(OpCodes.Ldloc, dataPointerVar);         // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
