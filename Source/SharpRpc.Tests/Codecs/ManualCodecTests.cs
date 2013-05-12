@@ -52,11 +52,10 @@ namespace SharpRpc.Tests.Codecs
             const int size = 123123;
 
             var emittingCodec = Substitute.For<IEmittingCodec>();
-            emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null))
+            emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null, null))
                 .Do(x =>
                 {
                     var il = x.Arg<ILGenerator>();
-                    il.Emit(OpCodes.Pop);
                     il.Emit_Ldc_I4(size);
                 });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);

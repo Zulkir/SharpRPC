@@ -147,10 +147,10 @@ namespace SharpRpc.ClientSide
                     var codecs = methodDescription.Parameters
                         .Select(x => codecContainer.GetEmittingCodecFor(x.Type)).ToArray();
 
-                    il.Emit_LoadSize(codecs[0], 1);                          // stack_0 = size of arg_1
+                    codecs[0].EmitCalculateSize(il, 1);                 // stack_0 = size of arg_1
                     for (int i = 1; i < codecs.Length; i++)
                     {
-                        il.Emit_LoadSize(codecs[i], i + 1);                  // stack_1 = size of arg_i+1
+                        codecs[i].EmitCalculateSize(il, i + 1);         // stack_1 = size of arg_i+1
                         il.Emit(OpCodes.Add);                           // stack_0 = stack_1 + stack_0
                     }
 

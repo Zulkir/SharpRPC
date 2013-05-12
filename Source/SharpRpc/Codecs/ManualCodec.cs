@@ -78,8 +78,7 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + typeof(T).FullName,
                 typeof(int), CalculateSizeParameterTypes, Assembly.GetExecutingAssembly().ManifestModule);
             var il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            emittingCodec.EmitCalculateSize(il);
+            emittingCodec.EmitCalculateSize(il, 0);
             il.Emit(OpCodes.Ret);
             return (CalculateSizeMethod)dynamicMethod.CreateDelegate(typeof(CalculateSizeMethod));
         }

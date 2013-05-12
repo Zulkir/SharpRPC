@@ -44,16 +44,15 @@ namespace SharpRpc.Codecs
 
         // todo: special op-codes for basic types
 
-        public void EmitCalculateSize(ILGenerator il)
+        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
-            il.Emit(OpCodes.Pop);
             il.Emit_Ldc_I4(sizeInBytes);
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> load)
+        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
             il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(T*) data = val
-            load(il);
+            emitLoad(il);
             il.Emit(OpCodes.Stobj, type);
             il.Emit_IncreasePointer(locals.DataPointer, sizeInBytes);// data += sizeInBytes
         }

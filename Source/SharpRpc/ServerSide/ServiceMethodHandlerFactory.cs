@@ -106,7 +106,7 @@ namespace SharpRpc.ServerSide
 
                 var dataArrayVar = locals.GetOrAdd("dataArray", // var dataArray = new byte[size of retval]
                                                    lil => lil.DeclareLocal(typeof(byte[])));
-                il.Emit_LoadSize(codec, retvalVar);
+                codec.EmitCalculateSize(il, retvalVar);
                 il.Emit(OpCodes.Newarr, typeof(byte));
                 il.Emit(OpCodes.Stloc, dataArrayVar);
                 var dataPointerVar =                            // var pinned dataPointer = pin(dataArrayVar)

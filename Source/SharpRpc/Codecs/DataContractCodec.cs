@@ -1,0 +1,110 @@
+﻿#region License
+/*
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+#endregion
+
+using System;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Linq;
+
+namespace SharpRpc.Codecs
+{
+    public class DataContractCodec : IEmittingCodec
+    {
+        struct DataMemberInfo
+        {
+            public IEmittingCodec Codec;
+            public PropertyInfo Property;
+        }
+
+        private readonly Type type;
+        private DataMemberInfo[] memberInfos;
+        private readonly int numFixedSizedProperties;
+        private readonly int fixedPartSize;
+        private readonly bool hasFixedSize;
+
+        public bool HasFixedSize { get { return hasFixedSize; } }
+
+        public int FixedSize 
+        { 
+            get
+            {
+                if (!hasFixedSize)
+                    throw new InvalidOperationException();
+                return fixedPartSize;
+            } 
+        }
+
+        public DataContractCodec(Type type, ICodecContainer codecContainer)
+        {
+            this.type = type;
+        }
+
+        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
+        {
+            if (hasFixedSize)
+            {
+                il.Emit(OpCodes.Pop);
+                il.Emit_Ldc_I4(fixedPartSize);
+            }
+            else
+            {
+                var contractIsNotNullLabel = il.DefineLabel();
+                var endOfSubmethodLabel = il.DefineLabel();
+
+                emitLoad(il);                                   // if (value)
+                il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);//     goto stringIsNotNullLabel
+
+                // Contract is null branch
+                il.Emit_Ldc_I4(sizeof(int));                    // stack_0 = sizeof(int)
+                il.Emit(OpCodes.Br, endOfSubmethodLabel);       // goto endOfSubmethodLabel
+
+                // Contract is not null branch
+                il.MarkLabel(contractIsNotNullLabel);           // label stringIsNotNullLabel
+
+
+                int dynamicPropertiesSoFar = 0;
+                foreach (var memberInfo in memberInfos.Where(x => !x.Codec.HasFixedSize))
+                {
+                    memberInfo.Codec.EmitCalculateSize(il, emitLoad, memberInfo.Property.GetGetMethod());
+                    if (dynamicPropertiesSoFar > 0)
+                        il.Emit(OpCodes.Add);
+                    dynamicPropertiesSoFar++;
+                }
+                il.Emit_Ldc_I4(fixedPartSize);
+                if (dynamicPropertiesSoFar > 0)
+                    il.Emit(OpCodes.Add);
+            }
+        }
+
+        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

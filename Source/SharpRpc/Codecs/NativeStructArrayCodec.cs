@@ -42,22 +42,22 @@ namespace SharpRpc.Codecs
         public bool HasFixedSize { get { return false; } }
         public int FixedSize { get { throw new InvalidOperationException(); } }
 
-        public void EmitCalculateSize(ILGenerator il)
+        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             var arrayIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            il.Emit(OpCodes.Dup);                        // stack_1 = stack_0
-            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);// if (stack_1) goto arrayIsNotNullLabel
+            emitLoad(il);                                // if (value)
+            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);//     goto arrayIsNotNullLabel
 
             // Array is null branch
-            il.Emit(OpCodes.Pop);                        // pop(stack_0)
             il.Emit_Ldc_I4(sizeof(int));                 // stack_0 = sizeof(int)
             il.Emit(OpCodes.Br, endOfSubmethodLabel);    // goto endOfSubmethodLabel
 
             // String is not null branch
             il.MarkLabel(arrayIsNotNullLabel);
-            il.Emit(OpCodes.Ldlen);                      // stack_0 = stack_0.Length * sizeOfStruct + sizeof(int)
+            emitLoad(il);                               // stack_0 = value.Length * sizeOfStruct + sizeof(int)
+            il.Emit(OpCodes.Ldlen);
             il.Emit(OpCodes.Conv_I4);
             il.Emit_Ldc_I4(sizeOfStruct);
             il.Emit(OpCodes.Mul);
@@ -66,13 +66,13 @@ namespace SharpRpc.Codecs
             il.MarkLabel(endOfSubmethodLabel);
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> load)
+        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
             var arrayIsNotNullLabel = il.DefineLabel();
             var arrayIsNotEmptylabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            load(il);                                                // if (value)
+            emitLoad(il);                                                // if (value)
             il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);            //     goto arrayIsNotNullLabel
 
             // Array is null branch
@@ -83,7 +83,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfSubmethodLabel
 
             il.MarkLabel(arrayIsNotNullLabel);
-            load(il);                                                // if (value.Length)
+            emitLoad(il);                                                // if (value.Length)
             il.Emit(OpCodes.Ldlen);                                  //     goto arrayIsNotEmptylabel
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Brtrue, arrayIsNotEmptylabel);
@@ -100,7 +100,7 @@ namespace SharpRpc.Codecs
             il.MarkLabel(arrayIsNotEmptylabel);
             var lengthVar = locals.GetOrAdd("length",                // var length = value.Length
                 lil => lil.DeclareLocal(typeof(int)));
-            load(il);                                   
+            emitLoad(il);                                   
             il.Emit(OpCodes.Ldlen);
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Stloc, lengthVar);
@@ -115,7 +115,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Stind_I4);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
             var arrayPointerVar = il.Emit_PinArray(                  // var pinned arrayPointer = pin(value)
-                typeOfStruct, locals, load);
+                typeOfStruct, locals, emitLoad);
             il.Emit(OpCodes.Ldloc, locals.DataPointer);              // cpblk(data, (byte*)arrayPointer, sizeInBytes)
             il.Emit(OpCodes.Ldloc, arrayPointerVar);
             il.Emit(OpCodes.Conv_I);

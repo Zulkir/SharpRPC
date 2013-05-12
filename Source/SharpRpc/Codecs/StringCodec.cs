@@ -43,22 +43,22 @@ namespace SharpRpc.Codecs
         static readonly MethodInfo GetLength = typeof(string).GetMethod("get_Length");
         static readonly ConstructorInfo NewString = typeof(string).GetConstructor(new[] {typeof(char*), typeof(int), typeof(int)});
 
-        public void EmitCalculateSize(ILGenerator il)
+        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             var stringIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            il.Emit(OpCodes.Dup);                         // stack_1 = stack_0
-            il.Emit(OpCodes.Brtrue, stringIsNotNullLabel);// if (stack_1)
-                                                          //     goto stringIsNotNullLabel
+            emitLoad(il);                                 // if (value)
+            il.Emit(OpCodes.Brtrue, stringIsNotNullLabel);//     goto stringIsNotNullLabel
+
             // String is null branch
-            il.Emit(OpCodes.Pop);                         // pop(stack_0)
             il.Emit_Ldc_I4(sizeof(int));                  // stack_0 = sizeof(int)
             il.Emit(OpCodes.Br, endOfSubmethodLabel);     // goto endOfSubmethodLabel
 
             // String is not null branch
             il.MarkLabel(stringIsNotNullLabel);           // label stringIsNotNullLabel
-            il.Emit(OpCodes.Call, GetLength);             // stack_0 = (stack_0.Length << 1) + sizeof(int)
+            emitLoad(il);                                 // stack_0 = (value.Length << 1) + sizeof(int)
+            il.Emit(OpCodes.Call, GetLength);
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Shl);
             il.Emit_Ldc_I4(sizeof(int));
@@ -66,12 +66,12 @@ namespace SharpRpc.Codecs
             il.MarkLabel(endOfSubmethodLabel);            // label endOfSubmethodLabel
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> load)
+        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
             var strIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            load(il);                                                // if (val) goto strIsNotNullLabel
+            emitLoad(il);                                                // if (val) goto strIsNotNullLabel
             il.Emit(OpCodes.Brtrue, strIsNotNullLabel);
 
             // String is null branch
@@ -85,7 +85,7 @@ namespace SharpRpc.Codecs
             il.MarkLabel(strIsNotNullLabel);                         // label strIsNotNullLabel
             var tempInteger = locals.GetOrAdd("tempInteger",         // var tempInteger = val.Length << 1
                 g => g.DeclareLocal(typeof(int)));
-            load(il);
+            emitLoad(il);
             il.Emit(OpCodes.Call, GetLength);
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Shl);
@@ -96,7 +96,7 @@ namespace SharpRpc.Codecs
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
             var pinnedString = locals.GetOrAdd("pinnedString",       // var pinned pinnedString = val
                 g => g.DeclareLocal(typeof(string), true));
-            load(il);
+            emitLoad(il);
             il.Emit(OpCodes.Stloc, pinnedString);
             il.Emit(OpCodes.Ldloc, pinnedString);                    // stack_0 = (byte*)pinnedString
             il.Emit(OpCodes.Conv_I);

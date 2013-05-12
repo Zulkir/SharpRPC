@@ -53,6 +53,7 @@
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
     <Compile Include="Codecs\CodecContainer.cs" />
+    <Compile Include="Codecs\DataContractCodec.cs" />
     <Compile Include="Codecs\EmittingCodecExtensions.cs" />
     <Compile Include="Codecs\ExceptionCodec.cs" />
     <Compile Include="Codecs\ICodec.cs" />
