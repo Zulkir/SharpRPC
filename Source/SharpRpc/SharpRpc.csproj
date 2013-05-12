@@ -64,8 +64,8 @@
     <Compile Include="Codecs\LocalVariableCollection.cs" />
     <Compile Include="Codecs\ManualCodec.cs" />
     <Compile Include="Codecs\ManualCodecExtensions.cs" />
-    <Compile Include="Codecs\PointableStructArrayCodec.cs" />
-    <Compile Include="Codecs\PointableStructCodec.cs" />
+    <Compile Include="Codecs\NativeStructArrayCodec.cs" />
+    <Compile Include="Codecs\NativeStructCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
     <Compile Include="ServiceHostSettings.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />

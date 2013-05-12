@@ -30,11 +30,11 @@ using SharpRpc.Codecs;
 namespace SharpRpc.Tests.Codecs
 {
     [TestFixture]
-    public class PointableStructArrayCodecTests : CodecTestsBase
+    public class NativeStructArrayCodecTests : CodecTestsBase
     {
         private void DoTest<T>(T[] value) where T : struct
         {
-            DoTest(new PointableStructArrayCodec(typeof(T)), value, (a1, a2) =>
+            DoTest(new NativeStructArrayCodec(typeof(T)), value, (a1, a2) =>
                 {
                     if (a2 == null)
                         Assert.That(a1, Is.Null);

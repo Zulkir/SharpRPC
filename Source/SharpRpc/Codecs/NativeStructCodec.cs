@@ -28,12 +28,12 @@ using System.Runtime.InteropServices;
 
 namespace SharpRpc.Codecs
 {
-    public class PointableStructCodec : IEmittingCodec
+    public class NativeStructCodec : IEmittingCodec
     {
         private readonly Type type;
         private readonly int sizeInBytes;
 
-        public PointableStructCodec(Type type)
+        public NativeStructCodec(Type type)
         {
             this.type = type;
             sizeInBytes = Marshal.SizeOf(type);

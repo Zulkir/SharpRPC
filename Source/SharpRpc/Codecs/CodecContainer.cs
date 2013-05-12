@@ -53,18 +53,18 @@ namespace SharpRpc.Codecs
 
         private static IEmittingCodec CreateCodec(Type type)
         {
-            if (TypeIsPointableStructure(type))
-                return new PointableStructCodec(type);
+            if (TypeIsNativeStructure(type))
+                return new NativeStructCodec(type);
             if (type == typeof (string))
                 return new StringCodec();
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
-        private static bool TypeIsPointableStructure(Type type)
+        private static bool TypeIsNativeStructure(Type type)
         {
             return (type.IsPrimitive && type != typeof (IntPtr) && type != typeof (UIntPtr)) ||
                    (type.IsValueType && type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                                            .All(x => TypeIsPointableStructure(x.FieldType)));
+                                            .All(x => TypeIsNativeStructure(x.FieldType)));
         }
     }
 }

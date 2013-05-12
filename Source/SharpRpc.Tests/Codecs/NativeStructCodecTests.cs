@@ -30,11 +30,11 @@ using SharpRpc.Codecs;
 namespace SharpRpc.Tests.Codecs
 {
     [TestFixture]
-    public unsafe class PointableStructCodecTests : CodecTestsBase
+    public unsafe class NativeStructCodecTests : CodecTestsBase
     {
         private void DoTest<T>(T value) where T : struct
         {
-            DoTest(new PointableStructCodec(typeof(T)), value);
+            DoTest(new NativeStructCodec(typeof(T)), value);
         }
 
         [Test]
