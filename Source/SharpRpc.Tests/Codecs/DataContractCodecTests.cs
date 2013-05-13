@@ -226,7 +226,7 @@ namespace SharpRpc.Tests.Codecs
                 C = new FixedContract {A = 34534, B = 876.123},
                 D = new DynamicContract { A = "asdasd", B = new[] {234, 456, 567} },
                 E = "zxczxc",
-                F = new MixedContract { A = 987.123m, B = 987.57, C = DateTime.Now, D = "sdfsdf"}
+                F = new MixedContract { A = 987.123m, B = new[] {234.56f, 123.23f, 78.34f}, C = DateTime.Now, D = "sdfsdf"}
             });
         }
     }
