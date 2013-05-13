@@ -101,6 +101,28 @@ namespace SharpRpc.Tests.Codecs
             public override int GetHashCode() { return 0; }
         }
 
+        [DataContract]
+        public class NestedContract : IEquatable<NestedContract>
+        {
+            public int A { get; set; }
+            public string B { get; set; }
+            public FixedContract C { get; set; }
+            public DynamicContract D { get; set; }
+            public string E { get; set; }
+            public MixedContract F { get; set; }
+
+            public bool Equals(NestedContract other)
+            {
+                return A == other.A && B == other.B &&
+                    NullablesAreEqual(C, other.C) &&
+                    NullablesAreEqual(D, other.D) &&
+                    E == other.E &&
+                    NullablesAreEqual(F, other.F);
+            }
+            public override bool Equals(object obj) { return obj is NestedContract && Equals((NestedContract)obj); }
+            public override int GetHashCode() { return 0; }
+        }
+
         #endregion
 
         private ICodecContainer codecContainer;
@@ -154,6 +176,58 @@ namespace SharpRpc.Tests.Codecs
             DoTest(new MixedContract { A = -131.911267318361863m, B = null, C = DateTime.Now, D = @"  idsjf 293u ij902 2    8 s n\(*&^%$#@"});
             DoTest(new MixedContract { A = decimal.MinValue, B = new[] { 123.54f, 0f, 3455f, -876f }, C = DateTime.MinValue, D = null});
             DoTest(new MixedContract { A = decimal.MaxValue, B = new[] { -123.254f, float.PositiveInfinity }, C = DateTime.MinValue, D = "For the Horde!!!"});
+        }
+
+        [Test]
+        public void Nested()
+        {
+            DoTest((NestedContract)null);
+            DoTest(new NestedContract { A = 123, B = null, C = null, D = null, E = null, F = null });
+            DoTest(new NestedContract { A = 123, B = "asd", C = null, D = null, E = "qwe", F = null });
+            DoTest(new NestedContract 
+            { 
+                A = 234, 
+                B = null, 
+                C = new FixedContract { A = 34, B = 1.23 }, 
+                D = null, E = "wer", 
+                F = new MixedContract { A = 0m, B = null, C = DateTime.Now, D = "sdf"}
+            });
+            DoTest(new NestedContract
+            {
+                A = 345, 
+                B = null, 
+                C = new FixedContract { A = 34, B = 1.23 }, 
+                D = null, 
+                E = "wer", 
+                F = new MixedContract { A = 0m, B = null, C = DateTime.Now, D = "sdf"}
+            });
+            DoTest(new NestedContract
+            {
+                A = 765,
+                B = "zxc",
+                C = null,
+                D = new DynamicContract { A = null, B = new[] {-123, 54, 567, 0} },
+                E = null,
+                F = new MixedContract { A = 123m, B = null, C = DateTime.Now, D = "qweqwe"}
+            });
+            DoTest(new NestedContract
+            {
+                A = 321,
+                B = "asdasd",
+                C = new FixedContract { A = 23424, B = -123.123 },
+                D = new DynamicContract { A = "zxczxc", B = new int[0] },
+                E = null,
+                F = null
+            });
+            DoTest(new NestedContract
+            {
+                A = 234,
+                B = "qweqe",
+                C = new FixedContract {A = 34534, B = 876.123},
+                D = new DynamicContract { A = "asdasd", B = new[] {234, 456, 567} },
+                E = "zxczxc",
+                F = new MixedContract { A = 987.123m, B = 987.57, C = DateTime.Now, D = "sdfsdf"}
+            });
         }
     }
 }
