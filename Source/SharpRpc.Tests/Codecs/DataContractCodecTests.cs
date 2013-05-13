@@ -127,7 +127,7 @@ namespace SharpRpc.Tests.Codecs
 
         private ICodecContainer codecContainer;
 
-        [Test]
+        [SetUp]
         public void Setup()
         {
             codecContainer = new CodecContainer();
