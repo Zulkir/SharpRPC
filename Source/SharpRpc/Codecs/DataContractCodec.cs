@@ -26,6 +26,7 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Linq;
+using System.Runtime.Serialization;
 
 namespace SharpRpc.Codecs
 {
@@ -38,17 +39,30 @@ namespace SharpRpc.Codecs
         }
 
         private readonly Type type;
-        private DataMemberInfo[] memberInfos;
-        private readonly int numFixedSizedProperties;
+        private readonly DataMemberInfo[] memberInfos;
+        private readonly int numFixedProperties;
+        private readonly int numLimitedProperties;
         private readonly int fixedPartOfSize;
 
-        public bool HasFixedSize { get { return false; } }
         public int? FixedSize { get { return null; } }
-        public int? MaxSize { get { return memberInfos.Length == numFixedSizedProperties ? (int?)fixedPartOfSize : null; } }
+        public int? MaxSize { get { return memberInfos.Length == numFixedProperties ? (int?)fixedPartOfSize : null; } }
 
         public DataContractCodec(Type type, ICodecContainer codecContainer)
         {
             this.type = type;
+            memberInfos = type.GetProperties()
+                .Where(x => x.GetCustomAttributes(typeof(DataMemberAttribute), true).Any())
+                .Select(x => new DataMemberInfo
+                    {
+                        Codec = codecContainer.GetEmittingCodecFor(x.PropertyType),
+                        Property = x
+                    })
+                .OrderBy(x => x.Codec.FixedSize.HasValue ? 0 : x.Codec.MaxSize.HasValue ? 1 : 2)
+                .ThenBy(x => x.Property.Name)
+                .ToArray();
+            numFixedProperties = memberInfos.IndexOfFirst(x => !x.Codec.FixedSize.HasValue, memberInfos.Length);
+            numLimitedProperties = memberInfos.IndexOfFirst(x => !x.Codec.MaxSize.HasValue, memberInfos.Length) - numFixedProperties;
+            fixedPartOfSize = sizeof(int) + memberInfos.Take(numFixedProperties).Sum(x => x.Codec.FixedSize.Value);
         }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
@@ -56,19 +70,20 @@ namespace SharpRpc.Codecs
             var contractIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                   // if (value)
-            il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);//     goto stringIsNotNullLabel
+            emitLoad(il);                                           // if (value)
+            il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);        //     goto stringIsNotNullLabel
 
             // Contract is null branch
-            il.Emit_Ldc_I4(sizeof(int));                    // stack_0 = sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);       // goto endOfSubmethodLabel
+            il.Emit_Ldc_I4(sizeof(int));                            // stack_0 = sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);               // goto endOfSubmethodLabel
 
             // Contract is not null branch
-            il.MarkLabel(contractIsNotNullLabel);           // label stringIsNotNullLabel
-            il.Emit_Ldc_I4(fixedPartOfSize);
-            foreach (var memberInfo in memberInfos.Skip(numFixedSizedProperties))
+            il.MarkLabel(contractIsNotNullLabel);                   // label stringIsNotNullLabel
+            il.Emit_Ldc_I4(fixedPartOfSize);                        // stack_0 = fixedPartOfSize
+            foreach (var memberInfo in memberInfos.Skip(numFixedProperties))
             {
-                memberInfo.Codec.EmitCalculateSize(il, emitLoad, memberInfo.Property.GetGetMethod());
+                memberInfo.Codec.EmitCalculateSize(il,              // stack_0 += sizeof member_i
+                    emitLoad, memberInfo.Property.GetGetMethod());
                 il.Emit(OpCodes.Add);
             }
             il.MarkLabel(endOfSubmethodLabel);
@@ -76,7 +91,13 @@ namespace SharpRpc.Codecs
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
-            throw new NotImplementedException();
+            foreach (var memberInfo in memberInfos)
+            {
+                var propertyGetter = memberInfo.Property.GetGetMethod();
+                emitLoad(il);
+                il.Emit(OpCodes.Call, propertyGetter);
+                memberInfo.Codec.EmitEncode(il, locals, emitLoad, propertyGetter);
+            }
         }
 
         public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)

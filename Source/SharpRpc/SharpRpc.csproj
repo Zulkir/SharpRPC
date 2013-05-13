@@ -37,6 +37,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -55,6 +56,7 @@
     <Compile Include="Codecs\CodecContainer.cs" />
     <Compile Include="Codecs\DataContractCodec.cs" />
     <Compile Include="Codecs\EmittingCodecExtensions.cs" />
+    <Compile Include="Codecs\ArrayExtensions.cs" />
     <Compile Include="Codecs\ExceptionCodec.cs" />
     <Compile Include="Codecs\ICodec.cs" />
     <Compile Include="Codecs\IEmittingCodec.cs" />

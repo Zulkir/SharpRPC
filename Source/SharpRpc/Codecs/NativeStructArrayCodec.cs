@@ -73,7 +73,7 @@ namespace SharpRpc.Codecs
             var arrayIsNotEmptylabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                                // if (value)
+            emitLoad(il);                                            // if (value)
             il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);            //     goto arrayIsNotNullLabel
 
             // Array is null branch
@@ -84,7 +84,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfSubmethodLabel
 
             il.MarkLabel(arrayIsNotNullLabel);
-            emitLoad(il);                                                // if (value.Length)
+            emitLoad(il);                                            // if (value.Length)
             il.Emit(OpCodes.Ldlen);                                  //     goto arrayIsNotEmptylabel
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Brtrue, arrayIsNotEmptylabel);
@@ -94,7 +94,6 @@ namespace SharpRpc.Codecs
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Stind_I4);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
-                
             il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfSubmethodLabel
 
             // Array is not empty branch

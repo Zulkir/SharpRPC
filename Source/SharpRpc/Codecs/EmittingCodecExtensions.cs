@@ -51,14 +51,23 @@ namespace SharpRpc.Codecs
             });
         }
 
-        public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, LocalVariableCollection locals, int argIndex)
+        public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, int argIndex)
         {
             codec.EmitEncode(il, locals, lil => lil.Emit_Ldarg(argIndex));
         }
 
-        public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, LocalVariableCollection locals, LocalBuilder localVar)
+        public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, LocalBuilder localVar)
         {
             codec.EmitEncode(il, locals, lil => lil.Emit(OpCodes.Ldloc, localVar));
+        }
+
+        public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoadParent, MethodInfo propertyGetter)
+        {
+            codec.EmitEncode(il, locals, lil =>
+                {
+                    emitLoadParent(lil);
+                    lil.Emit(OpCodes.Call, propertyGetter);
+                });
         }
     }
 }

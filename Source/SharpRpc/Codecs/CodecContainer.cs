@@ -57,6 +57,8 @@ namespace SharpRpc.Codecs
                 return new NativeStructCodec(type);
             if (type == typeof (string))
                 return new StringCodec();
+            if (type.IsArray && TypeIsNativeStructure(type.GetElementType()))
+                return new NativeStructArrayCodec(type.GetElementType());
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
