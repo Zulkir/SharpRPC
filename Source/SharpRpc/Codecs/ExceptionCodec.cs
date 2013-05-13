@@ -42,8 +42,8 @@ namespace SharpRpc.Codecs
                    stringCodec.CalculateSize(ComposStackTraceToEncode(value));
         }
 
-        public bool HasFixedSize { get { return false; } }
-        public int FixedSize { get { throw new InvalidOperationException(); } }
+        public int? FixedSize { get { return null; } }
+        public int? MaxSize { get { return null; } }
 
         public void Encode(ref byte* data, Exception value)
         {

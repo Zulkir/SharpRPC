@@ -49,8 +49,8 @@ namespace SharpRpc.Codecs
             decodeFastMethod = EmitDecode(emittingCodec, true);
         }
 
-        public bool HasFixedSize { get { return emittingCodec.HasFixedSize; } }
-        public int FixedSize { get { return emittingCodec.FixedSize; } }
+        public int? FixedSize { get { return emittingCodec.FixedSize; } }
+        public int? MaxSize { get { return emittingCodec.MaxSize; } }
 
         public int CalculateSize(T value)
         {

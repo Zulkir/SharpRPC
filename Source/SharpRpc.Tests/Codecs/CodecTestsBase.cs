@@ -40,7 +40,7 @@ namespace SharpRpc.Tests.Codecs
         {
             var manualCodec = new ManualCodec<T>(codec);
 
-            if (codec.HasFixedSize)
+            if (codec.FixedSize.HasValue)
                 Assert.That(manualCodec.CalculateSize(value), Is.EqualTo(codec.FixedSize));
             int size = manualCodec.CalculateSize(value);
 

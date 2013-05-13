@@ -40,7 +40,8 @@ namespace SharpRpc.Codecs
         }
 
         public bool HasFixedSize { get { return false; } }
-        public int FixedSize { get { throw new InvalidOperationException(); } }
+        public int? FixedSize { get { return null; } }
+        public int? MaxSize { get { return null; } }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {

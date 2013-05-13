@@ -32,7 +32,8 @@ namespace SharpRpc.Codecs
     public class StringCodec : IEmittingCodec
     {
         public bool HasFixedSize { get { return false; } }
-        public int FixedSize { get { throw new InvalidOperationException(); } }
+        public int? FixedSize { get { return null; } }
+        public int? MaxSize { get { return null; } }
 
         public int CalculateSize(string item)
         {

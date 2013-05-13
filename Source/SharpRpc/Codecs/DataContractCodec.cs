@@ -40,20 +40,11 @@ namespace SharpRpc.Codecs
         private readonly Type type;
         private DataMemberInfo[] memberInfos;
         private readonly int numFixedSizedProperties;
-        private readonly int fixedPartSize;
-        private readonly bool hasFixedSize;
+        private readonly int fixedPartOfSize;
 
-        public bool HasFixedSize { get { return hasFixedSize; } }
-
-        public int FixedSize 
-        { 
-            get
-            {
-                if (!hasFixedSize)
-                    throw new InvalidOperationException();
-                return fixedPartSize;
-            } 
-        }
+        public bool HasFixedSize { get { return false; } }
+        public int? FixedSize { get { return null; } }
+        public int? MaxSize { get { return memberInfos.Length == numFixedSizedProperties ? (int?)fixedPartOfSize : null; } }
 
         public DataContractCodec(Type type, ICodecContainer codecContainer)
         {
@@ -62,39 +53,25 @@ namespace SharpRpc.Codecs
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
-            if (hasFixedSize)
+            var contractIsNotNullLabel = il.DefineLabel();
+            var endOfSubmethodLabel = il.DefineLabel();
+
+            emitLoad(il);                                   // if (value)
+            il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);//     goto stringIsNotNullLabel
+
+            // Contract is null branch
+            il.Emit_Ldc_I4(sizeof(int));                    // stack_0 = sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);       // goto endOfSubmethodLabel
+
+            // Contract is not null branch
+            il.MarkLabel(contractIsNotNullLabel);           // label stringIsNotNullLabel
+            il.Emit_Ldc_I4(fixedPartOfSize);
+            foreach (var memberInfo in memberInfos.Skip(numFixedSizedProperties))
             {
-                il.Emit(OpCodes.Pop);
-                il.Emit_Ldc_I4(fixedPartSize);
+                memberInfo.Codec.EmitCalculateSize(il, emitLoad, memberInfo.Property.GetGetMethod());
+                il.Emit(OpCodes.Add);
             }
-            else
-            {
-                var contractIsNotNullLabel = il.DefineLabel();
-                var endOfSubmethodLabel = il.DefineLabel();
-
-                emitLoad(il);                                   // if (value)
-                il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);//     goto stringIsNotNullLabel
-
-                // Contract is null branch
-                il.Emit_Ldc_I4(sizeof(int));                    // stack_0 = sizeof(int)
-                il.Emit(OpCodes.Br, endOfSubmethodLabel);       // goto endOfSubmethodLabel
-
-                // Contract is not null branch
-                il.MarkLabel(contractIsNotNullLabel);           // label stringIsNotNullLabel
-
-
-                int dynamicPropertiesSoFar = 0;
-                foreach (var memberInfo in memberInfos.Where(x => !x.Codec.HasFixedSize))
-                {
-                    memberInfo.Codec.EmitCalculateSize(il, emitLoad, memberInfo.Property.GetGetMethod());
-                    if (dynamicPropertiesSoFar > 0)
-                        il.Emit(OpCodes.Add);
-                    dynamicPropertiesSoFar++;
-                }
-                il.Emit_Ldc_I4(fixedPartSize);
-                if (dynamicPropertiesSoFar > 0)
-                    il.Emit(OpCodes.Add);
-            }
+            il.MarkLabel(endOfSubmethodLabel);
         }
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)

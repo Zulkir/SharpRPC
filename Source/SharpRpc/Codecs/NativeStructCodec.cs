@@ -40,7 +40,8 @@ namespace SharpRpc.Codecs
         }
 
         public bool HasFixedSize { get { return true; } }
-        public int FixedSize { get { return sizeInBytes; } }
+        public int? FixedSize { get { return sizeInBytes; } }
+        public int? MaxSize { get { return sizeInBytes; } }
 
         // todo: special op-codes for basic types
 
