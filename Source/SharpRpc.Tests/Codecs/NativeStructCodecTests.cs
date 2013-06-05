@@ -114,6 +114,15 @@ namespace SharpRpc.Tests.Codecs
             DoTest(double.NaN);
         }
 
+        [Test]
+        public void DateTime()
+        {
+            DoTest(new DateTime());
+            DoTest(System.DateTime.Now);
+            DoTest(System.DateTime.MinValue);
+            DoTest(System.DateTime.MaxValue);
+        }
+
         public struct MySimpleStruct : IEquatable<MySimpleStruct>
         {
             public double A;
@@ -190,6 +199,25 @@ namespace SharpRpc.Tests.Codecs
                 E = 22,
                 F = 98237238734578112
             });
+        }
+
+        public struct MyGenericStruct<T1, T2>
+        {
+            public T1 Value1;
+            public T2 Value2;
+
+            public MyGenericStruct(T1 v1, T2 v2)
+            {
+                Value1 = v1;
+                Value2 = v2;
+            }
+        }
+
+        [Test]
+        public void GenericStruct()
+        {
+            DoTest(new MyGenericStruct<int, double>(123, 456.6789));
+            DoTest(new MyGenericStruct<DateTime, Guid>(System.DateTime.Now, Guid.NewGuid()));
         }
 
         delegate void Experiment(ref object o1, ref object o2);

@@ -30,13 +30,30 @@ namespace SharpRpc.Codecs
 {
     public class NativeStructCodec : IEmittingCodec
     {
+        private struct SizedWrapper<T> where T : struct
+        {
+            public T Value;
+
+            public SizedWrapper(T value)
+            {
+                Value = value;
+            } 
+        }
+
         private readonly Type type;
         private readonly int sizeInBytes;
 
         public NativeStructCodec(Type type)
         {
             this.type = type;
-            sizeInBytes = Marshal.SizeOf(type);
+            try
+            {
+                sizeInBytes = Marshal.SizeOf(type);
+            }
+            catch
+            {
+                sizeInBytes = Marshal.SizeOf(Activator.CreateInstance(typeof(SizedWrapper<>).MakeGenericType(type)));
+            }
         }
 
         public bool HasFixedSize { get { return true; } }
