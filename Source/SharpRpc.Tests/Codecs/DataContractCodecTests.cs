@@ -9,7 +9,7 @@ namespace SharpRpc.Tests.Codecs
     public class DataContractCodecTests : CodecTestsBase
     {
         #region Contracts
-        private static bool ArraysAreEqual<T>(T[] a1, T[] a2, Func<T[], T[], bool> areEqual)
+        private static bool ArraysAreEqual<T>(T[] a1, T[] a2, Func<T, T, bool> areEqual)
         {
             if (ReferenceEquals(a1, a2))
                 return true;
@@ -18,7 +18,7 @@ namespace SharpRpc.Tests.Codecs
             if (a1.Length != a2.Length)
                 return false;
             for (int i = 0; i < a1.Length; i++)
-                if (!areEqual(a1, a2))
+                if (!areEqual(a1[i], a2[i]))
                     return false;
             return true;
         }
@@ -76,6 +76,7 @@ namespace SharpRpc.Tests.Codecs
             }
             public override bool Equals(object obj) { return obj is DynamicContract && Equals((DynamicContract)obj); }
             public override int GetHashCode() { return 0; }
+            public override string ToString() { return string.Format("{0} {1}", A, string.Join("-", B)); }
         }
 
         [DataContract]
@@ -104,11 +105,22 @@ namespace SharpRpc.Tests.Codecs
         [DataContract]
         public class NestedContract : IEquatable<NestedContract>
         {
+            [DataMember]
             public int A { get; set; }
+
+            [DataMember]
             public string B { get; set; }
+
+            [DataMember]
             public FixedContract C { get; set; }
+
+            [DataMember]
             public DynamicContract D { get; set; }
+
+            [DataMember]
             public string E { get; set; }
+
+            [DataMember]
             public MixedContract F { get; set; }
 
             public bool Equals(NestedContract other)

@@ -26,6 +26,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 
 namespace SharpRpc.Codecs
 {
@@ -51,7 +52,7 @@ namespace SharpRpc.Codecs
             return new ManualCodec<T>(GetEmittingCodecFor(typeof(T)));
         }
 
-        private static IEmittingCodec CreateCodec(Type type)
+        private IEmittingCodec CreateCodec(Type type)
         {
             if (TypeIsNativeStructure(type))
                 return new NativeStructCodec(type);
@@ -59,6 +60,8 @@ namespace SharpRpc.Codecs
                 return new StringCodec();
             if (type.IsArray && TypeIsNativeStructure(type.GetElementType()))
                 return new NativeStructArrayCodec(type.GetElementType());
+            if (type.GetCustomAttributes<DataContractAttribute>().Any())
+                return new DataContractCodec(type, this);
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
