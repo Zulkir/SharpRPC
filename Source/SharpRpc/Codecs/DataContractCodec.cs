@@ -41,11 +41,11 @@ namespace SharpRpc.Codecs
         private readonly Type type;
         private readonly DataMemberInfo[] memberInfos;
         private readonly int numFixedProperties;
-        private readonly int numLimitedProperties;
         private readonly int fixedPartOfSize;
+        private readonly int? maxSize;
 
         public int? FixedSize { get { return null; } }
-        public int? MaxSize { get { return memberInfos.Length == numFixedProperties ? (int?)fixedPartOfSize : null; } }
+        public int? MaxSize { get { return maxSize; } }
 
         public DataContractCodec(Type type, ICodecContainer codecContainer)
         {
@@ -61,8 +61,8 @@ namespace SharpRpc.Codecs
                 .ThenBy(x => x.Property.Name)
                 .ToArray();
             numFixedProperties = memberInfos.IndexOfFirst(x => !x.Codec.FixedSize.HasValue, memberInfos.Length);
-            numLimitedProperties = memberInfos.IndexOfFirst(x => !x.Codec.MaxSize.HasValue, memberInfos.Length) - numFixedProperties;
             fixedPartOfSize = sizeof(int) + memberInfos.Take(numFixedProperties).Sum(x => x.Codec.FixedSize.Value);
+            maxSize = memberInfos.All(x => x.Codec.MaxSize.HasValue) ? memberInfos.Sum(x => x.Codec.MaxSize) : null;
         }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
