@@ -69,6 +69,7 @@
     <Compile Include="Codecs\ManualCodecExtensions.cs" />
     <Compile Include="Codecs\NativeStructArrayCodec.cs" />
     <Compile Include="Codecs\NativeStructCodec.cs" />
+    <Compile Include="Codecs\ReferenceArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
     <Compile Include="ServiceHostSettings.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />

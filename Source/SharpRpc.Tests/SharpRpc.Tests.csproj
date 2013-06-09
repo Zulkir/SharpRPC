@@ -57,6 +57,7 @@
     <Compile Include="Codecs\ManualCodecTests.cs" />
     <Compile Include="Codecs\NativeStructArrayCodecTests.cs" />
     <Compile Include="Codecs\NativeStructCodecTests.cs" />
+    <Compile Include="Codecs\ReferenceArrayCodecTests.cs" />
     <Compile Include="Codecs\StringCodecTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerContainerTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactoryTests.cs" />
