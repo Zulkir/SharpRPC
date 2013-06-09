@@ -94,28 +94,29 @@ namespace SharpRpc.Codecs
             var valueIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);
-            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);
+            emitLoad(il);                                                // if (value)
+            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);                //     goto valueIsNotNullLabel
 
             // Value is null branch
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = -1
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                  // *(int*) data = 0
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));    // data += sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                    // goto endOfSubmethodLabel
 
             // Value is not null branch
-            il.MarkLabel(valueIsNotNullLabel);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = 1
+            il.MarkLabel(valueIsNotNullLabel);                           // goto valueIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                  // *(int*) data = 1
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));
-            foreach (var memberInfo in memberInfos)
-            {
-                var propertyGetter = memberInfo.Property.GetGetMethod();
-                memberInfo.Codec.EmitEncode(il, locals, emitLoad, propertyGetter);
-            }
-            il.MarkLabel(endOfSubmethodLabel);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));    // data += sizeof(int)
+            foreach (var memberInfo in memberInfos)                      // foreach (Prop)
+            {                                                            // {
+                var propertyGetter = memberInfo.Property.GetGetMethod(); //     encode(value.Prop)
+                memberInfo.Codec.EmitEncode(
+                    il, locals, emitLoad, propertyGetter);
+            }                                                            // }
+            il.MarkLabel(endOfSubmethodLabel);                           // label endOfSubmethodLabel
         }
 
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
@@ -139,33 +140,33 @@ namespace SharpRpc.Codecs
             var flagVar = locals.GetOrAdd("existanceFlag",
                 lil => lil.DeclareLocal(typeof(int)));
 
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // if (*(int*) data)
-            il.Emit(OpCodes.Ldind_I4);                                  //     goto resultIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                   // if (*(int*) data)
+            il.Emit(OpCodes.Ldind_I4);                                    //     goto resultIsNotNullLabel
             il.Emit(OpCodes.Stloc, flagVar);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));
-            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));
-            il.Emit(OpCodes.Ldloc, flagVar);
-            il.Emit(OpCodes.Brtrue, resultIsNotNullLabel);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));     // data += sizeof(int)
+            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));  // remainingBytes -= sizeof(int)
+            il.Emit(OpCodes.Ldloc, flagVar);                              // if (flag)
+            il.Emit(OpCodes.Brtrue, resultIsNotNullLabel);                //     goto resultIsNotNullLabel
 
             // Result is null branch
-            il.Emit(OpCodes.Ldnull);
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);
+            il.Emit(OpCodes.Ldnull);                                      // stack_0 = null
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                     // goto endOfSubmethodLabel
 
             // Result is not null branch
-            il.MarkLabel(resultIsNotNullLabel);
-            il.Emit(OpCodes.Ldtoken, type);
+            il.MarkLabel(resultIsNotNullLabel);                           // label resultIsNotNullLabel
+            il.Emit(OpCodes.Ldtoken, type);                               // stack_0 = (T)FormatterServices.GetUninitializedObject(typeof(T))
             il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
             il.Emit(OpCodes.Call, GetUninitializedObject);
             il.Emit(OpCodes.Castclass, type);
 
-            foreach (var memberInfo in memberInfos)
-            {
-                il.Emit(OpCodes.Dup);
+            foreach (var memberInfo in memberInfos)                       // foreach (Prop)
+            {                                                             // {
+                il.Emit(OpCodes.Dup);                                     //     stack_0.Prop = decode()
                 memberInfo.Codec.EmitDecode(il, locals, doNotCheckBounds);
                 il.Emit(OpCodes.Call, memberInfo.Property.GetSetMethod());
-            }
+            }                                                             // }
 
-            il.MarkLabel(endOfSubmethodLabel);
+            il.MarkLabel(endOfSubmethodLabel);                            // label endOfSubmethodLabel
         }
     }
 }
