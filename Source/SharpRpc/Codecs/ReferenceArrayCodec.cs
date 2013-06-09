@@ -30,18 +30,85 @@ namespace SharpRpc.Codecs
     public class ReferenceArrayCodec : IEmittingCodec
     {
         private readonly Type type;
+        private readonly IEmittingCodec elementCodec;
+        private readonly bool isStruct;
 
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return null; } }
 
-        public ReferenceArrayCodec(Type type)
+        public ReferenceArrayCodec(Type type, ICodecContainer codecContainer)
         {
             this.type = type;
+            elementCodec = codecContainer.GetEmittingCodecFor(type);
+            isStruct = type.IsValueType;
+        }
+
+        private void EmitLdelem(ILGenerator il)
+        {
+            if (isStruct)
+            {
+                il.Emit(OpCodes.Ldelema, type);
+                il.Emit(OpCodes.Ldobj, type);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldelem_Ref);
+            }
         }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
-            throw new NotImplementedException();
+            var valueIsNullOrEmptyLabel = il.DefineLabel();
+            var valueHasElementsLabel = il.DefineLabel();
+            var loopStartLabel = il.DefineLabel();
+            var loopConditionLabel = il.DefineLabel();
+            var endOfMethodLabel = il.DefineLabel();
+
+            var iVar = il.DeclareLocal(typeof(int));
+            var sumVar = il.DeclareLocal(typeof(int));
+            var elemVar = il.DeclareLocal(type);
+
+            emitLoad(il);
+            il.Emit(OpCodes.Brfalse, valueIsNullOrEmptyLabel);
+
+            emitLoad(il);
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Conv_I4);
+            il.Emit(OpCodes.Brtrue, valueHasElementsLabel);
+
+            il.MarkLabel(valueIsNullOrEmptyLabel);
+            il.Emit_Ldc_I4(sizeof(int));
+            il.Emit(OpCodes.Br, endOfMethodLabel);
+
+            il.MarkLabel(valueHasElementsLabel);
+            il.Emit_Ldc_I4(0);
+            il.Emit(OpCodes.Stloc, iVar);
+            il.Emit_Ldc_I4(0);
+            il.Emit(OpCodes.Stloc, sumVar);
+            il.Emit(OpCodes.Br, loopConditionLabel);
+
+            il.MarkLabel(loopStartLabel);
+            il.Emit(OpCodes.Ldloc, sumVar);
+            emitLoad(il);
+            il.Emit(OpCodes.Ldloc, iVar);
+            EmitLdelem(il);
+            il.Emit(OpCodes.Stloc, elemVar);
+            elementCodec.EmitCalculateSize(il, elemVar);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc, sumVar);
+            il.Emit(OpCodes.Ldloc, iVar);
+            il.Emit_Ldc_I4(1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc, iVar);
+
+            il.MarkLabel(loopConditionLabel);
+            il.Emit(OpCodes.Ldloc, iVar);
+            emitLoad(il);
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Conv_I4);
+            il.Emit(OpCodes.Blt, loopStartLabel);
+
+            il.Emit(OpCodes.Ldloc, sumVar);
         }
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)

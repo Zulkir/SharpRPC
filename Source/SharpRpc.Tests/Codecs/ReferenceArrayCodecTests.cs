@@ -53,7 +53,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T[] array)
         {
-            DoTest(new ReferenceArrayCodec(typeof(T)), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
+            DoTest(new ReferenceArrayCodec(typeof(T), codecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
         }
 
         private void DoTestBasic<T>() where T : class
