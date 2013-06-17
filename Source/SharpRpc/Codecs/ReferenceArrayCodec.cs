@@ -56,6 +56,21 @@ namespace SharpRpc.Codecs
             }
         }
 
+        private void EmitDecodeAndStore(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        {
+            if (isStruct)
+            {
+                il.Emit(OpCodes.Ldelema, type);
+                elementCodec.EmitDecode(il, locals, doNotCheckBounds);
+                il.Emit(OpCodes.Stobj, type);
+            }
+            else
+            {
+                elementCodec.EmitDecode(il, locals, doNotCheckBounds);
+                il.Emit(OpCodes.Stelem_Ref);
+            }
+        }
+
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             var valueIsNullOrEmptyLabel = il.DefineLabel();
@@ -66,7 +81,7 @@ namespace SharpRpc.Codecs
 
             var iVar = il.DeclareLocal(typeof(int));          // int i
             var sumVar = il.DeclareLocal(typeof(int));        // int sum
-            var elemVar = il.DeclareLocal(type);              // Type elem
+            var elemVar = il.DeclareLocal(type);              // T elem
 
             emitLoad(il);                                     // if (!value)
             il.Emit(OpCodes.Brfalse, valueIsNullOrEmptyLabel);//     goto valueIsNullOrEmptyLabel
@@ -83,7 +98,7 @@ namespace SharpRpc.Codecs
             il.MarkLabel(valueHasElementsLabel);              // label valueHasElementsLabel
             il.Emit_Ldc_I4(0);                                // i = 0
             il.Emit(OpCodes.Stloc, iVar);
-            il.Emit_Ldc_I4(0);                                // sum = 0
+            il.Emit_Ldc_I4(sizeof(int));                      // sum = sizeof(int)
             il.Emit(OpCodes.Stloc, sumVar);
             il.Emit(OpCodes.Br, loopConditionLabel);          // goto loopConditionLabel
 
@@ -120,19 +135,19 @@ namespace SharpRpc.Codecs
             var endOfMethodLabel = il.DefineLabel();
 
             var iVar = il.DeclareLocal(typeof(int));                 // int i
-            var elemVar = il.DeclareLocal(type);                     // Type elem
+            var elemVar = il.DeclareLocal(type);                     // T elem
 
             emitLoad(il);                                            // if (value)
             il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);            //     goto valueIsNotNullLabel
 
-            // Value is null branch
+            // value is null branch
             il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = -1
             il.Emit_Ldc_I4(-1);
             il.Emit(OpCodes.Stind_I4);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
             il.Emit(OpCodes.Br, endOfMethodLabel);                   // goto endOfMethodLabel
 
-            // Value is not null branch
+            // value is not null branch
             il.MarkLabel(valueIsNotNullLabel);                       // label valueIsNotNullLabel
             il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = (int)value.Length
             emitLoad(il);
@@ -169,7 +184,68 @@ namespace SharpRpc.Codecs
 
         public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
         {
-            throw new NotImplementedException();
+            var valueIsNotNullLabel = il.DefineLabel();
+            var loopStartLabel = il.DefineLabel();
+            var loopConditionLabel = il.DefineLabel();
+            var endOfMethodLabel = il.DefineLabel();
+
+            var resultVar = il.DeclareLocal(type.MakeArrayType());      // T[] result
+            var iVar = il.DeclareLocal(typeof(int));                    // int i
+
+            if (!doNotCheckBounds)
+            {
+                var canReadLengthLabel = il.DefineLabel();
+                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);          // if (remainingBytes >= sizeof(int))
+                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadLengthLabel
+                il.Emit(OpCodes.Bge, canReadLengthLabel);
+                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
+                il.MarkLabel(canReadLengthLabel);                       // label canReadLengthLabel
+            }
+
+            var lengthVar = locals.GetOrAdd("refArrayLength",
+                lil => lil.DeclareLocal(typeof(int)));
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // var length = *(int*) data
+            il.Emit(OpCodes.Ldind_I4);
+            il.Emit(OpCodes.Stloc, lengthVar);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
+            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));// remainingBytes -= sizeof(int)
+            il.Emit(OpCodes.Ldloc, lengthVar);                          // if (length == -1)
+            il.Emit_Ldc_I4(-1);                                         //     goto valueIsNotNullLabel
+            il.Emit(OpCodes.Bne_Un, valueIsNotNullLabel);
+
+            // value is null branch
+            il.Emit(OpCodes.Ldnull);                                    // stack_0 = null
+            il.Emit(OpCodes.Br, endOfMethodLabel);                      // goto endOfMethodLabel
+
+            // value is not null branch
+            il.MarkLabel(valueIsNotNullLabel);                          // label valueIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, lengthVar);                          // result = new T[length]
+            il.Emit(OpCodes.Newarr, type);
+            il.Emit(OpCodes.Stloc, resultVar);
+            il.Emit_Ldc_I4(0);                                          // i = 0
+            il.Emit(OpCodes.Stloc, iVar);
+            il.Emit(OpCodes.Br, loopConditionLabel);                    // goto loopConditionLabel
+
+            // loop start
+            il.MarkLabel(loopStartLabel);                               // label loopStartLabel
+            il.Emit(OpCodes.Ldloc, resultVar);                          // result[i] = decode(data, remainingBytes)
+            il.Emit(OpCodes.Ldloc, iVar);
+            EmitDecodeAndStore(il, locals, doNotCheckBounds);
+            il.Emit(OpCodes.Ldloc, iVar);                               // i++
+            il.Emit_Ldc_I4(1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc, iVar);
+
+            // loop condition
+            il.MarkLabel(loopConditionLabel);                           // label loopConditionLabel
+            il.Emit(OpCodes.Ldloc, iVar);                               // if (i < (int)result.Length)
+            il.Emit(OpCodes.Ldloc, resultVar);                          //     goto loopStartLabel
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Conv_I4);
+            il.Emit(OpCodes.Blt, loopStartLabel);
+
+            il.Emit(OpCodes.Ldloc, resultVar);                          // stack_0 = result
+            il.MarkLabel(endOfMethodLabel);                             // label endOfMethodLabel
         }
     }
 }

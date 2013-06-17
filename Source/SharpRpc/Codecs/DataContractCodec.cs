@@ -131,17 +131,17 @@ namespace SharpRpc.Codecs
             {
                 var canReadFlagLabel = il.DefineLabel();
                 il.Emit(OpCodes.Ldloc, locals.RemainingBytes);          // if (remainingBytes >= sizeof(int))
-                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadSizeLabel
+                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadFlagLabel
                 il.Emit(OpCodes.Bge, canReadFlagLabel);
                 il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
-                il.MarkLabel(canReadFlagLabel);                         // label canReadSizeLabel
+                il.MarkLabel(canReadFlagLabel);                         // label canReadFlagLabel
             }
 
             var flagVar = locals.GetOrAdd("existanceFlag",
                 lil => lil.DeclareLocal(typeof(int)));
 
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                   // if (*(int*) data)
-            il.Emit(OpCodes.Ldind_I4);                                    //     goto resultIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                   // flag = *(int*) data
+            il.Emit(OpCodes.Ldind_I4);
             il.Emit(OpCodes.Stloc, flagVar);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));     // data += sizeof(int)
             il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));  // remainingBytes -= sizeof(int)
