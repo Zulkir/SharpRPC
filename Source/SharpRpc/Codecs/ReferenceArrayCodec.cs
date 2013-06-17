@@ -64,51 +64,52 @@ namespace SharpRpc.Codecs
             var loopConditionLabel = il.DefineLabel();
             var endOfMethodLabel = il.DefineLabel();
 
-            var iVar = il.DeclareLocal(typeof(int));
-            var sumVar = il.DeclareLocal(typeof(int));
-            var elemVar = il.DeclareLocal(type);
+            var iVar = il.DeclareLocal(typeof(int));          // int i
+            var sumVar = il.DeclareLocal(typeof(int));        // int sum
+            var elemVar = il.DeclareLocal(type);              // Type elem
 
-            emitLoad(il);
-            il.Emit(OpCodes.Brfalse, valueIsNullOrEmptyLabel);
+            emitLoad(il);                                     // if (!value)
+            il.Emit(OpCodes.Brfalse, valueIsNullOrEmptyLabel);//     goto valueIsNullOrEmptyLabel
 
-            emitLoad(il);
-            il.Emit(OpCodes.Ldlen);
+            emitLoad(il);                                     // if ((int)value.Length)
+            il.Emit(OpCodes.Ldlen);                           //     goto valueHasElementsLabel
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Brtrue, valueHasElementsLabel);
 
-            il.MarkLabel(valueIsNullOrEmptyLabel);
-            il.Emit_Ldc_I4(sizeof(int));
-            il.Emit(OpCodes.Br, endOfMethodLabel);
+            il.MarkLabel(valueIsNullOrEmptyLabel);            // label valueIsNullOrEmptyLabel
+            il.Emit_Ldc_I4(sizeof(int));                      // stack_0 = sizeof(int)
+            il.Emit(OpCodes.Br, endOfMethodLabel);            // goto endOfMethodLabel
 
-            il.MarkLabel(valueHasElementsLabel);
-            il.Emit_Ldc_I4(0);
+            il.MarkLabel(valueHasElementsLabel);              // label valueHasElementsLabel
+            il.Emit_Ldc_I4(0);                                // i = 0
             il.Emit(OpCodes.Stloc, iVar);
-            il.Emit_Ldc_I4(0);
+            il.Emit_Ldc_I4(0);                                // sum = 0
             il.Emit(OpCodes.Stloc, sumVar);
-            il.Emit(OpCodes.Br, loopConditionLabel);
+            il.Emit(OpCodes.Br, loopConditionLabel);          // goto loopConditionLabel
 
-            il.MarkLabel(loopStartLabel);
-            il.Emit(OpCodes.Ldloc, sumVar);
-            emitLoad(il);
+            il.MarkLabel(loopStartLabel);                     // label loopStartLabel
+            il.Emit(OpCodes.Ldloc, sumVar);                   // stack_0 = sum
+            emitLoad(il);                                     // elem = value[i]
             il.Emit(OpCodes.Ldloc, iVar);
             EmitLdelem(il);
             il.Emit(OpCodes.Stloc, elemVar);
-            elementCodec.EmitCalculateSize(il, elemVar);
-            il.Emit(OpCodes.Add);
+            elementCodec.EmitCalculateSize(il, elemVar);      // stack_1 = CalculateSize(elem)
+            il.Emit(OpCodes.Add);                             // sum = stack_0 + stack_1
             il.Emit(OpCodes.Stloc, sumVar);
-            il.Emit(OpCodes.Ldloc, iVar);
+            il.Emit(OpCodes.Ldloc, iVar);                     // i += 1
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Add);
             il.Emit(OpCodes.Stloc, iVar);
 
-            il.MarkLabel(loopConditionLabel);
-            il.Emit(OpCodes.Ldloc, iVar);
-            emitLoad(il);
+            il.MarkLabel(loopConditionLabel);                 // label loopConditionLabel
+            il.Emit(OpCodes.Ldloc, iVar);                     // if (i < (int)value.Length)
+            emitLoad(il);                                     //     goto loopStartLabel
             il.Emit(OpCodes.Ldlen);
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Blt, loopStartLabel);
 
-            il.Emit(OpCodes.Ldloc, sumVar);
+            il.Emit(OpCodes.Ldloc, sumVar);                   // stack_0 = sum
+            il.MarkLabel(endOfMethodLabel);                   // label endOfMethodLabel
         }
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
