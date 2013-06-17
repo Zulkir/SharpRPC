@@ -96,7 +96,7 @@ namespace SharpRpc.Codecs
             elementCodec.EmitCalculateSize(il, elemVar);      // stack_1 = CalculateSize(elem)
             il.Emit(OpCodes.Add);                             // sum = stack_0 + stack_1
             il.Emit(OpCodes.Stloc, sumVar);
-            il.Emit(OpCodes.Ldloc, iVar);                     // i += 1
+            il.Emit(OpCodes.Ldloc, iVar);                     // i++
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Add);
             il.Emit(OpCodes.Stloc, iVar);
@@ -114,7 +114,57 @@ namespace SharpRpc.Codecs
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
-            throw new NotImplementedException();
+            var valueIsNotNullLabel = il.DefineLabel();
+            var loopStartLabel = il.DefineLabel();
+            var loopConditionLabel = il.DefineLabel();
+            var endOfMethodLabel = il.DefineLabel();
+
+            var iVar = il.DeclareLocal(typeof(int));                 // int i
+            var elemVar = il.DeclareLocal(type);                     // Type elem
+
+            emitLoad(il);                                            // if (value)
+            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);            //     goto valueIsNotNullLabel
+
+            // Value is null branch
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = -1
+            il.Emit_Ldc_I4(-1);
+            il.Emit(OpCodes.Stind_I4);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
+            il.Emit(OpCodes.Br, endOfMethodLabel);                   // goto endOfMethodLabel
+
+            // Value is not null branch
+            il.MarkLabel(valueIsNotNullLabel);                       // label valueIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = (int)value.Length
+            emitLoad(il);
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Conv_I4);
+            il.Emit(OpCodes.Stind_I4);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
+            il.Emit_Ldc_I4(0);                                       // i = 0
+            il.Emit(OpCodes.Stloc, iVar);
+            il.Emit(OpCodes.Br, loopConditionLabel);                 // goto loopConditionLabel
+
+            // loop start
+            il.MarkLabel(loopStartLabel);                            // loopStartLabel
+            emitLoad(il);                                            // elem = value[i]
+            il.Emit(OpCodes.Ldloc, iVar);
+            EmitLdelem(il);
+            il.Emit(OpCodes.Stloc, elemVar);
+            elementCodec.EmitEncode(il, locals, elemVar);            // encode(data, elem)
+            il.Emit(OpCodes.Ldloc, iVar);                            // i++
+            il.Emit_Ldc_I4(1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc, iVar);
+
+            // loop condition
+            il.MarkLabel(loopConditionLabel);                        // label loopConditionLabel
+            il.Emit(OpCodes.Ldloc, iVar);                            // if (i < (int)value.Length)
+            emitLoad(il);                                            //     goto loopStartLabel
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Conv_I4);
+            il.Emit(OpCodes.Blt, loopStartLabel);
+
+            il.MarkLabel(endOfMethodLabel);                          // endOfMethodLabel
         }
 
         public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
