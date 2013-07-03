@@ -64,6 +64,8 @@
     <Compile Include="Codecs\ILGeneratorExtensions.cs" />
     <Compile Include="Codecs\ILocalVariableCollection.cs" />
     <Compile Include="Codecs\IManualCodec.cs" />
+    <Compile Include="Codecs\IndirectCodec.cs" />
+    <Compile Include="Codecs\IMethodBasedManualCodec.cs" />
     <Compile Include="Codecs\LocalVariableCollection.cs" />
     <Compile Include="Codecs\ManualCodec.cs" />
     <Compile Include="Codecs\ManualCodecExtensions.cs" />

@@ -134,7 +134,6 @@ namespace SharpRpc.Tests.Codecs
             public override bool Equals(object obj) { return obj is NestedContract && Equals((NestedContract)obj); }
             public override int GetHashCode() { return 0; }
         }
-
         #endregion
 
         private ICodecContainer codecContainer;

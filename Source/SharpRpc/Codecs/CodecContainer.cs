@@ -24,9 +24,10 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.Codecs
 {
@@ -63,8 +64,16 @@ namespace SharpRpc.Codecs
                     return new NativeStructArrayCodec(type.GetElementType());
                 else
                     return new ReferenceArrayCodec(type.GetElementType(), this);
-            if (type.GetCustomAttributes<DataContractAttribute>().Any())
+            if (type.IsDataContract())
+            {
+                var members = type.EnumerateDataMembers().ToArray();
+                if (SomeMembersAreIncomplete(members))
+                    throw new NotSupportedException(string.Format("Data contract '{0}' is incomplete (it has members with missing getters or setters)", type.FullName));
+                if (DataContractIsRecursive(type, members) || SomeMembersArePrivate(members))
+                    // todo: return new IndirectCodec(...);
                 return new DataContractCodec(type, this);
+            }
+                
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
@@ -73,6 +82,23 @@ namespace SharpRpc.Codecs
             return (type.IsPrimitive && type != typeof (IntPtr) && type != typeof (UIntPtr)) ||
                    (type.IsValueType && type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                                             .All(x => TypeIsNativeStructure(x.FieldType)));
+        }
+
+        private static bool DataContractIsRecursive(Type contractType, IEnumerable<PropertyInfo> members)
+        {
+            return members.Any(x =>
+                x.PropertyType == contractType ||
+                x.PropertyType.IsDataContract() && DataContractIsRecursive(x.PropertyType, x.PropertyType.EnumerateDataMembers()));
+        }
+
+        private static bool SomeMembersAreIncomplete(IEnumerable<PropertyInfo> members)
+        {
+            return members.Any(x => x.GetGetMethod(true) == null || x.GetSetMethod(true) == null);
+        }
+
+        private static bool SomeMembersArePrivate(IEnumerable<PropertyInfo> members)
+        {
+            return members.Any(x => x.GetGetMethod() == null || x.GetSetMethod(true) == null);
         }
     }
 }

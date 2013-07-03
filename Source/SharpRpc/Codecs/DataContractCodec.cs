@@ -27,6 +27,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Linq;
 using System.Runtime.Serialization;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.Codecs
 {
@@ -50,8 +51,7 @@ namespace SharpRpc.Codecs
         public DataContractCodec(Type type, ICodecContainer codecContainer)
         {
             this.type = type;
-            memberInfos = type.GetProperties()
-                .Where(x => x.GetCustomAttributes(typeof(DataMemberAttribute), true).Any())
+            memberInfos = type.EnumerateDataMembers()
                 .Select(x => new DataMemberInfo
                     {
                         Codec = codecContainer.GetEmittingCodecFor(x.PropertyType),
@@ -70,23 +70,23 @@ namespace SharpRpc.Codecs
             var contractIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                           // if (value)
-            il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);        //     goto contractIsNotNullLabel
+            emitLoad(il);                                                   // if (value)
+            il.Emit(OpCodes.Brtrue, contractIsNotNullLabel);                //     goto contractIsNotNullLabel
 
             // Contract is null branch
-            il.Emit_Ldc_I4(sizeof(int));                            // stack_0 = sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);               // goto endOfSubmethodLabel
+            il.Emit_Ldc_I4(sizeof(int));                                    // stack_0 = sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                       // goto endOfSubmethodLabel
 
             // Contract is not null branch
-            il.MarkLabel(contractIsNotNullLabel);                   // label contractIsNotNullLabel
-            il.Emit_Ldc_I4(fixedPartOfSize);                        // stack_0 = fixedPartOfSize
+            il.MarkLabel(contractIsNotNullLabel);                           // label contractIsNotNullLabel
+            il.Emit_Ldc_I4(fixedPartOfSize);                                // stack_0 = fixedPartOfSize
             foreach (var memberInfo in memberInfos.Skip(numFixedProperties))
             {
-                memberInfo.Codec.EmitCalculateSize(il,              // stack_0 += sizeof member_i
-                    emitLoad, memberInfo.Property.GetGetMethod());
+                memberInfo.Codec.EmitCalculateSize(il,                      // stack_0 += sizeof member_i
+                    emitLoad, memberInfo.Property.GetGetMethod(true));
                 il.Emit(OpCodes.Add);
             }
-            il.MarkLabel(endOfSubmethodLabel);                      // label endOfSubmethodLabel
+            il.MarkLabel(endOfSubmethodLabel);                              // label endOfSubmethodLabel
         }
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
@@ -94,29 +94,29 @@ namespace SharpRpc.Codecs
             var valueIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                                // if (value)
-            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);                //     goto valueIsNotNullLabel
+            emitLoad(il);                                                   // if (value)
+            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);                   //     goto valueIsNotNullLabel
 
             // Value is null branch
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                  // *(int*) data = 0
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                     // *(int*) data = 0
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));    // data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                    // goto endOfSubmethodLabel
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));       // data += sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                       // goto endOfSubmethodLabel
 
             // Value is not null branch
-            il.MarkLabel(valueIsNotNullLabel);                           // goto valueIsNotNullLabel
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                  // *(int*) data = 1
+            il.MarkLabel(valueIsNotNullLabel);                              // goto valueIsNotNullLabel
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                     // *(int*) data = 1
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));    // data += sizeof(int)
-            foreach (var memberInfo in memberInfos)                      // foreach (Prop)
-            {                                                            // {
-                var propertyGetter = memberInfo.Property.GetGetMethod(); //     encode(value.Prop)
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));       // data += sizeof(int)
+            foreach (var memberInfo in memberInfos)                         // foreach (Prop)
+            {                                                               // {
+                var propertyGetter = memberInfo.Property.GetGetMethod(true);//     encode(value.Prop)
                 memberInfo.Codec.EmitEncode(
                     il, locals, emitLoad, propertyGetter);
-            }                                                            // }
-            il.MarkLabel(endOfSubmethodLabel);                           // label endOfSubmethodLabel
+            }                                                               // }
+            il.MarkLabel(endOfSubmethodLabel);                              // label endOfSubmethodLabel
         }
 
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
@@ -130,43 +130,43 @@ namespace SharpRpc.Codecs
             if (!doNotCheckBounds)
             {
                 var canReadFlagLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);          // if (remainingBytes >= sizeof(int))
-                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadFlagLabel
+                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);                  // if (remainingBytes >= sizeof(int))
+                il.Emit_Ldc_I4(sizeof(int));                                    //     goto canReadFlagLabel
                 il.Emit(OpCodes.Bge, canReadFlagLabel);
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
-                il.MarkLabel(canReadFlagLabel);                         // label canReadFlagLabel
+                il.Emit_ThrowUnexpectedEndException();                          // throw new InvalidDataException("...")
+                il.MarkLabel(canReadFlagLabel);                                 // label canReadFlagLabel
             }
 
             var flagVar = locals.GetOrAdd("existanceFlag",
                 lil => lil.DeclareLocal(typeof(int)));
 
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                   // flag = *(int*) data
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);                         // flag = *(int*) data
             il.Emit(OpCodes.Ldind_I4);
             il.Emit(OpCodes.Stloc, flagVar);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));     // data += sizeof(int)
-            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));  // remainingBytes -= sizeof(int)
-            il.Emit(OpCodes.Ldloc, flagVar);                              // if (flag)
-            il.Emit(OpCodes.Brtrue, resultIsNotNullLabel);                //     goto resultIsNotNullLabel
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));           // data += sizeof(int)
+            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));        // remainingBytes -= sizeof(int)
+            il.Emit(OpCodes.Ldloc, flagVar);                                    // if (flag)
+            il.Emit(OpCodes.Brtrue, resultIsNotNullLabel);                      //     goto resultIsNotNullLabel
 
             // Result is null branch
-            il.Emit(OpCodes.Ldnull);                                      // stack_0 = null
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                     // goto endOfSubmethodLabel
+            il.Emit(OpCodes.Ldnull);                                            // stack_0 = null
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                           // goto endOfSubmethodLabel
 
             // Result is not null branch
-            il.MarkLabel(resultIsNotNullLabel);                           // label resultIsNotNullLabel
-            il.Emit(OpCodes.Ldtoken, type);                               // stack_0 = (T)FormatterServices.GetUninitializedObject(typeof(T))
+            il.MarkLabel(resultIsNotNullLabel);                                 // label resultIsNotNullLabel
+            il.Emit(OpCodes.Ldtoken, type);                                     // stack_0 = (T)FormatterServices.GetUninitializedObject(typeof(T))
             il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
             il.Emit(OpCodes.Call, GetUninitializedObject);
             il.Emit(OpCodes.Castclass, type);
 
-            foreach (var memberInfo in memberInfos)                       // foreach (Prop)
-            {                                                             // {
-                il.Emit(OpCodes.Dup);                                     //     stack_0.Prop = decode()
+            foreach (var memberInfo in memberInfos)                             // foreach (Prop)
+            {                                                                   // {
+                il.Emit(OpCodes.Dup);                                           //     stack_0.Prop = decode()
                 memberInfo.Codec.EmitDecode(il, locals, doNotCheckBounds);
-                il.Emit(OpCodes.Call, memberInfo.Property.GetSetMethod());
-            }                                                             // }
+                il.Emit(OpCodes.Call, memberInfo.Property.GetSetMethod(true));
+            }                                                                   // }
 
-            il.MarkLabel(endOfSubmethodLabel);                            // label endOfSubmethodLabel
+            il.MarkLabel(endOfSubmethodLabel);                                  // label endOfSubmethodLabel
         }
     }
 }

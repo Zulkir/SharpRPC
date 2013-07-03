@@ -54,6 +54,7 @@
     <Compile Include="Codecs\CodecTestsBase.cs" />
     <Compile Include="Codecs\DataContractCodecTests.cs" />
     <Compile Include="Codecs\ExceptionCodecTests.cs" />
+    <Compile Include="Codecs\IndirectCodecTests.cs" />
     <Compile Include="Codecs\ManualCodecTests.cs" />
     <Compile Include="Codecs\NativeStructArrayCodecTests.cs" />
     <Compile Include="Codecs\NativeStructCodecTests.cs" />

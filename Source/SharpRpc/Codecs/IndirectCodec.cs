@@ -1,4 +1,5 @@
 ﻿#region License
+
 /*
 Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -20,32 +21,44 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
+using System.Reflection.Emit;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.Codecs
 {
-    public static class TypeExtensions
+    public class IndirectCodec : IEmittingCodec
     {
-        public static string GetServiceName(this Type serviceInterface)
+        private readonly IMethodBasedManualCodec directCodec;
+
+        public IndirectCodec(IMethodBasedManualCodec directCodec)
         {
-            return serviceInterface.Name.Substring(1);
+            this.directCodec = directCodec;
         }
 
-        public static bool IsDataContract(this Type type)
+        public int? FixedSize { get { return directCodec.FixedSize; } }
+        public int? MaxSize { get { return directCodec.MaxSize; } }
+
+        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
-            return type.GetCustomAttributes<DataContractAttribute>().Any();
+            emitLoad(il);
+            il.Emit(OpCodes.Call, directCodec.CalculateSizeMethod);
         }
 
-        public static IEnumerable<PropertyInfo> EnumerateDataMembers(this Type type)
+        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
-            return type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(x => x.GetCustomAttributes(typeof(DataMemberAttribute), true).Any());
+            il.Emit(OpCodes.Ldloca, locals.DataPointer);
+            emitLoad(il);
+            il.Emit(OpCodes.Call, directCodec.EncodeMethod);
+        }
+
+        public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        {
+            il.Emit(OpCodes.Ldloca, locals.DataPointer);
+            il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
+            il.Emit(OpCodes.Call, doNotCheckBounds ? directCodec.DecodeFastMethod : directCodec.DecodeMethod);
         }
     }
 }

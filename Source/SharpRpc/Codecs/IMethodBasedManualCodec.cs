@@ -22,30 +22,15 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.Codecs
 {
-    public static class TypeExtensions
+    public interface IMethodBasedManualCodec : IManualCodec
     {
-        public static string GetServiceName(this Type serviceInterface)
-        {
-            return serviceInterface.Name.Substring(1);
-        }
-
-        public static bool IsDataContract(this Type type)
-        {
-            return type.GetCustomAttributes<DataContractAttribute>().Any();
-        }
-
-        public static IEnumerable<PropertyInfo> EnumerateDataMembers(this Type type)
-        {
-            return type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(x => x.GetCustomAttributes(typeof(DataMemberAttribute), true).Any());
-        }
+        MethodInfo CalculateSizeMethod { get; }
+        MethodInfo EncodeMethod { get; }
+        MethodInfo DecodeMethod { get; }
+        MethodInfo DecodeFastMethod { get; } 
     }
 }
