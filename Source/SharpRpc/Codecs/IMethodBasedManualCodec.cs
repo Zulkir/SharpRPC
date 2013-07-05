@@ -22,15 +22,15 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Reflection;
+using System.Reflection.Emit;
 
 namespace SharpRpc.Codecs
 {
     public interface IMethodBasedManualCodec : IManualCodec
     {
-        MethodInfo CalculateSizeMethod { get; }
-        MethodInfo EncodeMethod { get; }
-        MethodInfo DecodeMethod { get; }
-        MethodInfo DecodeFastMethod { get; } 
+        DynamicMethod CalculateSizeMethod { get; }
+        DynamicMethod EncodeMethod { get; }
+        DynamicMethod DecodeMethod { get; }
+        DynamicMethod DecodeFastMethod { get; } 
     }
 }

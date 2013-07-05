@@ -65,7 +65,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new IndirectCodec(new ManualCodec<T>(new DataContractCodec(typeof(T), codecContainer))), value, (o1, o2) =>
+            DoTest(new IndirectCodec(typeof(T), new DataContractCodec(typeof(T), codecContainer)), value, (o1, o2) =>
             {
                 if (ReferenceEquals(o1, null))
                     Assert.That(o2, Is.Null);

@@ -22,55 +22,26 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Reflection;
-using System.Reflection.Emit;
-
 namespace SharpRpc.Codecs
 {
-    public unsafe class ManualCodec<T> : IManualCodec<T>, IMethodBasedManualCodec
+    public unsafe class ManualCodec<T> : ManualCodecBase, IManualCodec<T>, IMethodBasedManualCodec
     {
         private delegate int CalculateSizeDelegate(T value);
         private delegate void EncodeDelegate(ref byte* data, T value);
         private delegate T DecodeDelegate(ref byte* data, ref int remainingBytes);
-
-        private readonly IEmittingCodec emittingCodec;
-
-        private readonly DynamicMethod calculateSizeMethod;
-        private readonly DynamicMethod encodeMethod;
-        private readonly DynamicMethod decodeMethod;
-        private readonly DynamicMethod decodeFastMethod;
 
         private readonly CalculateSizeDelegate calculateSizeDelegate;
         private readonly EncodeDelegate encodeDelegate;
         private readonly DecodeDelegate decodeDelegate;
         private readonly DecodeDelegate decodeFastDelegate;
 
-        private readonly bool forceVisibilityChecks;
-
-        public ManualCodec(IEmittingCodec emittingCodec, bool forceVisibilityChecks = false)
+        public ManualCodec(IEmittingCodec emittingCodec, bool forceVisibilityChecks = false) : base(typeof(T), emittingCodec, forceVisibilityChecks)
         {
-            this.emittingCodec = emittingCodec;
-            this.forceVisibilityChecks = forceVisibilityChecks;
-
-            calculateSizeMethod = EmitCalculateSize();
-            encodeMethod = EmitEncode();
-            decodeMethod = EmitDecode(false);
-            decodeFastMethod = EmitDecode(true);
-
-            calculateSizeDelegate = (CalculateSizeDelegate)calculateSizeMethod.CreateDelegate(typeof(CalculateSizeDelegate));
-            encodeDelegate = (EncodeDelegate)encodeMethod.CreateDelegate(typeof(EncodeDelegate));
-            decodeDelegate = (DecodeDelegate)decodeMethod.CreateDelegate(typeof(DecodeDelegate));
-            decodeFastDelegate = (DecodeDelegate)decodeFastMethod.CreateDelegate(typeof(DecodeDelegate));
+            calculateSizeDelegate = (CalculateSizeDelegate)CalculateSizeMethod.CreateDelegate(typeof(CalculateSizeDelegate));
+            encodeDelegate = (EncodeDelegate)EncodeMethod.CreateDelegate(typeof(EncodeDelegate));
+            decodeDelegate = (DecodeDelegate)DecodeMethod.CreateDelegate(typeof(DecodeDelegate));
+            decodeFastDelegate = (DecodeDelegate)DecodeFastMethod.CreateDelegate(typeof(DecodeDelegate));
         }
-
-        public MethodInfo CalculateSizeMethod { get { return calculateSizeMethod; } }
-        public MethodInfo EncodeMethod { get { return encodeMethod; } }
-        public MethodInfo DecodeMethod { get { return decodeMethod; } }
-        public MethodInfo DecodeFastMethod { get { return decodeFastMethod; } }
-
-        public int? FixedSize { get { return emittingCodec.FixedSize; } }
-        public int? MaxSize { get { return emittingCodec.MaxSize; } }
 
         public int CalculateSize(T value)
         {
@@ -87,61 +58,6 @@ namespace SharpRpc.Codecs
             return doNotCheckBounds
                 ? decodeFastDelegate(ref data, ref remainingBytes)
                 : decodeDelegate(ref data, ref remainingBytes);
-        }
-
-        private static readonly Type[] CalculateSizeParameterTypes = new[] { typeof(T) };
-        private static readonly Type[] EncodeParameterTypes = new[] { typeof(byte*).MakeByRefType(), typeof(T) };
-        private static readonly Type[] DecodeParameterTypes = new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() };
-
-        private DynamicMethod EmitCalculateSize()
-        {
-            var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + typeof(T).FullName,
-                typeof(int), CalculateSizeParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
-            var il = dynamicMethod.GetILGenerator();
-            emittingCodec.EmitCalculateSize(il, 0);
-            il.Emit(OpCodes.Ret);
-
-            return dynamicMethod;
-        }
-
-        private DynamicMethod EmitEncode()
-        {
-            var dynamicMethod = new DynamicMethod("_encode_manual_" + typeof(T).FullName,
-                typeof(void), EncodeParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
-            var il = dynamicMethod.GetILGenerator();
-            var locals = new LocalVariableCollection(il, false);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, locals.DataPointer);
-            emittingCodec.EmitEncode(il, locals, 1);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);
-            il.Emit(OpCodes.Stind_I);
-            il.Emit(OpCodes.Ret);
-            return dynamicMethod;
-        }
-
-        private DynamicMethod EmitDecode(bool doNoCheckBounds)
-        {
-            var dynamicMethod = new DynamicMethod("_decode_manual_" + typeof(T).FullName + (doNoCheckBounds ? "_dncb_" : ""),
-                typeof(T), DecodeParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
-            var il = dynamicMethod.GetILGenerator();
-            var locals = new LocalVariableCollection(il, true);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, locals.DataPointer);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldind_I4);
-            il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-            emittingCodec.EmitDecode(il, locals, doNoCheckBounds);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);
-            il.Emit(OpCodes.Stind_I);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldloc, locals.RemainingBytes);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit(OpCodes.Ret);
-            return dynamicMethod;
         }
     }
 }

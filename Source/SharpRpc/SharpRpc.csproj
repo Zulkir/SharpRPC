@@ -68,6 +68,7 @@
     <Compile Include="Codecs\IMethodBasedManualCodec.cs" />
     <Compile Include="Codecs\LocalVariableCollection.cs" />
     <Compile Include="Codecs\ManualCodec.cs" />
+    <Compile Include="Codecs\ManualCodecBase.cs" />
     <Compile Include="Codecs\ManualCodecExtensions.cs" />
     <Compile Include="Codecs\NativeStructArrayCodec.cs" />
     <Compile Include="Codecs\NativeStructCodec.cs" />

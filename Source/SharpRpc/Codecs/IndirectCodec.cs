@@ -29,36 +29,30 @@ using System.Reflection.Emit;
 
 namespace SharpRpc.Codecs
 {
-    public class IndirectCodec : IEmittingCodec
+    public class IndirectCodec : ManualCodecBase, IEmittingCodec
     {
-        private readonly IMethodBasedManualCodec directCodec;
-
-        public IndirectCodec(IMethodBasedManualCodec directCodec)
+        public IndirectCodec(Type type, IEmittingCodec emittingCodec) : base(type, emittingCodec)
         {
-            this.directCodec = directCodec;
         }
-
-        public int? FixedSize { get { return directCodec.FixedSize; } }
-        public int? MaxSize { get { return directCodec.MaxSize; } }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             emitLoad(il);
-            il.Emit(OpCodes.Call, directCodec.CalculateSizeMethod);
+            il.Emit(OpCodes.Call, CalculateSizeMethod);
         }
 
         public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
         {
             il.Emit(OpCodes.Ldloca, locals.DataPointer);
             emitLoad(il);
-            il.Emit(OpCodes.Call, directCodec.EncodeMethod);
+            il.Emit(OpCodes.Call, EncodeMethod);
         }
 
         public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
         {
             il.Emit(OpCodes.Ldloca, locals.DataPointer);
             il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
-            il.Emit(OpCodes.Call, doNotCheckBounds ? directCodec.DecodeFastMethod : directCodec.DecodeMethod);
+            il.Emit(OpCodes.Call, doNotCheckBounds ? DecodeFastMethod : DecodeMethod);
         }
     }
 }

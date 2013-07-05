@@ -70,7 +70,7 @@ namespace SharpRpc.Codecs
                 if (SomeMembersAreIncomplete(members))
                     throw new NotSupportedException(string.Format("Data contract '{0}' is incomplete (it has members with missing getters or setters)", type.FullName));
                 if (DataContractIsRecursive(type, members) || SomeMembersArePrivate(members))
-                    // todo: return new IndirectCodec(...);
+                    return new IndirectCodec(type, new DataContractCodec(type, this));
                 return new DataContractCodec(type, this);
             }
                 
