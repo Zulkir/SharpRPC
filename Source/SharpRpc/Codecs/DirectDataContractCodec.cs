@@ -31,7 +31,7 @@ using SharpRpc.Reflection;
 
 namespace SharpRpc.Codecs
 {
-    public class DataContractCodec : IEmittingCodec
+    public class DirectDataContractCodec : IEmittingCodec
     {
         struct DataMemberInfo
         {
@@ -48,7 +48,7 @@ namespace SharpRpc.Codecs
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return maxSize; } }
 
-        public DataContractCodec(Type type, ICodecContainer codecContainer)
+        public DirectDataContractCodec(Type type, ICodecContainer codecContainer, bool doNotCalculateMaxSize = false)
         {
             this.type = type;
             memberInfos = type.EnumerateDataMembers()
@@ -62,7 +62,9 @@ namespace SharpRpc.Codecs
                 .ToArray();
             numFixedProperties = memberInfos.IndexOfFirst(x => !x.Codec.FixedSize.HasValue, memberInfos.Length);
             fixedPartOfSize = sizeof(int) + memberInfos.Take(numFixedProperties).Sum(x => x.Codec.FixedSize.Value);
-            maxSize = memberInfos.All(x => x.Codec.MaxSize.HasValue) ? memberInfos.Sum(x => x.Codec.MaxSize) : null;
+            maxSize = doNotCalculateMaxSize 
+                ? null 
+                : memberInfos.All(x => x.Codec.MaxSize.HasValue) ? memberInfos.Sum(x => x.Codec.MaxSize) : null;
         }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)

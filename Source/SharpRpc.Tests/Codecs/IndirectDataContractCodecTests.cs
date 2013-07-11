@@ -28,7 +28,7 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    public class IndirectCodecTests : CodecTestsBase
+    public class IndirectDataContractCodecTests : CodecTestsBase
     {
         #region Contracts
 
@@ -45,10 +45,7 @@ namespace SharpRpc.Tests.Codecs
                 A = a; B = b; C = c; D = d;
             }
 
-            public bool Equals(ContractWithPrivateFields other)
-            {
-                return A == other.A && B == other.B && C == other.C && D == other.D;
-            }
+            public bool Equals(ContractWithPrivateFields other) { return A == other.A && B == other.B && C == other.C && D == other.D; }
             public override bool Equals(object obj) { return obj is ContractWithPrivateFields && Equals((ContractWithPrivateFields)obj); }
             public override int GetHashCode() { return 0; }
         }
@@ -65,7 +62,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new IndirectCodec(typeof(T), new DataContractCodec(typeof(T), codecContainer)), value, (o1, o2) =>
+            DoTest(new IndirectDataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
             {
                 if (ReferenceEquals(o1, null))
                     Assert.That(o2, Is.Null);

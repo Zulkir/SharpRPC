@@ -6,7 +6,7 @@ using SharpRpc.Codecs;
 namespace SharpRpc.Tests.Codecs
 {
     [TestFixture]
-    public class DataContractCodecTests : CodecTestsBase
+    public class DirectDataContractCodecTests : CodecTestsBase
     {
         #region Contracts
         private static bool ArraysAreEqual<T>(T[] a1, T[] a2, Func<T, T, bool> areEqual)
@@ -146,7 +146,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new DataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
+            DoTest(new DirectDataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
                 {
                     if (ReferenceEquals(o1, null))
                         Assert.That(o2, Is.Null);

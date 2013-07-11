@@ -69,9 +69,12 @@ namespace SharpRpc.Codecs
                 var members = type.EnumerateDataMembers().ToArray();
                 if (SomeMembersAreIncomplete(members))
                     throw new NotSupportedException(string.Format("Data contract '{0}' is incomplete (it has members with missing getters or setters)", type.FullName));
-                if (DataContractIsRecursive(type, members) || SomeMembersArePrivate(members))
-                    return new IndirectCodec(type, new DataContractCodec(type, this));
-                return new DataContractCodec(type, this);
+                if (DataContractIsRecursive(type, members))
+                    //return new RecursiveDataContractCodec(type, this);
+                    throw new NotSupportedException("Recursive data contracts are not yet supported by SharpRPC");
+                if (SomeMembersArePrivate(members))
+                    return new IndirectDataContractCodec(type, this);
+                return new DirectDataContractCodec(type, this);
             }
                 
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
