@@ -75,6 +75,9 @@
     <Compile Include="Codecs\NativeStructCodec.cs" />
     <Compile Include="Codecs\ReferenceArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
+    <Compile Include="IRpcComponentContainer.cs" />
+    <Compile Include="RpcComponentContainer.cs" />
+    <Compile Include="RpcComponentOverrides.cs" />
     <Compile Include="ServiceHostSettings.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="ServerSide\InvalidImplementationException.cs" />

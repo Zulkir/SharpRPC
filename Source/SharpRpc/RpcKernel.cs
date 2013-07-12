@@ -25,7 +25,6 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using SharpRpc.ClientSide;
-using SharpRpc.Codecs;
 using SharpRpc.ServerSide;
 using SharpRpc.Reflection;
 
@@ -40,24 +39,17 @@ namespace SharpRpc
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcKernel(ITopology topology, IServiceHostSettings serviceHostSettings)
+        public RpcKernel(ITopology topology, IServiceHostSettings serviceHostSettings, RpcComponentOverrides componentOverrides = null)
         {
             this.topology = topology;
             this.serviceHostSettings = serviceHostSettings;
-            var serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
-            serviceImplementationContainer = new ServiceImplementationContainer(serviceDescriptionBuilder);
+            var componentContainer = new RpcComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
+
+            serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
             foreach (var pair in serviceHostSettings.GetInterfaceImplementationsPairs())
                 serviceImplementationContainer.RegisterImplementation(pair.Interface, pair.ImplementationType);
-            var codecContainer = new CodecContainer();
-            var serviceMethodHandlerFactory = new ServiceMethodHandlerFactory(codecContainer);
-            var serviceMethodHandlerContainer = new ServiceMethodHandlerContainer(serviceMethodHandlerFactory);
-            var incomingRequestProcessor = new IncomingRequestProcessor(this, serviceImplementationContainer, serviceMethodHandlerContainer, codecContainer);
-            var requestReceiverContainer = new RequestReceiverContainer(incomingRequestProcessor);
-            requestReceiver = requestReceiverContainer.GetReceiver(serviceHostSettings.EndPoint.Protocol);
-            var requestSenderContainer = new RequestSenderContainer();
-            var outgoingMethodCallProcessor = new OutgoingMethodCallProcessor(topology, requestSenderContainer, codecContainer);
-            var serviceProxyClassFactory = new ServiceProxyClassFactory(serviceDescriptionBuilder, codecContainer);
-            serviceProxyContainer = new ServiceProxyContainer(outgoingMethodCallProcessor, serviceProxyClassFactory);
+            requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(serviceHostSettings.EndPoint.Protocol);
+            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
         public RpcKernel(ITopology topology, IServiceHostSettings serviceHostSettings, 
@@ -73,6 +65,8 @@ namespace SharpRpc
             this.requestReceiver = requestReceiver;
             this.serviceProxyContainer = serviceProxyContainer;
         }
+
+        public ITopology Topology { get { return topology; } }
 
         public T GetService<T>(string scope) where T : class
         {

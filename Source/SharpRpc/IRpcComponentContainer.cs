@@ -22,11 +22,27 @@ THE SOFTWARE.
 */
 #endregion
 
+using SharpRpc.ClientSide;
+using SharpRpc.Codecs;
+using SharpRpc.Reflection;
+using SharpRpc.ServerSide;
+
 namespace SharpRpc
 {
-    public interface IRpcClient
+    public interface IRpcComponentContainer
     {
-        ITopology Topology { get; }
-        T GetService<T>(string scope) where T : class; 
+        IRpcKernel Kernel { get; }
+        IMethodDescriptionBuilder GetMethodDescriptionBuilder();
+        IServiceDescriptionBuilder GetServiceDescriptionBuilder();
+        IServiceImplementationContainer GetServiceImplementationContainer();
+        ICodecContainer GetCodecContainer();
+        IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
+        IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
+        IIncomingRequestProcessor GetIncomingRequestProcessor();
+        IRequestReceiverContainer GetRequestReceiverContainer();
+        IRequestSenderContainer GetRequestSenderContainer();
+        IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor();
+        IServiceProxyClassFactory GetServiceProxyClassFactory();
+        IServiceProxyContainer GetIServiceProxyContainer();
     }
 }
