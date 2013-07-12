@@ -22,33 +22,21 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Concurrent;
-
 namespace SharpRpc
 {
-    public class Topology : ITopology
+    public class SingleHostServiceTopology : IServiceTopology
     {
-        private readonly ConcurrentDictionary<string, IServiceTopology> serviceTopologies; 
+        private readonly ServiceEndPoint endPoint;
 
-        public Topology()
+        public SingleHostServiceTopology(ServiceEndPoint endPoint)
         {
-            serviceTopologies = new ConcurrentDictionary<string, IServiceTopology>();
+            this.endPoint = endPoint;
         }
 
-        public void AddTopologyOfService(string serviceName, IServiceTopology serviceTopology)
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
-            if (!serviceTopologies.TryAdd(serviceName, serviceTopology))
-                throw new InvalidOperationException(string.Format("Topology f the service '{0}' is already present", serviceName));
-        }
-
-        public bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint)
-        {
-            IServiceTopology serviceTopology;
-            if (serviceTopologies.TryGetValue(serviceName, out serviceTopology) && serviceTopology.TryGetEndPoint(scope, out endPoint))
-                return true;
-            endPoint = default(ServiceEndPoint);
-            return false;
+            endPoint = this.endPoint;
+            return true;
         }
     }
 }

@@ -22,33 +22,36 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SharpRpc
 {
-    public class Topology : ITopology
+    public class MapServiceTopology : IServiceTopology
     {
-        private readonly ConcurrentDictionary<string, IServiceTopology> serviceTopologies; 
+        private readonly ServiceEndPoint? nullEndPoint;
+        private readonly Dictionary<string, ServiceEndPoint> endPoints;
 
-        public Topology()
+        public MapServiceTopology(ServiceEndPoint? nullEndPoint, IEnumerable<KeyValuePair<string, ServiceEndPoint>> endPoints)
         {
-            serviceTopologies = new ConcurrentDictionary<string, IServiceTopology>();
+            this.nullEndPoint = nullEndPoint;
+            this.endPoints = endPoints.ToDictionary(x => x.Key, x => x.Value);
         }
 
-        public void AddTopologyOfService(string serviceName, IServiceTopology serviceTopology)
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
-            if (!serviceTopologies.TryAdd(serviceName, serviceTopology))
-                throw new InvalidOperationException(string.Format("Topology f the service '{0}' is already present", serviceName));
-        }
+            if (scope == null)
+            {
+                if (nullEndPoint.HasValue)
+                {
+                    endPoint = nullEndPoint.Value;
+                    return true;
+                }
+                endPoint = default(ServiceEndPoint);
+                return false;
+            }
 
-        public bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint)
-        {
-            IServiceTopology serviceTopology;
-            if (serviceTopologies.TryGetValue(serviceName, out serviceTopology) && serviceTopology.TryGetEndPoint(scope, out endPoint))
-                return true;
-            endPoint = default(ServiceEndPoint);
-            return false;
+            return endPoints.TryGetValue(scope, out endPoint);
         }
     }
 }

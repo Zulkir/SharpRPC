@@ -23,32 +23,34 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SharpRpc
 {
-    public class Topology : ITopology
+    public class EvenlyDistributedServiceTopology : IServiceTopology
     {
-        private readonly ConcurrentDictionary<string, IServiceTopology> serviceTopologies; 
+        private readonly ServiceEndPoint[] endPoints;
 
-        public Topology()
+        public EvenlyDistributedServiceTopology(params ServiceEndPoint[] endPoints) 
+            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
+
+        public EvenlyDistributedServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
         {
-            serviceTopologies = new ConcurrentDictionary<string, IServiceTopology>();
+            if (endPoints == null)
+                throw new ArgumentNullException("endPoints");
+
+            this.endPoints = endPoints.ToArray();
+
+            if (this.endPoints.Length == 0)
+                throw new ArgumentException("End point collection must have at least one element", "endPoints");
         }
 
-        public void AddTopologyOfService(string serviceName, IServiceTopology serviceTopology)
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
-            if (!serviceTopologies.TryAdd(serviceName, serviceTopology))
-                throw new InvalidOperationException(string.Format("Topology f the service '{0}' is already present", serviceName));
-        }
-
-        public bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint)
-        {
-            IServiceTopology serviceTopology;
-            if (serviceTopologies.TryGetValue(serviceName, out serviceTopology) && serviceTopology.TryGetEndPoint(scope, out endPoint))
-                return true;
-            endPoint = default(ServiceEndPoint);
-            return false;
+            int index = (scope ?? "").GetHashCode() % endPoints.Length;
+            endPoint = endPoints[index];
+            return true;
         }
     }
 }
