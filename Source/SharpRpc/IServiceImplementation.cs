@@ -29,6 +29,6 @@ namespace SharpRpc
     public interface IServiceImplementation : IDisposable
     {
         ServiceImplementationState State { get; }
-        void Initialize(string scope);
+        void Initialize(IRpcKernel kernel, string scope);
     }
 }

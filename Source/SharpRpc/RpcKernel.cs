@@ -51,7 +51,7 @@ namespace SharpRpc
             var codecContainer = new CodecContainer();
             var serviceMethodHandlerFactory = new ServiceMethodHandlerFactory(codecContainer);
             var serviceMethodHandlerContainer = new ServiceMethodHandlerContainer(serviceMethodHandlerFactory);
-            var incomingRequestProcessor = new IncomingRequestProcessor(serviceImplementationContainer, serviceMethodHandlerContainer, codecContainer);
+            var incomingRequestProcessor = new IncomingRequestProcessor(this, serviceImplementationContainer, serviceMethodHandlerContainer, codecContainer);
             var requestReceiverContainer = new RequestReceiverContainer(incomingRequestProcessor);
             requestReceiver = requestReceiverContainer.GetReceiver(serviceHostSettings.EndPoint.Protocol);
             var requestSenderContainer = new RequestSenderContainer();

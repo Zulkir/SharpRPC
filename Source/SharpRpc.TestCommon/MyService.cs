@@ -43,7 +43,7 @@ namespace SharpRpc.TestCommon
 
         public ServiceImplementationState State { get; private set; }
 
-        public void Initialize(string scope)
+        public void Initialize(IRpcKernel kernel, string scope)
         {
             State = ServiceImplementationState.Running;
         }

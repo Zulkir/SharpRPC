@@ -31,13 +31,15 @@ namespace SharpRpc.ServerSide
 {
     public class IncomingRequestProcessor : IIncomingRequestProcessor
     {
+        private readonly IRpcKernel kernel;
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly IServiceMethodHandlerContainer serviceMethodHandlerContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
 
-        public IncomingRequestProcessor(IServiceImplementationContainer serviceImplementationContainer, 
+        public IncomingRequestProcessor(IRpcKernel kernel, IServiceImplementationContainer serviceImplementationContainer, 
             IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer)
         {
+            this.kernel = kernel;
             this.serviceImplementationContainer = serviceImplementationContainer;
             this.serviceMethodHandlerContainer = serviceMethodHandlerContainer;
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
@@ -50,7 +52,7 @@ namespace SharpRpc.ServerSide
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
-                    ThreadGuard.RunOnce(implementationInfo.Implementation, x => x.Initialize(request.ServiceScope));
+                    ThreadGuard.RunOnce(implementationInfo.Implementation, x => x.Initialize(kernel, request.ServiceScope));
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
                     return Response.InvalidImplementation;
 
