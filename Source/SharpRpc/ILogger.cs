@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,33 +23,15 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Interaction;
 
-namespace SharpRpc.TestCommon
+namespace SharpRpc
 {
-    public class MyService : IMyService, IServiceImplementation
+    public interface ILogger
     {
-        public int Add(int a, int b)
-        {
-            return a + b;
-        }
-
-        public string Greet(string name)
-        {
-            if (name == "exception")
-                throw new Exception("Hello!!!");
-            return string.Format("Hello, {0}!", name);
-        }
-
-        public void Dispose()
-        {
-            
-        }
-
-        public ServiceImplementationState State { get; private set; }
-
-        public void Initialize(IRpcKernel kernel, string scope)
-        {
-            State = ServiceImplementationState.Running;
-        }
+        void WriteIncoming(Request request);
+        void WriteFinishedSuccessfully(Request request, TimeSpan executionTime);
+        void WriteFinishedWithBadStatus(Request request, ResponseStatus responseStatus);
+        void WriteFinishedWithException(Request request, Exception exception);
     }
 }

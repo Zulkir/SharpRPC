@@ -40,6 +40,7 @@ namespace SharpRpc
         private ICodecContainer codecContainer;
         private IServiceMethodHandlerFactory serviceMethodHandlerFactory;
         private IServiceMethodHandlerContainer serviceMethodHandlerContainer;
+        private ILogger logger;
         private IIncomingRequestProcessor incomingRequestProcessor;
         private IRequestReceiverContainer requestReceiverContainer;
         private IRequestSenderContainer requestSenderContainer;
@@ -103,13 +104,22 @@ namespace SharpRpc
                                                          : new ServiceMethodHandlerContainer(GetServiceMethodHandlerFactory()));
         }
 
+        public ILogger Logger()
+        {
+            return logger ?? (logger =
+                              overrides.Logger != null
+                                  ? overrides.Logger(this)
+                                  : new ConsoleLogger());
+        }
+
+
         public IIncomingRequestProcessor GetIncomingRequestProcessor()
         {
             return incomingRequestProcessor ?? (incomingRequestProcessor =
                                                 overrides.IncomingRequestProcessor != null
                                                     ? overrides.IncomingRequestProcessor(this)
                                                     : new IncomingRequestProcessor(kernel, GetServiceImplementationContainer(), 
-                                                                                   GetServiceMethodHandlerContainer(), GetCodecContainer()));
+                                                                                   GetServiceMethodHandlerContainer(), GetCodecContainer(), Logger()));
         }
 
         public IRequestReceiverContainer GetRequestReceiverContainer()

@@ -38,6 +38,7 @@ namespace SharpRpc
         ICodecContainer GetCodecContainer();
         IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
         IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
+        ILogger Logger();
         IIncomingRequestProcessor GetIncomingRequestProcessor();
         IRequestReceiverContainer GetRequestReceiverContainer();
         IRequestSenderContainer GetRequestSenderContainer();

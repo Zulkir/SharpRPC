@@ -76,6 +76,7 @@
     <Compile Include="Codecs\ReferenceArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
     <Compile Include="EvenlyDistributedServiceTopology.cs" />
+    <Compile Include="ILogger.cs" />
     <Compile Include="IRpcComponentContainer.cs" />
     <Compile Include="IServiceTopology.cs" />
     <Compile Include="MapServiceTopology.cs" />
@@ -89,6 +90,7 @@
     <Compile Include="ServerSide\RequestReceiverContainer.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
     <Compile Include="SingleHostServiceTopology.cs" />
+    <Compile Include="ConsoleLogger.cs" />
     <Compile Include="Topology.cs" />
     <Compile Include="Utility\CommonImmuables.cs" />
     <Compile Include="IServiceHostSettings.cs" />

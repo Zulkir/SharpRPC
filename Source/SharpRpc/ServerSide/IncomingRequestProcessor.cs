@@ -35,13 +35,15 @@ namespace SharpRpc.ServerSide
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly IServiceMethodHandlerContainer serviceMethodHandlerContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
+        private readonly ILogger logger;
 
         public IncomingRequestProcessor(IRpcKernel kernel, IServiceImplementationContainer serviceImplementationContainer, 
-            IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer)
+            IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer, ILogger logger)
         {
             this.kernel = kernel;
             this.serviceImplementationContainer = serviceImplementationContainer;
             this.serviceMethodHandlerContainer = serviceMethodHandlerContainer;
+            this.logger = logger;
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
         }
 
@@ -49,6 +51,9 @@ namespace SharpRpc.ServerSide
         {
             try
             {
+                logger.WriteIncoming(request);
+                var startTime = DateTime.Now;
+
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
@@ -62,22 +67,30 @@ namespace SharpRpc.ServerSide
                 var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo, request.Path);
 
                 var responseData = methodHandler(implementationInfo.Implementation, request.Data);
+
+                var executionTime = DateTime.Now - startTime;
+                logger.WriteFinishedSuccessfully(request, executionTime);
+
                 return new Response(ResponseStatus.Ok, responseData);
             }
             catch (ServiceNotFoundException)
             {
+                logger.WriteFinishedWithBadStatus(request, ResponseStatus.ServiceNotFound);
                 return Response.NotFound;
             }
             catch (InvalidPathException)
             {
+                logger.WriteFinishedWithBadStatus(request, ResponseStatus.BadRequest);
                 return Response.BadRequest;
             }
             catch (InvalidImplementationException)
             {
+                logger.WriteFinishedWithBadStatus(request, ResponseStatus.InvalidImplementation);
                 return Response.InvalidImplementation;
             }
             catch (Exception ex)
             {
+                logger.WriteFinishedWithException(request, ex);
                 var responseData = exceptionCodec.EncodeSingle(ex);
                 return new Response(ResponseStatus.Exception, responseData);
             }
