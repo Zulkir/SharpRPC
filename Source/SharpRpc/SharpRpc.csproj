@@ -76,6 +76,8 @@
     <Compile Include="Codecs\ReferenceArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
     <Compile Include="HostSettingsParser.cs" />
+    <Compile Include="ITopologyLoader.cs" />
+    <Compile Include="ITopologyParser.cs" />
     <Compile Include="SettingsLoader.cs" />
     <Compile Include="EvenlyDistributedServiceTopology.cs" />
     <Compile Include="IHostSettingsParser.cs" />
@@ -99,6 +101,8 @@
     <Compile Include="SingleHostServiceTopology.cs" />
     <Compile Include="ConsoleLogger.cs" />
     <Compile Include="Topology.cs" />
+    <Compile Include="TopologyLoader.cs" />
+    <Compile Include="TopologyParser.cs" />
     <Compile Include="Utility\CommonImmuables.cs" />
     <Compile Include="IHostSettings.cs" />
     <Compile Include="InterfaceImplementationTypePair.cs" />

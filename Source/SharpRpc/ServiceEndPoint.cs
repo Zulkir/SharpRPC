@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.IO;
 using System.Text.RegularExpressions;
 
 namespace SharpRpc
@@ -103,6 +104,14 @@ namespace SharpRpc
 
             endPoint = new ServiceEndPoint(protocol, value, port);
             return true;
+        }
+
+        public static ServiceEndPoint Parse(string endPointString)
+        {
+            ServiceEndPoint endPoint;
+            if (!TryParse(endPointString, out endPoint))
+                throw new InvalidDataException(string.Format("'{0}' is not a valid service end point", endPointString));
+            return endPoint;
         }
     }
 }

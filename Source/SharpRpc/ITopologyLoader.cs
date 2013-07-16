@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace SharpRpc
 {
-    public class RandomServiceTopology : IServiceTopology
+    public interface ITopologyLoader
     {
-        private readonly ServiceEndPoint[] endPoints;
-        private readonly Random random = new Random();
-
-        public RandomServiceTopology(params ServiceEndPoint[] endPoints) 
-            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
-
-        public RandomServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
-        {
-            if (endPoints == null)
-                throw new ArgumentNullException("endPoints");
-
-            this.endPoints = endPoints.ToArray();
-
-            if (this.endPoints.Length == 0)
-                throw new ArgumentException("End point collection must have at least one element", "endPoints");
-        }
-
-        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
-        {
-            int index = random.Next(0, endPoints.Length);
-            endPoint = endPoints[index];
-            return true;
-        }
+        ITopology Load();
     }
 }

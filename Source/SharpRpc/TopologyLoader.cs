@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,28 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
+using System.Text;
 
 namespace SharpRpc
 {
-    public class EvenlyDistributedServiceTopology : IServiceTopology
+    public class TopologyLoader : ITopologyLoader
     {
-        private readonly ServiceEndPoint[] endPoints;
+        private readonly string topologyPath;
+        private readonly Encoding encoding;
+        private readonly  ITopologyParser topologyParser;
 
-        public EvenlyDistributedServiceTopology(params ServiceEndPoint[] endPoints) 
-            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
-
-        public EvenlyDistributedServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
+        public TopologyLoader(string topologyPath, Encoding encoding, ITopologyParser topologyParser)
         {
-            if (endPoints == null)
-                throw new ArgumentNullException("endPoints");
-
-            this.endPoints = endPoints.ToArray();
-
-            if (this.endPoints.Length == 0)
-                throw new ArgumentException("End point collection must have at least one element", "endPoints");
+            this.topologyPath = topologyPath;
+            this.encoding = encoding;
+            this.topologyParser = topologyParser;
         }
 
-        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
+        public ITopology Load()
         {
-            endPoint = scope == null 
-                ? endPoints[0] 
-                : endPoints[scope.GetHashCode() % endPoints.Length];
-            return true;
+            var text = File.ReadAllText(topologyPath, encoding);
+            return topologyParser.Parse(text);
         }
     }
 }

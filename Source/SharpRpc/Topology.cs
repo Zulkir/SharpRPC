@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace SharpRpc
 {
@@ -34,6 +35,11 @@ namespace SharpRpc
         public Topology()
         {
             serviceTopologies = new ConcurrentDictionary<string, IServiceTopology>();
+        }
+
+        public Topology(IEnumerable<KeyValuePair<string, IServiceTopology>> keyValuePairs)
+        {
+            serviceTopologies = new ConcurrentDictionary<string, IServiceTopology>(keyValuePairs);
         }
 
         public void AddTopologyOfService(string serviceName, IServiceTopology serviceTopology)
