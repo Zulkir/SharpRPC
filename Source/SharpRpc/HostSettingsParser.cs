@@ -23,8 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.IO;
 using System.Linq;
 
 namespace SharpRpc
@@ -33,48 +32,23 @@ namespace SharpRpc
     {
         private static readonly char[] LineBreaks = new[] { '\r', '\n' };
         private static readonly char[] Whitespaces = new[] { ' ', '\t' };
-        private static readonly Regex EndPointRegex = new Regex(@"^(\w+)://([^:]+):(\d+)$");
 
-        public bool TryParse(string text, out IHostSettings settings)
+        public IHostSettings Parse(string text)
         {
             if (text == null)
-            {
-                settings = null;
-                return false;
-            }
-                
+                throw new ArgumentNullException("text");
+            
             var lines = text.Split(LineBreaks, StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length == 0)
-            {
-                settings = null;
-                return false;
-            }
+                throw new InvalidDataException("Self end point was not found");
 
-            ServiceEndPoint endPoint;
-            if (!ServiceEndPoint.TryParse(lines[0], out endPoint))
-            {
-                settings = null;
-                return false;
-            }
+            var endPoint = ServiceEndPoint.Parse(lines[0]);
+            var pairs = lines.Skip(1).Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)).Select(ParsePair);
 
-            var pairs = new List<InterfaceImplementationTypePair>();
-            foreach (var line in lines.Skip(1).Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)))
-            {
-                InterfaceImplementationTypePair pair;
-                if (TryParsePair(line, out pair))
-                    pairs.Add(pair);
-                else
-                {
-                    settings = null;
-                    return false;
-                }
-            }
-
-            settings = new HostSettings(endPoint, pairs);
-            return true;
+            return new HostSettings(endPoint, pairs);
         }
 
-        private static bool TryParsePair(string line, out InterfaceImplementationTypePair pair)
+        private InterfaceImplementationTypePair ParsePair(string line)
         {
             var parts = line.Split(Whitespaces, StringSplitOptions.RemoveEmptyEntries);
 
@@ -97,21 +71,19 @@ namespace SharpRpc
                     implementationName = parts[3];
                     break;
                 default:
-                    pair = default(InterfaceImplementationTypePair);
-                    return false;
+                    throw new InvalidDataException(string.Format("'{0}' is not a valid interface-implementation description", line));
             }
 
             var interfaceType = Type.GetType(interfaceName + ", " + interfaceAssemblyPath, false);
             var implementationType = Type.GetType(implementationName + ", " + implementationAssemblyPath, false);
 
-            if (interfaceType == null || implementationType == null)
-            {
-                pair = default(InterfaceImplementationTypePair);
-                return false;
-            }
-
-            pair = new InterfaceImplementationTypePair(interfaceType, implementationType);
-            return true;
+            if (interfaceType == null)
+                throw new InvalidDataException(string.Format("Type '{0}' was not found", interfaceName));
+                
+            if(implementationType == null)
+                throw new InvalidDataException(string.Format("Type '{0}' was not found", implementationName));
+            
+            return new InterfaceImplementationTypePair(interfaceType, implementationType);
         }
     }
 }

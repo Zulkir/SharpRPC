@@ -30,13 +30,10 @@ namespace SharpRpc.TestHost
     {
         static void Main(string[] args)
         {
-            var topology = new Topology();
-            topology.AddTopologyOfService("MyService", new SingleHostServiceTopology(new ServiceEndPoint("http", "localhost", 7001)));
+            var topology = new TopologyParser().Parse(@"MyService single http://localhost:7001");
             var hostSettingsParser = new HostSettingsParser();
-            IHostSettings hostSettings;
-            hostSettingsParser.TryParse(@"http://localhost:7001
-                                          SharpRpc.TestCommon SharpRpc.TestCommon.IMyService SharpRpc.TestCommon.MyService",
-                                          out hostSettings);
+            var hostSettings = hostSettingsParser.Parse(@"http://localhost:7001
+                                          SharpRpc.TestCommon SharpRpc.TestCommon.IMyService SharpRpc.TestCommon.MyService");
             var kernel = new RpcKernel(topology, hostSettings);
 
             kernel.StartHost();

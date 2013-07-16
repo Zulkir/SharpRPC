@@ -28,6 +28,6 @@ namespace SharpRpc
 {
     public interface IServiceSettingsParser
     {
-        bool TryParse(string text, out IReadOnlyDictionary<string, string> serviceSettings);
+        IReadOnlyDictionary<string, string> Parse(string text);
     }
 }

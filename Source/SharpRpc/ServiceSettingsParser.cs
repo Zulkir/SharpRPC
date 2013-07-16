@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -34,35 +35,22 @@ namespace SharpRpc
         private static readonly char[] LineBreaks = new[] { '\r', '\n' };
         private static readonly Regex PairRegex = new Regex(@"^([^=]+)=([^=]+)$");
 
-        public bool TryParse(string text, out IReadOnlyDictionary<string, string> serviceSettings)
+        public IReadOnlyDictionary<string, string> Parse(string text)
         {
-            var lines = text.Split(LineBreaks, StringSplitOptions.RemoveEmptyEntries);
-            var settings = new Dictionary<string, string>();
-            foreach (var line in lines.Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x) && !x.StartsWith("#")))
-            {
-                string key, value;
-                if (!TryParsePair(line, out key, out value))
-                {
-                    serviceSettings = null;
-                    return false;
-                }
-                settings.Add(key, value);
-            }
-            serviceSettings = settings;
-            return true;
+            return text
+                .Split(LineBreaks, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrEmpty(x) && !x.StartsWith("#"))
+                .Select(ParsePair)
+                .ToDictionary(x => x.Key, x => x.Value);
         }
 
-        private static bool TryParsePair(string line, out string key, out string value)
+        private static KeyValuePair<string, string> ParsePair(string line)
         {
             var match = PairRegex.Match(line);
             if (!match.Success)
-            {
-                key = value = null;
-                return false;
-            }
-            key = match.Groups[1].Value.Trim();
-            value = match.Groups[2].Value.Trim();
-            return true;
+                throw new InvalidDataException(string.Format("'{0}' is not a valid setting", line));
+            return new KeyValuePair<string, string>(match.Groups[1].Value.Trim(), match.Groups[2].Value.Trim());
         }
     }
 }

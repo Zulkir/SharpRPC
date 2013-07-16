@@ -22,6 +22,8 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
+using System.IO;
 using NUnit.Framework;
 
 namespace SharpRpc.Tests
@@ -51,9 +53,8 @@ namespace SharpRpc.Tests
         [Test]
         public void InvalidText()
         {
-            IHostSettings hostSettings;
-            Assert.That(parser.TryParse(null, out hostSettings), Is.False);
-            Assert.That(parser.TryParse("", out hostSettings), Is.False);
+            Assert.Throws<ArgumentNullException>(() => parser.Parse(null));
+            Assert.Throws<InvalidDataException>(() => parser.Parse(""));
         }
 
         [Test]
@@ -74,8 +75,7 @@ namespace SharpRpc.Tests
                  typeof(IMyService3).FullName, typeof(MyService3).FullName,
                  typeof(IMyService4).FullName, typeof(MyService4).FullName);
 
-            IHostSettings hostSettings;
-            Assert.That(parser.TryParse(text, out hostSettings), Is.True);
+            var hostSettings = parser.Parse(text);
             Assert.That(hostSettings.GetInterfaceImplementationsPairs(), Is.EquivalentTo(new []
                 {
                     new InterfaceImplementationTypePair(typeof(IMyService1), typeof(MyService1)),
@@ -90,8 +90,7 @@ namespace SharpRpc.Tests
         {
             const string text = @"qwe://asd:123
                          BADASSEMBLY BADINTERFACE BADTYPE";
-            IHostSettings hostSettings;
-            Assert.That(parser.TryParse(text, out hostSettings), Is.False);
+            Assert.Throws<InvalidDataException>(() => parser.Parse(text));
         }
     }
 }

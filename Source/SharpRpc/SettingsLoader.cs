@@ -49,20 +49,12 @@ namespace SharpRpc
 
         public IHostSettings LoadHostSettings()
         {
-            var text = File.ReadAllText(hostSettingsPath, encoding);
-            IHostSettings hostSettings;
-            if (!hostSettingsParser.TryParse(text, out hostSettings)) 
-                throw new InvalidDataException("Failed to parse a host settings file");
-            return hostSettings;
+            return hostSettingsParser.Parse(File.ReadAllText(hostSettingsPath, encoding));
         }
 
         public IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName)
         {
-            var text = File.ReadAllText(getServiceSettingsPath(serviceName), encoding);
-            IReadOnlyDictionary<string, string> serviceSettings;
-            if (!serviceSettingsParser.TryParse(text, out serviceSettings))
-                throw new InvalidDataException(string.Format("Failed to parse a settings file for the service '{0}'", serviceName));
-            return serviceSettings;
+            return serviceSettingsParser.Parse(File.ReadAllText(getServiceSettingsPath(serviceName), encoding));
         }
     }
 }

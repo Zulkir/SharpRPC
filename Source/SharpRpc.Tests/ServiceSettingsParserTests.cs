@@ -49,8 +49,7 @@ namespace SharpRpc.Tests
                                   Adfs!!    =asd-qwe!@$%^&*(  
                                   # Fake =  Nothing
                                   a  =  b";
-            IReadOnlyDictionary<string, string> settings;
-            Assert.That(parser.TryParse(text, out settings), Is.True);
+            var settings = parser.Parse(text);
             Assert.That(settings, Is.EquivalentTo(new []
                 {
                     new KeyValuePair<string, string> ("MySetting", "MyValue"),

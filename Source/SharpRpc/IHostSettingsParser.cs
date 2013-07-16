@@ -26,6 +26,6 @@ namespace SharpRpc
 {
     public interface IHostSettingsParser
     {
-        bool TryParse(string text, out IHostSettings hostSettings);
+        IHostSettings Parse(string text);
     }
 }
