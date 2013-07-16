@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,32 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
+using System.Collections.Generic;
 
-namespace SharpRpc.TestHost
+namespace SharpRpc
 {
-    class Program
+    public interface ISettingsLoader
     {
-        static void Main(string[] args)
-        {
-            var topology = new Topology();
-            topology.AddTopologyOfService("MyService", new SingleHostServiceTopology(new ServiceEndPoint("http", "localhost", 7001)));
-            var hostSettingsParser = new DefaultHostSettingsParser();
-            IHostSettings hostSettings;
-            hostSettingsParser.TryParse(@"http://localhost:7001
-                                          SharpRpc.TestCommon SharpRpc.TestCommon.IMyService SharpRpc.TestCommon.MyService",
-                                          out hostSettings);
-            var kernel = new RpcKernel(topology, hostSettings);
-
-            kernel.StartHost();
-
-            string line = Console.ReadLine();
-            while (line != "exit")
-            {
-                line = Console.ReadLine();
-            }
-
-            kernel.StopHost();
-        }
+        IHostSettings LoadHostSettings();
+        IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName);
     }
 }

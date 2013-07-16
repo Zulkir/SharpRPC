@@ -45,10 +45,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SharpRpc.TestCommon\SharpRpc.TestCommon.csproj">
-      <Project>{e43a74ee-f65a-4ad7-b690-e08f9be74ac4}</Project>
-      <Name>SharpRpc.TestCommon</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SharpRpc\SharpRpc.csproj">
       <Project>{2c63c96e-39cb-4812-a105-866bbea4d6b3}</Project>
       <Name>SharpRpc</Name>

@@ -33,34 +33,34 @@ namespace SharpRpc
     public class RpcKernel : IRpcKernel
     {
         private readonly ITopology topology;
-        private readonly IServiceHostSettings serviceHostSettings;
+        private readonly IHostSettings hostSettings;
         
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcKernel(ITopology topology, IServiceHostSettings serviceHostSettings, RpcComponentOverrides componentOverrides = null)
+        public RpcKernel(ITopology topology, IHostSettings hostSettings, RpcComponentOverrides componentOverrides = null)
         {
             this.topology = topology;
-            this.serviceHostSettings = serviceHostSettings;
+            this.hostSettings = hostSettings;
             var componentContainer = new RpcComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
 
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
-            foreach (var pair in serviceHostSettings.GetInterfaceImplementationsPairs())
+            foreach (var pair in hostSettings.GetInterfaceImplementationsPairs())
                 serviceImplementationContainer.RegisterImplementation(pair.Interface, pair.ImplementationType);
-            requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(serviceHostSettings.EndPoint.Protocol);
+            requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(hostSettings.EndPoint.Protocol);
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
-        public RpcKernel(ITopology topology, IServiceHostSettings serviceHostSettings, 
+        public RpcKernel(ITopology topology, IHostSettings hostSettings, 
             IServiceImplementationContainer serviceImplementationContainer,
             IRequestReceiver requestReceiver,
             IServiceProxyContainer serviceProxyContainer)
         {
             this.topology = topology;
-            this.serviceHostSettings = serviceHostSettings;
+            this.hostSettings = hostSettings;
             this.serviceImplementationContainer = serviceImplementationContainer;
-            foreach (var pair in serviceHostSettings.GetInterfaceImplementationsPairs())
+            foreach (var pair in hostSettings.GetInterfaceImplementationsPairs())
                 serviceImplementationContainer.RegisterImplementation(pair.Interface, pair.ImplementationType);
             this.requestReceiver = requestReceiver;
             this.serviceProxyContainer = serviceProxyContainer;
@@ -77,7 +77,7 @@ namespace SharpRpc
                 throw new ServiceTopologyException(string.Format(
                     "Service '{0}' with scope '{1}' was not found in the topology", serviceName, scope));
 
-            if (serviceEndPoint == serviceHostSettings.EndPoint)
+            if (serviceEndPoint == hostSettings.EndPoint)
                 return (T)serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
 
             return serviceProxyContainer.GetProxy<T>(scope);
@@ -85,7 +85,7 @@ namespace SharpRpc
 
         public void StartHost()
         {
-            requestReceiver.Start(serviceHostSettings.EndPoint.Port, Environment.ProcessorCount);
+            requestReceiver.Start(hostSettings.EndPoint.Port, Environment.ProcessorCount);
         }
 
         public void StopHost()

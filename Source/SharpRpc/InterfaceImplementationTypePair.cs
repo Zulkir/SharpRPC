@@ -26,7 +26,7 @@ using System;
 
 namespace SharpRpc
 {
-    public struct InterfaceImplementationTypePair
+    public struct InterfaceImplementationTypePair : IEquatable<InterfaceImplementationTypePair>
     {
         public Type Interface;
         public Type ImplementationType;
@@ -35,6 +35,26 @@ namespace SharpRpc
         {
             Interface = serviceInterface;
             ImplementationType = implementationType;
+        }
+
+        public bool Equals(InterfaceImplementationTypePair other)
+        {
+            return Interface == other.Interface && ImplementationType == other.ImplementationType;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is InterfaceImplementationTypePair && Equals((InterfaceImplementationTypePair)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return (Interface ?? typeof(object)).GetHashCode() ^ (ImplementationType ?? typeof(object)).GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{{{0} : {1}}}", Interface.FullName, ImplementationType.FullName);
         }
     }
 }

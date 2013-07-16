@@ -33,7 +33,7 @@ namespace SharpRpc.TestClient
         {
             var topology = new Topology();
             topology.AddTopologyOfService("MyService", new SingleHostServiceTopology(new ServiceEndPoint("http", "localhost", 7001)));
-            var hostSettings = ServiceHostSettings.Empty;
+            var hostSettings = HostSettings.Empty;
             var kernel = new RpcKernel(topology, hostSettings);
 
             var client = kernel.GetService<IMyService>(null);
