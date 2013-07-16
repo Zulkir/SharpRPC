@@ -29,7 +29,7 @@ using System.Text.RegularExpressions;
 
 namespace SharpRpc
 {
-    public class DefaultServiceSettingsParser : IServiceSettingsParser
+    public class ServiceSettingsParser : IServiceSettingsParser
     {       
         private static readonly char[] LineBreaks = new[] { '\r', '\n' };
         private static readonly Regex PairRegex = new Regex(@"^([^=]+)=([^=]+)$");

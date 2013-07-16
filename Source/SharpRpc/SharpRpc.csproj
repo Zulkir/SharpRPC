@@ -75,8 +75,8 @@
     <Compile Include="Codecs\NativeStructCodec.cs" />
     <Compile Include="Codecs\ReferenceArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
-    <Compile Include="DefaultHostSettingsParser.cs" />
-    <Compile Include="DefaultSettingsLoader.cs" />
+    <Compile Include="HostSettingsParser.cs" />
+    <Compile Include="SettingsLoader.cs" />
     <Compile Include="EvenlyDistributedServiceTopology.cs" />
     <Compile Include="IHostSettingsParser.cs" />
     <Compile Include="ILogger.cs" />
@@ -85,6 +85,7 @@
     <Compile Include="IServiceTopology.cs" />
     <Compile Include="ISettingsLoader.cs" />
     <Compile Include="MapServiceTopology.cs" />
+    <Compile Include="RandomServiceTopology.cs" />
     <Compile Include="RpcComponentContainer.cs" />
     <Compile Include="RpcComponentOverrides.cs" />
     <Compile Include="HostSettings.cs" />
@@ -94,7 +95,7 @@
     <Compile Include="ServerSide\IServiceMethodHandlerFactory.cs" />
     <Compile Include="ServerSide\RequestReceiverContainer.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
-    <Compile Include="DefaultServiceSettingsParser.cs" />
+    <Compile Include="ServiceSettingsParser.cs" />
     <Compile Include="SingleHostServiceTopology.cs" />
     <Compile Include="ConsoleLogger.cs" />
     <Compile Include="Topology.cs" />

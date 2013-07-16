@@ -25,27 +25,31 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace SharpRpc
 {
-    public class DefaultSettingsLoader : ISettingsLoader
+    public class SettingsLoader : ISettingsLoader
     {
         private readonly string hostSettingsPath;
         private readonly Func<string, string> getServiceSettingsPath;
+        private readonly Encoding encoding;
         private readonly IHostSettingsParser hostSettingsParser;
         private readonly IServiceSettingsParser serviceSettingsParser;
 
-        public DefaultSettingsLoader(string hostSettingsPath, Func<string, string> getServiceSettingsPath, IHostSettingsParser hostSettingsParser, IServiceSettingsParser serviceSettingsParser)
+        public SettingsLoader(string hostSettingsPath, Func<string, string> getServiceSettingsPath, Encoding encoding, 
+            IHostSettingsParser hostSettingsParser, IServiceSettingsParser serviceSettingsParser)
         {
             this.hostSettingsPath = hostSettingsPath;
             this.getServiceSettingsPath = getServiceSettingsPath;
+            this.encoding = encoding;
             this.hostSettingsParser = hostSettingsParser;
             this.serviceSettingsParser = serviceSettingsParser;
         }
 
         public IHostSettings LoadHostSettings()
         {
-            var text = File.ReadAllText(hostSettingsPath);
+            var text = File.ReadAllText(hostSettingsPath, encoding);
             IHostSettings hostSettings;
             if (!hostSettingsParser.TryParse(text, out hostSettings)) 
                 throw new InvalidDataException("Failed to parse a host settings file");
@@ -54,8 +58,7 @@ namespace SharpRpc
 
         public IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName)
         {
-            var path = getServiceSettingsPath(serviceName);
-            var text = File.ReadAllText(path);
+            var text = File.ReadAllText(getServiceSettingsPath(serviceName), encoding);
             IReadOnlyDictionary<string, string> serviceSettings;
             if (!serviceSettingsParser.TryParse(text, out serviceSettings))
                 throw new InvalidDataException(string.Format("Failed to parse a settings file for the service '{0}'", serviceName));

@@ -27,7 +27,7 @@ using NUnit.Framework;
 namespace SharpRpc.Tests
 {
     [TestFixture]
-    public class DefaultHostSettingsParserTests
+    public class HostSettingsParserTests
     {
         #region Nested Classes
         public interface IMyService1 { }
@@ -40,12 +40,12 @@ namespace SharpRpc.Tests
         public class MyService4 { }
         #endregion
 
-        private DefaultHostSettingsParser parser;
+        private HostSettingsParser parser;
 
         [SetUp]
         public void Setup()
         {
-            parser = new DefaultHostSettingsParser();
+            parser = new HostSettingsParser();
         }
 
         [Test]
@@ -54,16 +54,6 @@ namespace SharpRpc.Tests
             IHostSettings hostSettings;
             Assert.That(parser.TryParse(null, out hostSettings), Is.False);
             Assert.That(parser.TryParse("", out hostSettings), Is.False);
-        }
-
-        [Test]
-        public void EndPoint()
-        {
-            IHostSettings hostSettings;
-            Assert.That(parser.TryParse(@"http://some-host.com:12345", out hostSettings), Is.True);
-            Assert.That(hostSettings.EndPoint.Protocol, Is.EqualTo("http"));
-            Assert.That(hostSettings.EndPoint.Host, Is.EqualTo("some-host.com"));
-            Assert.That(hostSettings.EndPoint.Port, Is.EqualTo(12345));
         }
 
         [Test]

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Text.RegularExpressions;
 
 namespace SharpRpc
 {
@@ -71,7 +72,37 @@ namespace SharpRpc
 
         public override string ToString()
         {
+            return Format();
+        }
+
+        public string Format()
+        {
             return string.Format("{0}://{1}:{2}", Protocol, Host, Port);
+        }
+
+        private static readonly Regex EndPointRegex = new Regex(@"^(\w+)://([^:]+):(\d+)$");
+
+        public static bool TryParse(string endPointString, out ServiceEndPoint endPoint)
+        {
+            var match = EndPointRegex.Match(endPointString);
+            if (!match.Success)
+            {
+                endPoint = default(ServiceEndPoint);
+                return false;
+            }
+
+            var protocol = match.Groups[1].Value;
+            var value = match.Groups[2].Value;
+
+            int port;
+            if (!int.TryParse(match.Groups[3].Value, out port))
+            {
+                endPoint = default(ServiceEndPoint);
+                return false;
+            }
+
+            endPoint = new ServiceEndPoint(protocol, value, port);
+            return true;
         }
     }
 }

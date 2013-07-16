@@ -29,7 +29,7 @@ using System.Linq;
 
 namespace SharpRpc
 {
-    public class DefaultHostSettingsParser : IHostSettingsParser
+    public class HostSettingsParser : IHostSettingsParser
     {
         private static readonly char[] LineBreaks = new[] { '\r', '\n' };
         private static readonly char[] Whitespaces = new[] { ' ', '\t' };
@@ -51,7 +51,7 @@ namespace SharpRpc
             }
 
             ServiceEndPoint endPoint;
-            if (!TryParseEndPoint(lines[0], out endPoint))
+            if (!ServiceEndPoint.TryParse(lines[0], out endPoint))
             {
                 settings = null;
                 return false;
@@ -71,29 +71,6 @@ namespace SharpRpc
             }
 
             settings = new HostSettings(endPoint, pairs);
-            return true;
-        }
-
-        private static bool TryParseEndPoint(string endPointString, out ServiceEndPoint endPoint)
-        {
-            var match = EndPointRegex.Match(endPointString);
-            if (!match.Success)
-            {
-                endPoint = default(ServiceEndPoint);
-                return false;
-            }
-
-            var protocol = match.Groups[1].Value;
-            var value = match.Groups[2].Value;
-            
-            int port;
-            if (!int.TryParse(match.Groups[3].Value, out port))
-            {
-                endPoint = default(ServiceEndPoint);
-                return false;
-            }
-
-            endPoint = new ServiceEndPoint(protocol, value, port);
             return true;
         }
 

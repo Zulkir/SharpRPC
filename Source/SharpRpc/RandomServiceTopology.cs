@@ -23,31 +23,35 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace SharpRpc.TestHost
+namespace SharpRpc
 {
-    class Program
+    public class RandomServiceTopology : IServiceTopology
     {
-        static void Main(string[] args)
+        private readonly ServiceEndPoint[] endPoints;
+        private readonly Random random = new Random();
+
+        public RandomServiceTopology(params ServiceEndPoint[] endPoints) 
+            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
+
+        public RandomServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
         {
-            var topology = new Topology();
-            topology.AddTopologyOfService("MyService", new SingleHostServiceTopology(new ServiceEndPoint("http", "localhost", 7001)));
-            var hostSettingsParser = new HostSettingsParser();
-            IHostSettings hostSettings;
-            hostSettingsParser.TryParse(@"http://localhost:7001
-                                          SharpRpc.TestCommon SharpRpc.TestCommon.IMyService SharpRpc.TestCommon.MyService",
-                                          out hostSettings);
-            var kernel = new RpcKernel(topology, hostSettings);
+            if (endPoints == null)
+                throw new ArgumentNullException("endPoints");
 
-            kernel.StartHost();
+            this.endPoints = endPoints.ToArray();
 
-            string line = Console.ReadLine();
-            while (line != "exit")
-            {
-                line = Console.ReadLine();
-            }
+            if (this.endPoints.Length == 0)
+                throw new ArgumentException("End point collection must have at least one element", "endPoints");
+        }
 
-            kernel.StopHost();
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
+        {
+            int index = random.Next(0, endPoints.Length - 1);
+            endPoint = endPoints[index];
+            return true;
         }
     }
 }

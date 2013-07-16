@@ -28,14 +28,14 @@ using NUnit.Framework;
 namespace SharpRpc.Tests
 {
     [TestFixture]
-    public class DefaultServiceSettingsParserTests
+    public class ServiceSettingsParserTests
     {
-        private DefaultServiceSettingsParser parser;
+        private ServiceSettingsParser parser;
 
         [SetUp]
         public void Setup()
         {
-            parser =  new DefaultServiceSettingsParser();
+            parser =  new ServiceSettingsParser();
         }
 
         [Test]
