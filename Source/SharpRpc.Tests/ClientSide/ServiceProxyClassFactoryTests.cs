@@ -157,5 +157,71 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(arguments[2], Is.Null);
             Assert.That(arguments[3], Is.Null);
         }
+
+        public interface IServiceWithMixedParameters
+        {
+            double DoSomethingAwesome(int a, ref bool b, out ushort c); 
+        }
+
+        [Test]
+        public void MixedParameters()
+        {
+            var expectedArgsData = new byte[8];
+            fixed (byte* pData = expectedArgsData)
+            {
+                *(int*)pData = 123;
+                *(bool*)(pData + 4) = false;
+            }
+
+            var returnData = new byte[14];
+            fixed (byte* pData = returnData)
+            {
+                *(bool*)pData = true;
+                *(ushort*)(pData + 4) = 246;
+                *(double*)(pData + 6) = 123.456;
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithMixedParameters>()(methodCallProcessor, null);
+            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs(returnData);
+
+            bool b = false;
+            ushort c;
+            var result = proxy.DoSomethingAwesome(123, ref b, out c);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+            Assert.That(b, Is.EqualTo(true));
+            Assert.That(c, Is.EqualTo(246));
+            Assert.That(result, Is.EqualTo(123.456));
+        }
+
+        public interface IReferenceInRefService
+        {
+            void ReferenceInRef(ref string s);
+        }
+
+        [Test]
+        public void ReferenceInRef()
+        {
+            var expectedArgsData = new byte[4];
+
+            var returnData = new byte[8];
+            fixed (byte* pData = returnData)
+            {
+                *(int*) pData = 4;
+                *(char*) (pData + 4) = 'O';
+                *(char*) (pData + 6) = 'K';
+            }
+
+            var proxy = factory.CreateProxyClass<IReferenceInRefService>()(methodCallProcessor, null);
+            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs(returnData);
+
+            string s = "";
+            proxy.ReferenceInRef(ref s);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+            Assert.That(s, Is.EqualTo("OK"));
+        }
     }
 }

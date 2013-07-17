@@ -77,7 +77,7 @@ namespace SharpRpc.Tests.Codecs
                         var locals = x.Arg<LocalVariableCollection>();
                         il.Emit(OpCodes.Ldloc, locals.DataPointer);
                         il.Emit_Ldc_I4(expectedValue);
-                        il.Emit(OpCodes.Stobj, typeof(int));
+                        il.Emit(OpCodes.Stind_I4);
                         il.Emit_IncreasePointer(locals.DataPointer, expectedPointerDistance);
                     });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);

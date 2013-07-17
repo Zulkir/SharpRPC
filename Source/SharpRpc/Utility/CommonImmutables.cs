@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 namespace SharpRpc.Utility
 {
-    public static class CommonImmuables
+    public static class CommonImmutables
     {
         private static readonly byte[] EmptyBytesField = new byte[0];
         public static byte[] EmptyBytes { get { return EmptyBytesField; } }

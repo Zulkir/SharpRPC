@@ -33,6 +33,13 @@ namespace SharpRpc.ClientSide
 {
     public class ServiceProxyClassFactory : IServiceProxyClassFactory
     {
+        struct ParameterNecessity
+        {
+            public MethodParameterDescription Description;
+            public IEmittingCodec Codec;
+            public int ArgumentIndex;
+        }
+
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
         private readonly ICodecContainer codecContainer;
         private readonly AssemblyBuilder assemblyBuilder;
@@ -124,47 +131,86 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ret);
             #endregion
 
-            foreach (var methodDescription in serviceDescription.Methods)
+            foreach (var methodDesc in serviceDescription.Methods)
             {
                 #region Emit Method
-                var methodBuilder = typeBuilder.DefineMethod(methodDescription.Name,
+                var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
                     MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    methodDescription.ReturnType, methodDescription.Parameters.Select(x => x.Type).ToArray());
+                    methodDesc.ReturnType, methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray());
                 methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
-                var hasArgs = methodDescription.Parameters.Count > 0;
-                var hasRetval = methodDescription.ReturnType != typeof(void);
-
                 var il = methodBuilder.GetILGenerator();
-                var locals = new LocalVariableCollection(il, hasRetval);
-                var dataArrayVar =                                      // byte[] dataArray
-                    locals.GetOrAdd("dataArray",
-                        lil => lil.DeclareLocal(typeof(byte[])));
-
-                if (hasArgs)
+                
+                var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
                 {
-                    var codecs = methodDescription.Parameters
-                        .Select(x => codecContainer.GetEmittingCodecFor(x.Type)).ToArray();
+                    Description = x,
+                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                    ArgumentIndex = i + 1
+                }).ToArray();
 
-                    codecs[0].EmitCalculateSize(il, 1);                 // stack_0 = size of arg_1
-                    for (int i = 1; i < codecs.Length; i++)
+                var requestParameters = parameters
+                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                    .ToArray();
+
+                var responseParameters = parameters
+                    .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                    .ToArray();
+
+                bool hasRetval = methodDesc.ReturnType != typeof(void);
+                var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
+
+                var dataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
+
+                if (requestParameters.Any())
+                {
+                    bool hasSizeOnStack = false;
+                    foreach (var parameter in requestParameters)
                     {
-                        codecs[i].EmitCalculateSize(il, i + 1);         // stack_1 = size of arg_i+1
-                        il.Emit(OpCodes.Add);                           // stack_0 = stack_1 + stack_0
+                        switch (parameter.Description.Way)
+                        {
+                            case MethodParameterWay.Val:
+                                parameter.Codec.EmitCalculateSize(         // stack_0 += calculateSize(arg_i+1) 
+                                    il, parameter.ArgumentIndex);
+                                break;
+                            case MethodParameterWay.Ref:
+                                parameter.Codec.EmitCalculateSizeIndirect( // stack_0 += calculateSizeIndirect(arg_i+1)
+                                    il, parameter.ArgumentIndex, parameter.Description.Type); 
+                                break;
+                            default: 
+                                throw new ArgumentOutOfRangeException();
+                        }
+                        if (hasSizeOnStack)
+                            il.Emit(OpCodes.Add);
+                        else
+                            hasSizeOnStack = true;
                     }
 
-                    il.Emit(OpCodes.Newarr, typeof(byte));              // dataArray = new byte[stack_0]
+                    il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
                     il.Emit(OpCodes.Stloc, dataArrayVar);
-                    var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
+                    var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
                         il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
-                    il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
+                    il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
                     il.Emit(OpCodes.Stloc, locals.DataPointer);
-                    
-                    for (int i = 0; i < codecs.Length; i++)
-                        codecs[i].EmitEncode(il, locals, i + 1);        // encode(data, arg_i+1)
 
-                    il.Emit_UnpinArray(dataPointerVar);                  // unpin(dataPointer)
+                    foreach (var parameter in requestParameters)
+                    {
+                        switch (parameter.Description.Way)
+                        {
+                            case MethodParameterWay.Val: 
+                                parameter.Codec.EmitEncode(              // encode(arg_i+1)
+                                    il, locals, parameter.ArgumentIndex); 
+                                break;
+                            case MethodParameterWay.Ref:
+                                parameter.Codec.EmitEncodeIndirect(     // encodeIndirect (arg_i+1)
+                                    il, locals, parameter.ArgumentIndex, parameter.Description.Type); 
+                                break;
+                            default: 
+                                throw new ArgumentOutOfRangeException();
+                        }
+                    }
+                    
+                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
                 }
                 else
                 {
@@ -177,16 +223,14 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldtoken, type);                         // stack_1 = typeof(T)
                 il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
                 il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
-                    path, methodDescription.Name));
+                    path, methodDesc.Name));
                 il.Emit(OpCodes.Ldarg_0);                               // stack_3 = this.scope
                 il.Emit(OpCodes.Ldfld, scopeField);
                 il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
                 il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4)
 
-                if (hasRetval)
+                if (responseParameters.Any() || hasRetval)
                 {
-                    var retvalCodec = codecContainer.GetEmittingCodecFor(methodDescription.ReturnType);
-
                     il.Emit(OpCodes.Stloc, dataArrayVar);               // dataArray = stack_0
                     il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
                     il.Emit(OpCodes.Ldlen);
@@ -195,13 +239,27 @@ namespace SharpRpc.ClientSide
                         il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
                     il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
                     il.Emit(OpCodes.Stloc, locals.DataPointer);
-                    retvalCodec.EmitDecode(il, locals, false);          // stack_0 = decode(data, remainingBytes, false)
-                    il.Emit_UnpinArray(dataPointerVar);                  // unpin(dataPointer)
+
+                    foreach (var parameter in responseParameters)
+                    {
+                        il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);// arg_i+1 = decode(data, remainingBytes, false)
+                        parameter.Codec.EmitDecode(il, locals, false);
+                        il.Emit_Stind(parameter.Description.Type);
+                    }
+
+                    if (hasRetval)
+                    {
+                        var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                        retvalCodec.EmitDecode(il, locals, false);      // stack_0 = decode(data, remainingBytes, false)
+                    }
+
+                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
                 }
                 else
                 {
                     il.Emit(OpCodes.Pop);                               // pop(stack_0)
                 }
+
                 il.Emit(OpCodes.Ret);
                 #endregion
             }

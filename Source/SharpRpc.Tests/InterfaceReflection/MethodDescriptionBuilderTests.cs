@@ -99,8 +99,10 @@ namespace SharpRpc.Tests.InterfaceReflection
         {
             var desc = builder.Build(type.GetMethod("ModifyVariables"));
             Assert.That(desc.Parameters.Count, Is.EqualTo(2));
+            Assert.That(desc.Parameters[0].Type, Is.EqualTo(typeof(int)));
             Assert.That(desc.Parameters[0].Way, Is.EqualTo(MethodParameterWay.Ref));
-            Assert.That(desc.Parameters[0].Way, Is.EqualTo(MethodParameterWay.Ref));
+            Assert.That(desc.Parameters[1].Type, Is.EqualTo(typeof(string)));
+            Assert.That(desc.Parameters[1].Way, Is.EqualTo(MethodParameterWay.Ref));
         }
 
         [Test]
@@ -108,8 +110,10 @@ namespace SharpRpc.Tests.InterfaceReflection
         {
             var desc = builder.Build(type.GetMethod("GetManySomething"));
             Assert.That(desc.Parameters.Count, Is.EqualTo(2));
+            Assert.That(desc.Parameters[0].Type, Is.EqualTo(typeof(int)));
             Assert.That(desc.Parameters[0].Way, Is.EqualTo(MethodParameterWay.Out));
-            Assert.That(desc.Parameters[0].Way, Is.EqualTo(MethodParameterWay.Out));
+            Assert.That(desc.Parameters[1].Type, Is.EqualTo(typeof(string)));
+            Assert.That(desc.Parameters[1].Way, Is.EqualTo(MethodParameterWay.Out));
         }
     }
 }

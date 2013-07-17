@@ -37,10 +37,10 @@ namespace SharpRpc.Interaction
             Data = data;
         }
 
-        public static Response NotReady { get { return new Response(ResponseStatus.NotReady, CommonImmuables.EmptyBytes); } }
-        public static Response BadRequest { get { return new Response(ResponseStatus.BadRequest, CommonImmuables.EmptyBytes); } }
-        public static Response NotFound { get { return new Response(ResponseStatus.ServiceNotFound, CommonImmuables.EmptyBytes); } }
-        public static Response InvalidImplementation { get { return new Response(ResponseStatus.InvalidImplementation, CommonImmuables.EmptyBytes); } }
-        public static Response InternalError { get { return new Response(ResponseStatus.InternalServerError, CommonImmuables.EmptyBytes); } }
+        public static Response NotReady { get { return new Response(ResponseStatus.NotReady, CommonImmutables.EmptyBytes); } }
+        public static Response BadRequest { get { return new Response(ResponseStatus.BadRequest, CommonImmutables.EmptyBytes); } }
+        public static Response NotFound { get { return new Response(ResponseStatus.ServiceNotFound, CommonImmutables.EmptyBytes); } }
+        public static Response InvalidImplementation { get { return new Response(ResponseStatus.InvalidImplementation, CommonImmutables.EmptyBytes); } }
+        public static Response InternalError { get { return new Response(ResponseStatus.InternalServerError, CommonImmutables.EmptyBytes); } }
     }
 }

@@ -32,8 +32,17 @@ namespace SharpRpc.Reflection
         public MethodDescription Build(MethodInfo methodInfo)
         {
             var parameters = methodInfo.GetParameters();
-            var parameterDescs = parameters.Select(parameterInfo => new MethodParameterDescription(parameterInfo.ParameterType, parameterInfo.Name, GetWay(parameterInfo)));
+            var parameterDescs = parameters.Select(BuildParameterDescription);
             return new MethodDescription(methodInfo.ReturnType, methodInfo.Name, parameterDescs);
+        }
+
+        private static MethodParameterDescription BuildParameterDescription(ParameterInfo parameterInfo)
+        {
+            var way = GetWay(parameterInfo);
+            var parameterType = way == MethodParameterWay.Val 
+                ? parameterInfo.ParameterType
+                : parameterInfo.ParameterType.GetElementType();
+            return new MethodParameterDescription(parameterType, parameterInfo.Name, way);
         }
 
         private static MethodParameterWay GetWay(ParameterInfo parameterInfo)

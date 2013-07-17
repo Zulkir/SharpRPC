@@ -75,6 +75,14 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Ldarg, index);
         }
 
+        public static void Emit_Stind(this ILGenerator il, Type type)
+        {
+            if (type.IsValueType)
+                il.Emit(OpCodes.Stobj, type);
+            else
+                il.Emit(OpCodes.Stind_Ref);
+        }
+
         public static void Emit_IncreasePointer(this ILGenerator il, LocalBuilder dataPointerVar, int distance)
         {
             il.Emit(OpCodes.Ldloc, dataPointerVar);

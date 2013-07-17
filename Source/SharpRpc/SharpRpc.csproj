@@ -103,7 +103,7 @@
     <Compile Include="Topology.cs" />
     <Compile Include="TopologyLoader.cs" />
     <Compile Include="TopologyParser.cs" />
-    <Compile Include="Utility\CommonImmuables.cs" />
+    <Compile Include="Utility\CommonImmutables.cs" />
     <Compile Include="IHostSettings.cs" />
     <Compile Include="InterfaceImplementationTypePair.cs" />
     <Compile Include="IRpcClient.cs" />

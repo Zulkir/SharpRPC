@@ -42,6 +42,10 @@ namespace SharpRpc.Tests.ServerSide
             void Trivial();
             void MethodWithArgs(int a, double b);
             double MethodWithRetval();
+            void ModifyByRef(ref double d);
+            void GetSomethingOut(out int o);
+            double MixedParameterTypes(int a, ref bool b, out ushort c);
+            void ReferenceInRef(ref string s);
         }
 
         public interface IMiddleService
@@ -59,6 +63,7 @@ namespace SharpRpc.Tests.ServerSide
         {
              
         }
+
         #endregion
 
         private ICodecContainer codecContainer;
@@ -72,8 +77,8 @@ namespace SharpRpc.Tests.ServerSide
             codecContainer = new CodecContainer();
             factory = new ServiceMethodHandlerFactory(codecContainer);
             service = Substitute.For<IGlobalServiceImplementation>();
-            var globalServiceDescription = 
-                new ServiceDescriptionBuilder(new MethodDescriptionBuilder()).Build(typeof(IGlobalService));
+            var serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
+            var globalServiceDescription =  serviceDescriptionBuilder.Build(typeof(IGlobalService));
             globalServiceImplementationInfo = 
                 new ServiceImplementationInfo(typeof(IGlobalService), globalServiceDescription, service);
         }
@@ -144,6 +149,106 @@ namespace SharpRpc.Tests.ServerSide
             service.MethodWithRetval().Returns(123.456);
 
             var result = handler(service, new byte[0]);
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void Ref()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "ModifyByRef"));
+
+            var data = new byte[8];
+            fixed (byte* pData = data)
+            {
+                *(double*)pData = 12.34;
+            }
+
+            var expectedData = new byte[8];
+            fixed (byte* pData = expectedData)
+            {
+                *(double*)pData = 24.68;
+            }
+
+            double dummy = 0;
+            service.WhenForAnyArgs(x => x.ModifyByRef(ref dummy)).Do(x => { x[0] = (double)x[0] * 2; });
+
+            var result = handler(service, data);
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void Out()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "GetSomethingOut"));
+
+            var expectedData = new byte[4];
+            fixed (byte* pData = expectedData)
+            {
+                *(int*)pData = 1234;
+            }
+
+            int dummy;
+            service.When(x => x.GetSomethingOut(out dummy)).Do(x => { x[0] = 1234; });
+
+            var result = handler(service, new byte[0]);
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void MixedParameterTypes()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "MixedParameterTypes"));
+
+            var data = new byte[8];
+            fixed (byte* pData = data)
+            {
+                *(int*)pData = 123;
+                *(bool*)(pData + 4) = false;
+            }
+
+            var expectedData = new byte[14];
+            fixed (byte* pData = expectedData)
+            {
+                *(bool*)pData = true;
+                *(ushort*)(pData + 4) = 246;
+                *(double*)(pData + 6) = 123.456;
+            }
+
+            bool dummyBool = false;
+            ushort dummyUshort;
+            service.MixedParameterTypes(0, ref dummyBool, out dummyUshort).ReturnsForAnyArgs(x =>
+                {
+                    x[1] = true;
+                    x[2] = (ushort)((int)x[0] * 2);
+                    return 123.456;
+                });
+
+            var result = handler(service, data);
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void ReferenceInRef()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "ReferenceInRef"));
+
+            var data = new byte[4];
+
+            var expectedData = new byte[8];
+            fixed (byte* pData = expectedData)
+            {
+                *(int*)pData = 4;
+                *(char*)(pData + 4) = 'O';
+                *(char*)(pData + 6) = 'K';
+            }
+
+            string s= "";
+            service.WhenForAnyArgs(x => x.ReferenceInRef(ref s)).Do(x =>
+                {
+                    x[0] = "OK";
+                });
+
+            var result = handler(service, data);
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
     }

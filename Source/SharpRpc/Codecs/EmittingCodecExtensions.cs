@@ -37,6 +37,11 @@ namespace SharpRpc.Codecs
             codec.EmitCalculateSize(il, lil => lil.Emit_Ldarg(argIndex));
         }
 
+        public static void EmitCalculateSizeIndirect(this IEmittingCodec codec, ILGenerator il, int argIndex, Type type)
+        {
+            codec.EmitCalculateSize(il, lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, type); });
+        }
+
         public static void EmitCalculateSize(this IEmittingCodec codec, ILGenerator il, LocalBuilder localVar)
         {
             codec.EmitCalculateSize(il, lil => lil.Emit(OpCodes.Ldloc, localVar));
@@ -54,6 +59,11 @@ namespace SharpRpc.Codecs
         public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, int argIndex)
         {
             codec.EmitEncode(il, locals, lil => lil.Emit_Ldarg(argIndex));
+        }
+
+        public static void EmitEncodeIndirect(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, int argIndex, Type type)
+        {
+            codec.EmitEncode(il, locals, lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, type); });
         }
 
         public static void EmitEncode(this IEmittingCodec codec, ILGenerator il, ILocalVariableCollection locals, LocalBuilder localVar)

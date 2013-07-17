@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
 using NUnit.Framework;
 using SharpRpc.Codecs;
 
@@ -35,6 +34,13 @@ namespace SharpRpc.Tests.Codecs
         private void DoTest<T>(T value) where T : struct
         {
             DoTest(new NativeStructCodec(typeof(T)), value);
+        }
+
+        [Test]
+        public void Bool()
+        {
+            DoTest(false);
+            DoTest(true);
         }
 
         [Test]
@@ -218,35 +224,6 @@ namespace SharpRpc.Tests.Codecs
         {
             DoTest(new MyGenericStruct<int, double>(123, 456.6789));
             DoTest(new MyGenericStruct<DateTime, Guid>(System.DateTime.Now, Guid.NewGuid()));
-        }
-
-        delegate void Experiment(ref object o1, ref object o2);
-
-        [Test]
-        public void Experiments()
-        {
-            var dynamicMethod = new DynamicMethod("asdasd_exp", typeof(void), new[] {typeof(object).MakeByRefType(), typeof(object).MakeByRefType()});
-            var il = dynamicMethod.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldind_Ref);
-            var temp = il.DeclareLocal(typeof(object));
-            il.Emit(OpCodes.Stloc, temp);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldind_Ref);
-            il.Emit(OpCodes.Stind_Ref);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldloc_0);
-            il.Emit(OpCodes.Stind_Ref);
-            il.Emit(OpCodes.Ret);
-            var method = (Experiment)dynamicMethod.CreateDelegate(typeof(Experiment));
-            var o1 = new object();
-            var o2 = new object();
-            var eo1 = o2;
-            var eo2 = o1;
-            method(ref o1, ref o2);
-            Assert.That(o1, Is.EqualTo(eo1));
-            Assert.That(o2, Is.EqualTo(eo2));
         }
     }
 }

@@ -28,11 +28,20 @@ using System.Reflection.Emit;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
+using System.Linq;
 
 namespace SharpRpc.ServerSide
 {
     public class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
     {
+        struct ParameterNecessity
+        {
+            public MethodParameterDescription Description;
+            public IEmittingCodec Codec;
+            public LocalBuilder LocalVariable;
+            public int ArgumentIndex;
+        }
+
         private static readonly Type[] ParameterTypes = new[] {typeof(IServiceImplementation), typeof (byte[])};
 
         private readonly ICodecContainer codecContainer;
@@ -52,14 +61,14 @@ namespace SharpRpc.ServerSide
             var il = dynamicMethod.GetILGenerator();
             var locals = new LocalVariableCollection(il, true);
             
-            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldarg_0);                                           // stack_0 = (TServiceImplementation) arg_0
             il.Emit(OpCodes.Castclass, serviceInterface);
 
             var serviceDesc = serviceImplementationInfo.Description;
             for (int i = 1; i < servicePath.Length - 1; i++)
             {
                 var propertyInfo = serviceDesc.Type.GetProperty(servicePath[i]);
-                il.Emit(OpCodes.Callvirt, propertyInfo.GetGetMethod());
+                il.Emit(OpCodes.Callvirt, propertyInfo.GetGetMethod());         // stack_0 = stack_0.Property
                 SubserviceDescription subserviceDescription;
                 if (!serviceDesc.TryGetSubservice(servicePath[i], out subserviceDescription))
                     throw new InvalidPathException();
@@ -72,56 +81,107 @@ namespace SharpRpc.ServerSide
             if (!serviceDesc.TryGetMethod(methodName, out methodDesc))
                 throw new InvalidPathException();
 
-            bool hasArgs = methodDesc.Parameters.Count > 0;
             bool hasRetval = methodDesc.ReturnType != typeof(void);
+            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
+                {
+                    Description = x,
+                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                    LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null,
+                    ArgumentIndex = i
+                })
+                .ToArray();
 
-            if (hasArgs)
+            var requestParameters = parameters
+                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                    .ToArray();
+
+            var responseParameters = parameters
+                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                .ToArray();
+
+            LocalBuilder requestDataPointerVar = null;
+            if (requestParameters.Any())
             {
-                il.Emit(OpCodes.Ldarg_1);                       // remainingBytes = arg_1.Length
+                il.Emit(OpCodes.Ldarg_1);                                   // remainingBytes = arg_1.Length
                 il.Emit(OpCodes.Ldlen);
                 il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                var dataPointerVar =                            // var pinned dataPointer = pin(arg_1)
+                requestDataPointerVar =                                     // var pinned dataPointer = pin(arg_1)
                     il.Emit_PinArray(typeof(byte), locals, 1);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);         // data = dataPointer
+                il.Emit(OpCodes.Ldloc, requestDataPointerVar);              // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
+            }
 
-                foreach (var parameterDesc in methodDesc.Parameters)
+            foreach (var parameter in parameters)
+            {
+                switch (parameter.Description.Way)
                 {
-                    var codec = codecContainer.GetEmittingCodecFor(parameterDesc.Type);
-                    codec.EmitDecode(il, locals, false);
+                    case MethodParameterWay.Val:
+                        parameter.Codec.EmitDecode(il, locals, false);      // stack_i = decode(data, remainingBytes, false)
+                        break;
+                    case MethodParameterWay.Ref:
+                        parameter.Codec.EmitDecode(il, locals, false);      // param_i = decode(data, remainingBytes, false)
+                        il.Emit(OpCodes.Stloc, parameter.LocalVariable);
+                        il.Emit(OpCodes.Ldloca, parameter.LocalVariable);   // stack_i = *param_i
+                        break;
+                    case MethodParameterWay.Out:
+                        il.Emit(OpCodes.Ldloca, parameter.LocalVariable);   // stack_i = *param_i
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
+            }
 
-                il.Emit_UnpinArray(dataPointerVar);              // unpin(dataPointer)
+            if (requestParameters.Any())
+            {
+                il.Emit_UnpinArray(requestDataPointerVar);                  // unpin(dataPointer)
             }
             
-            il.Emit(OpCodes.Callvirt, methodInfo);
+            il.Emit(OpCodes.Callvirt, methodInfo);                          // stack_0 = stack_0.Method(stack_1, stack_2, ...)
 
-            if (hasRetval)
+            if (hasRetval || responseParameters.Any())
             {
-                var codec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                IEmittingCodec retvalCodec = null;
+                LocalBuilder retvalVar = null;
+                
+                if (hasRetval)
+                {
+                    retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                    retvalVar = il.DeclareLocal(methodDesc.ReturnType);             // var ret = stack_0
+                    il.Emit(OpCodes.Stloc, retvalVar);
+                    retvalCodec.EmitCalculateSize(il, retvalVar);                   // stack_0 = calculateSize(ret)
+                }
 
-                var retvalVar = locals.GetOrAdd("retval",       // var retval = stack_0
-                                                lil => lil.DeclareLocal(methodDesc.ReturnType));
-                il.Emit(OpCodes.Stloc, retvalVar);
+                bool hasSizeOnStack = hasRetval;
+                foreach (var parameter in responseParameters)
+                {
+                    parameter.Codec.EmitCalculateSize(il, parameter.LocalVariable); // stack_0 += calculateSize(param_i)
+                    if (hasSizeOnStack)
+                        il.Emit(OpCodes.Add);
+                    else
+                        hasSizeOnStack = true;
+                }
 
-                var dataArrayVar = locals.GetOrAdd("dataArray", // var dataArray = new byte[size of retval]
-                                                   lil => lil.DeclareLocal(typeof(byte[])));
-                codec.EmitCalculateSize(il, retvalVar);
+                var dataArrayVar = il.DeclareLocal(typeof(byte[]));                 // var dataArray = new byte[size of retval]
                 il.Emit(OpCodes.Newarr, typeof(byte));
                 il.Emit(OpCodes.Stloc, dataArrayVar);
-                var dataPointerVar =                            // var pinned dataPointer = pin(dataArrayVar)
-                    il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);         // data = dataPointer
+
+                var responseDataPointerVar =                                        // var pinned dataPointer = pin(dataArrayVar)
+                        il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
+                il.Emit(OpCodes.Ldloc, responseDataPointerVar);                     // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
-                codec.EmitEncode(il, locals, retvalVar);        // encode(data, retval)
+                foreach (var parameter in responseParameters)
+                    parameter.Codec.EmitEncode(il, locals, parameter.LocalVariable);// encode(data, param_i)
 
-                il.Emit_UnpinArray(dataPointerVar);             // unpin(dataPointer)
-                il.Emit(OpCodes.Ldloc, dataArrayVar);           // stack_0 = dataArray
+                if (hasRetval)
+                    retvalCodec.EmitEncode(il, locals, retvalVar);                  // encode(data, ret)
+
+                il.Emit_UnpinArray(responseDataPointerVar);                         // unpin(dataPointer)
+                il.Emit(OpCodes.Ldloc, dataArrayVar);                               // stack_0 = dataArray
             }
             else
             {
-                il.Emit(OpCodes.Ldc_I4, 0);                     // stack_0 = new byte[0]
+                il.Emit(OpCodes.Ldc_I4, 0);                                         // stack_0 = new byte[0]
                 il.Emit(OpCodes.Newarr, typeof(byte));
             }
 
