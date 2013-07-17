@@ -22,10 +22,36 @@ THE SOFTWARE.
 */
 #endregion
 
-namespace SharpRpc
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace SharpRpc.Topology
 {
-    public interface ITopology
+    public class RandomServiceTopology : IServiceTopology
     {
-        bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint);
+        private readonly ServiceEndPoint[] endPoints;
+        private readonly Random random = new Random();
+
+        public RandomServiceTopology(params ServiceEndPoint[] endPoints) 
+            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
+
+        public RandomServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
+        {
+            if (endPoints == null)
+                throw new ArgumentNullException("endPoints");
+
+            this.endPoints = endPoints.ToArray();
+
+            if (this.endPoints.Length == 0)
+                throw new ArgumentException("End point collection must have at least one element", "endPoints");
+        }
+
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
+        {
+            int index = random.Next(0, endPoints.Length);
+            endPoint = endPoints[index];
+            return true;
+        }
     }
 }

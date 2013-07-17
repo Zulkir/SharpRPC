@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.IO;
 using NUnit.Framework;
+using SharpRpc.Settings;
 
 namespace SharpRpc.Tests
 {

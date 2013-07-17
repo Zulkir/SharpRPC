@@ -22,36 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public class EvenlyDistributedServiceTopology : IServiceTopology
+    public interface ITopology
     {
-        private readonly ServiceEndPoint[] endPoints;
-
-        public EvenlyDistributedServiceTopology(params ServiceEndPoint[] endPoints) 
-            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
-
-        public EvenlyDistributedServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
-        {
-            if (endPoints == null)
-                throw new ArgumentNullException("endPoints");
-
-            this.endPoints = endPoints.ToArray();
-
-            if (this.endPoints.Length == 0)
-                throw new ArgumentException("End point collection must have at least one element", "endPoints");
-        }
-
-        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
-        {
-            endPoint = scope == null 
-                ? endPoints[0] 
-                : endPoints[scope.GetHashCode() % endPoints.Length];
-            return true;
-        }
+        bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint);
     }
 }

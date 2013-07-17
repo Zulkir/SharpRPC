@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using NUnit.Framework;
+using SharpRpc.Topology;
 
 namespace SharpRpc.Tests
 {

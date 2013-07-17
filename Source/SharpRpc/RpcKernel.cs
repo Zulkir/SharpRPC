@@ -27,6 +27,8 @@ using System.Collections.Generic;
 using SharpRpc.ClientSide;
 using SharpRpc.ServerSide;
 using SharpRpc.Reflection;
+using SharpRpc.Settings;
+using SharpRpc.Topology;
 
 namespace SharpRpc
 {

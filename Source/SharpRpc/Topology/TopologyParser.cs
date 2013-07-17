@@ -28,7 +28,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
     public class TopologyParser : ITopologyParser
     {

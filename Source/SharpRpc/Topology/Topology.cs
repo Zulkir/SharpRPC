@@ -26,7 +26,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
     public class Topology : ITopology
     {

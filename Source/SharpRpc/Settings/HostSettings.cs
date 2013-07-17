@@ -22,13 +22,36 @@ THE SOFTWARE.
 */
 #endregion
 
-using SharpRpc.Topology;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace SharpRpc
+namespace SharpRpc.Settings
 {
-    public interface IRpcClient
+    public class HostSettings : IHostSettings
     {
-        ITopology Topology { get; }
-        T GetService<T>(string scope) where T : class; 
+        private readonly ServiceEndPoint endPoint;
+        private readonly InterfaceImplementationTypePair[] interfaceImplementationTypePairs;
+
+        public HostSettings(ServiceEndPoint endPoint, IEnumerable<InterfaceImplementationTypePair> interfaceImplementationTypePairs)
+        {
+            this.endPoint = endPoint;
+            this.interfaceImplementationTypePairs = interfaceImplementationTypePairs.ToArray();
+        }
+
+        public ServiceEndPoint EndPoint
+        {
+            get { return endPoint; }
+        }
+
+        public IEnumerable<InterfaceImplementationTypePair> GetInterfaceImplementationsPairs()
+        {
+            return interfaceImplementationTypePairs;
+        }
+
+        private static readonly HostSettings EmptyField = new HostSettings(new ServiceEndPoint {Protocol = "http"}, new InterfaceImplementationTypePair[0]);
+        public static HostSettings Empty
+        {
+            get { return EmptyField; }
+        }
     }
 }

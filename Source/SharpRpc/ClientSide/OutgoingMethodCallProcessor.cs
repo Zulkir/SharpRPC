@@ -26,6 +26,7 @@ using System;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
+using SharpRpc.Topology;
 
 namespace SharpRpc.ClientSide
 {

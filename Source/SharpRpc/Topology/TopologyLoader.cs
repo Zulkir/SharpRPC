@@ -22,39 +22,28 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public class SettingsLoader : ISettingsLoader
+    public class TopologyLoader : ITopologyLoader
     {
-        private readonly string hostSettingsPath;
-        private readonly Func<string, string> getServiceSettingsPath;
+        private readonly string topologyPath;
         private readonly Encoding encoding;
-        private readonly IHostSettingsParser hostSettingsParser;
-        private readonly IServiceSettingsParser serviceSettingsParser;
+        private readonly  ITopologyParser topologyParser;
 
-        public SettingsLoader(string hostSettingsPath, Func<string, string> getServiceSettingsPath, Encoding encoding, 
-            IHostSettingsParser hostSettingsParser, IServiceSettingsParser serviceSettingsParser)
+        public TopologyLoader(string topologyPath, Encoding encoding, ITopologyParser topologyParser)
         {
-            this.hostSettingsPath = hostSettingsPath;
-            this.getServiceSettingsPath = getServiceSettingsPath;
+            this.topologyPath = topologyPath;
             this.encoding = encoding;
-            this.hostSettingsParser = hostSettingsParser;
-            this.serviceSettingsParser = serviceSettingsParser;
+            this.topologyParser = topologyParser;
         }
 
-        public IHostSettings LoadHostSettings()
+        public ITopology Load()
         {
-            return hostSettingsParser.Parse(File.ReadAllText(hostSettingsPath, encoding));
-        }
-
-        public IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName)
-        {
-            return serviceSettingsParser.Parse(File.ReadAllText(getServiceSettingsPath(serviceName), encoding));
+            var text = File.ReadAllText(topologyPath, encoding);
+            return topologyParser.Parse(text);
         }
     }
 }

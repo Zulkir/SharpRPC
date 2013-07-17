@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System.Collections.Generic;
 using NUnit.Framework;
+using SharpRpc.Settings;
 
 namespace SharpRpc.Tests
 {

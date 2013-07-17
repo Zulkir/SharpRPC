@@ -22,39 +22,36 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public struct InterfaceImplementationTypePair : IEquatable<InterfaceImplementationTypePair>
+    public class MapServiceTopology : IServiceTopology
     {
-        public Type Interface;
-        public Type ImplementationType;
+        private readonly ServiceEndPoint? nullEndPoint;
+        private readonly Dictionary<string, ServiceEndPoint> endPoints;
 
-        public InterfaceImplementationTypePair(Type serviceInterface, Type implementationType)
+        public MapServiceTopology(ServiceEndPoint? nullEndPoint, IEnumerable<KeyValuePair<string, ServiceEndPoint>> endPoints)
         {
-            Interface = serviceInterface;
-            ImplementationType = implementationType;
+            this.nullEndPoint = nullEndPoint;
+            this.endPoints = endPoints.ToDictionary(x => x.Key, x => x.Value);
         }
 
-        public bool Equals(InterfaceImplementationTypePair other)
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
-            return Interface == other.Interface && ImplementationType == other.ImplementationType;
-        }
+            if (scope == null)
+            {
+                if (nullEndPoint.HasValue)
+                {
+                    endPoint = nullEndPoint.Value;
+                    return true;
+                }
+                endPoint = default(ServiceEndPoint);
+                return false;
+            }
 
-        public override bool Equals(object obj)
-        {
-            return obj is InterfaceImplementationTypePair && Equals((InterfaceImplementationTypePair)obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return (Interface ?? typeof(object)).GetHashCode() ^ (ImplementationType ?? typeof(object)).GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return string.Format("{{{0} : {1}}}", Interface.FullName, ImplementationType.FullName);
+            return endPoints.TryGetValue(scope, out endPoint);
         }
     }
 }

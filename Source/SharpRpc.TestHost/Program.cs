@@ -23,6 +23,8 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Settings;
+using SharpRpc.Topology;
 
 namespace SharpRpc.TestHost
 {

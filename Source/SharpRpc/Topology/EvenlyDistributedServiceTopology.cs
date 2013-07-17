@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,28 +22,36 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.IO;
-using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public class TopologyLoader : ITopologyLoader
+    public class EvenlyDistributedServiceTopology : IServiceTopology
     {
-        private readonly string topologyPath;
-        private readonly Encoding encoding;
-        private readonly  ITopologyParser topologyParser;
+        private readonly ServiceEndPoint[] endPoints;
 
-        public TopologyLoader(string topologyPath, Encoding encoding, ITopologyParser topologyParser)
+        public EvenlyDistributedServiceTopology(params ServiceEndPoint[] endPoints) 
+            : this(endPoints as IEnumerable<ServiceEndPoint>) {}
+
+        public EvenlyDistributedServiceTopology(IEnumerable<ServiceEndPoint> endPoints)
         {
-            this.topologyPath = topologyPath;
-            this.encoding = encoding;
-            this.topologyParser = topologyParser;
+            if (endPoints == null)
+                throw new ArgumentNullException("endPoints");
+
+            this.endPoints = endPoints.ToArray();
+
+            if (this.endPoints.Length == 0)
+                throw new ArgumentException("End point collection must have at least one element", "endPoints");
         }
 
-        public ITopology Load()
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
-            var text = File.ReadAllText(topologyPath, encoding);
-            return topologyParser.Parse(text);
+            endPoint = scope == null 
+                ? endPoints[0] 
+                : endPoints[scope.GetHashCode() % endPoints.Length];
+            return true;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-using System.Linq;
-
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public class MapServiceTopology : IServiceTopology
+    public interface ITopologyLoader
     {
-        private readonly ServiceEndPoint? nullEndPoint;
-        private readonly Dictionary<string, ServiceEndPoint> endPoints;
-
-        public MapServiceTopology(ServiceEndPoint? nullEndPoint, IEnumerable<KeyValuePair<string, ServiceEndPoint>> endPoints)
-        {
-            this.nullEndPoint = nullEndPoint;
-            this.endPoints = endPoints.ToDictionary(x => x.Key, x => x.Value);
-        }
-
-        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
-        {
-            if (scope == null)
-            {
-                if (nullEndPoint.HasValue)
-                {
-                    endPoint = nullEndPoint.Value;
-                    return true;
-                }
-                endPoint = default(ServiceEndPoint);
-                return false;
-            }
-
-            return endPoints.TryGetValue(scope, out endPoint);
-        }
+        ITopology Load();
     }
 }

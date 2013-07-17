@@ -22,13 +22,21 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public interface IHostSettings
+    public class SingleHostServiceTopology : IServiceTopology
     {
-        ServiceEndPoint EndPoint { get; }
-        IEnumerable<InterfaceImplementationTypePair> GetInterfaceImplementationsPairs();
+        private readonly ServiceEndPoint endPoint;
+
+        public SingleHostServiceTopology(ServiceEndPoint endPoint)
+        {
+            this.endPoint = endPoint;
+        }
+
+        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
+        {
+            endPoint = this.endPoint;
+            return true;
+        }
     }
 }

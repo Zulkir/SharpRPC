@@ -25,7 +25,7 @@ THE SOFTWARE.
 using System;
 using SharpRpc.Interaction;
 
-namespace SharpRpc
+namespace SharpRpc.Logs
 {
     public class ConsoleLogger : ILogger
     {

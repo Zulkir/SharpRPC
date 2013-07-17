@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
+using SharpRpc.Logs;
 using SharpRpc.Utility;
 
 namespace SharpRpc.ServerSide

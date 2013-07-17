@@ -26,7 +26,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace SharpRpc
+namespace SharpRpc.Settings
 {
     public class HostSettingsParser : IHostSettingsParser
     {

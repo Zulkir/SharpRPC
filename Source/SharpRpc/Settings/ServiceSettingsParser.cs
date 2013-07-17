@@ -23,15 +23,34 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using SharpRpc.Interaction;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
-namespace SharpRpc
+namespace SharpRpc.Settings
 {
-    public interface ILogger
-    {
-        void WriteIncoming(Request request);
-        void WriteFinishedSuccessfully(Request request, TimeSpan executionTime);
-        void WriteFinishedWithBadStatus(Request request, ResponseStatus responseStatus);
-        void WriteFinishedWithException(Request request, Exception exception);
+    public class ServiceSettingsParser : IServiceSettingsParser
+    {       
+        private static readonly char[] LineBreaks = new[] { '\r', '\n' };
+        private static readonly Regex PairRegex = new Regex(@"^([^=]+)=([^=]+)$");
+
+        public IReadOnlyDictionary<string, string> Parse(string text)
+        {
+            return text
+                .Split(LineBreaks, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrEmpty(x) && !x.StartsWith("#"))
+                .Select(ParsePair)
+                .ToDictionary(x => x.Key, x => x.Value);
+        }
+
+        private static KeyValuePair<string, string> ParsePair(string line)
+        {
+            var match = PairRegex.Match(line);
+            if (!match.Success)
+                throw new InvalidDataException(string.Format("'{0}' is not a valid setting", line));
+            return new KeyValuePair<string, string>(match.Groups[1].Value.Trim(), match.Groups[2].Value.Trim());
+        }
     }
 }

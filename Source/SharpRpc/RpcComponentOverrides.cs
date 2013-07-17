@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
+using SharpRpc.Logs;
 using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 

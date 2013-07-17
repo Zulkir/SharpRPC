@@ -22,10 +22,39 @@ THE SOFTWARE.
 */
 #endregion
 
-namespace SharpRpc
+using System;
+
+namespace SharpRpc.Settings
 {
-    public interface IServiceTopology
+    public struct InterfaceImplementationTypePair : IEquatable<InterfaceImplementationTypePair>
     {
-        bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint); 
+        public Type Interface;
+        public Type ImplementationType;
+
+        public InterfaceImplementationTypePair(Type serviceInterface, Type implementationType)
+        {
+            Interface = serviceInterface;
+            ImplementationType = implementationType;
+        }
+
+        public bool Equals(InterfaceImplementationTypePair other)
+        {
+            return Interface == other.Interface && ImplementationType == other.ImplementationType;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is InterfaceImplementationTypePair && Equals((InterfaceImplementationTypePair)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return (Interface ?? typeof(object)).GetHashCode() ^ (ImplementationType ?? typeof(object)).GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{{{0} : {1}}}", Interface.FullName, ImplementationType.FullName);
+        }
     }
 }

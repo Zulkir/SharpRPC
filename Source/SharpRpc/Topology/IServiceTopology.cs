@@ -22,21 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public class SingleHostServiceTopology : IServiceTopology
+    public interface IServiceTopology
     {
-        private readonly ServiceEndPoint endPoint;
-
-        public SingleHostServiceTopology(ServiceEndPoint endPoint)
-        {
-            this.endPoint = endPoint;
-        }
-
-        public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
-        {
-            endPoint = this.endPoint;
-            return true;
-        }
+        bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint); 
     }
 }

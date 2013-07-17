@@ -22,10 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-namespace SharpRpc
+namespace SharpRpc.Topology
 {
-    public interface IHostSettingsParser
+    public interface ITopologyParser
     {
-        IHostSettings Parse(string text);
+        ITopology Parse(string text);
     }
 }
