@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using SharpRpc.ClientSide;
+using SharpRpc.Logs;
 using SharpRpc.ServerSide;
 using SharpRpc.Reflection;
 using SharpRpc.Settings;
@@ -36,15 +37,17 @@ namespace SharpRpc
     {
         private readonly ITopology topology;
         private readonly IHostSettings hostSettings;
+        private readonly ILogger logger;
         
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcKernel(ITopology topology, IHostSettings hostSettings, RpcComponentOverrides componentOverrides = null)
+        public RpcKernel(ITopology topology, IHostSettings hostSettings, ILogger logger, RpcComponentOverrides componentOverrides = null)
         {
             this.topology = topology;
             this.hostSettings = hostSettings;
+            this.logger = logger;
             var componentContainer = new RpcComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
 
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
@@ -69,6 +72,8 @@ namespace SharpRpc
         }
 
         public ITopology Topology { get { return topology; } }
+        public IHostSettings HostSettings { get { return hostSettings; } }
+        public ILogger Logger { get { return logger; } }
 
         public T GetService<T>(string scope) where T : class
         {

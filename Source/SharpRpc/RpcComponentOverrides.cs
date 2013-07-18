@@ -25,7 +25,6 @@ THE SOFTWARE.
 using System;
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
-using SharpRpc.Logs;
 using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 
@@ -39,7 +38,6 @@ namespace SharpRpc
         public Func<IRpcComponentContainer, ICodecContainer> CodecContainer { get; set; }
         public Func<IRpcComponentContainer, IServiceMethodHandlerFactory> ServiceMethodHandlerFactory { get; set; }
         public Func<IRpcComponentContainer, IServiceMethodHandlerContainer> ServiceMethodHandlerContainer { get; set; }
-        public Func<IRpcComponentContainer, ILogger> Logger { get; set; }
         public Func<IRpcComponentContainer, IIncomingRequestProcessor> IncomingRequestProcessor { get; set; }
         public Func<IRpcComponentContainer, IRequestReceiverContainer> RequestReceiverContainer { get; set; }
         public Func<IRpcComponentContainer, IRequestSenderContainer> RequestSenderContainer { get; set; }

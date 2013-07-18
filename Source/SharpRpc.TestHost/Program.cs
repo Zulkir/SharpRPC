@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Logs;
 using SharpRpc.Settings;
 using SharpRpc.Topology;
 
@@ -36,7 +37,7 @@ namespace SharpRpc.TestHost
             var hostSettingsParser = new HostSettingsParser();
             var hostSettings = hostSettingsParser.Parse(@"http://localhost:7001
                                           SharpRpc.TestCommon SharpRpc.TestCommon.IMyService SharpRpc.TestCommon.MyService");
-            var kernel = new RpcKernel(topology, hostSettings);
+            var kernel = new RpcKernel(topology, hostSettings, new ConsoleLogger());
 
             kernel.StartHost();
 

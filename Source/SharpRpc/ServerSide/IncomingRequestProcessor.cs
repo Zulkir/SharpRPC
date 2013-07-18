@@ -39,12 +39,12 @@ namespace SharpRpc.ServerSide
         private readonly ILogger logger;
 
         public IncomingRequestProcessor(IRpcKernel kernel, IServiceImplementationContainer serviceImplementationContainer, 
-            IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer, ILogger logger)
+            IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer)
         {
             this.kernel = kernel;
+            this.logger = kernel.Logger;
             this.serviceImplementationContainer = serviceImplementationContainer;
             this.serviceMethodHandlerContainer = serviceMethodHandlerContainer;
-            this.logger = logger;
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
         }
 

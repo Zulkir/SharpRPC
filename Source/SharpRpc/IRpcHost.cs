@@ -23,11 +23,13 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Generic;
+using SharpRpc.Logs;
 
 namespace SharpRpc
 {
     public interface IRpcHost
     {
+        ILogger Logger { get; }
         void StartHost();
         void StopHost();
         IEnumerable<string> GetInitializedScopesFor<T>(); 
