@@ -22,17 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Interaction;
-
 namespace SharpRpc.Logs
 {
-    public interface ILogger
+    public enum LogEntryType
     {
-        void WriteCustom(LogEntryType type, string message, Exception exception = null);
-        void WriteIncoming(Request request);
-        void WriteFinishedSuccessfully(Request request, TimeSpan executionTime);
-        void WriteFinishedWithBadStatus(Request request, ResponseStatus responseStatus);
-        void WriteFinishedWithException(Request request, Exception exception);
+        Info,
+        Warning,
+        Error,
+        Fatal,
+        Debug
     }
 }

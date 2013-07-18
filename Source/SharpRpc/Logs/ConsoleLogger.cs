@@ -29,6 +29,12 @@ namespace SharpRpc.Logs
 {
     public class ConsoleLogger : ILogger
     {
+        public void WriteCustom(LogEntryType type, string message, Exception exception = null)
+        {
+            Console.WriteLine("{0}: {1}", type.ToString().ToUpper(), message);
+            WriteException(exception);
+        }
+
         public void WriteIncoming(Request request)
         {
             Console.WriteLine("Incoming: {0} for scope '{1}'", request.Path, request.ServiceScope);
@@ -47,14 +53,18 @@ namespace SharpRpc.Logs
         public void WriteFinishedWithException(Request request, Exception exception)
         {
             Console.WriteLine("Exception: {0} for scope '{1}'", request.Path, request.ServiceScope);
-            do
+            WriteException(exception);
+        }
+
+        private static void WriteException(Exception exception)
+        {
+            while (exception != null)
             {
                 Console.WriteLine(exception.Message);
                 Console.WriteLine(exception.StackTrace);
                 Console.WriteLine("--- end of stack trace ---");
                 exception = exception.InnerException;
-            } 
-            while (exception != null);
+            }
         }
     }
 }
