@@ -29,10 +29,10 @@ namespace SharpRpc.Logs
 {
     public interface ILogger
     {
-        void WriteCustom(LogEntryType type, string message, Exception exception = null);
-        void WriteIncoming(Request request);
-        void WriteFinishedSuccessfully(Request request, TimeSpan executionTime);
-        void WriteFinishedWithBadStatus(Request request, ResponseStatus responseStatus);
-        void WriteFinishedWithException(Request request, Exception exception);
+        void Custom(LogEntryType type, string message, Exception exception = null);
+        void IncomingRequest(Request request);
+        void ProcessedRequestSuccessfully(Request request, TimeSpan executionTime);
+        void ProcessedRequestWithBadStatus(Request request, ResponseStatus responseStatus);
+        void ProcessedRequestWithException(Request request, Exception exception);
     }
 }

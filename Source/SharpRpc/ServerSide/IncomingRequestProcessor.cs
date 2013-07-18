@@ -52,7 +52,7 @@ namespace SharpRpc.ServerSide
         {
             try
             {
-                logger.WriteIncoming(request);
+                logger.IncomingRequest(request);
                 var startTime = DateTime.Now;
 
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
@@ -70,28 +70,28 @@ namespace SharpRpc.ServerSide
                 var responseData = methodHandler(implementationInfo.Implementation, request.Data);
 
                 var executionTime = DateTime.Now - startTime;
-                logger.WriteFinishedSuccessfully(request, executionTime);
+                logger.ProcessedRequestSuccessfully(request, executionTime);
 
                 return new Response(ResponseStatus.Ok, responseData);
             }
             catch (ServiceNotFoundException)
             {
-                logger.WriteFinishedWithBadStatus(request, ResponseStatus.ServiceNotFound);
+                logger.ProcessedRequestWithBadStatus(request, ResponseStatus.ServiceNotFound);
                 return Response.NotFound;
             }
             catch (InvalidPathException)
             {
-                logger.WriteFinishedWithBadStatus(request, ResponseStatus.BadRequest);
+                logger.ProcessedRequestWithBadStatus(request, ResponseStatus.BadRequest);
                 return Response.BadRequest;
             }
             catch (InvalidImplementationException)
             {
-                logger.WriteFinishedWithBadStatus(request, ResponseStatus.InvalidImplementation);
+                logger.ProcessedRequestWithBadStatus(request, ResponseStatus.InvalidImplementation);
                 return Response.InvalidImplementation;
             }
             catch (Exception ex)
             {
-                logger.WriteFinishedWithException(request, ex);
+                logger.ProcessedRequestWithException(request, ex);
                 var responseData = exceptionCodec.EncodeSingle(ex);
                 return new Response(ResponseStatus.Exception, responseData);
             }

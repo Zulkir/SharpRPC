@@ -29,28 +29,28 @@ namespace SharpRpc.Logs
 {
     public class ConsoleLogger : ILogger
     {
-        public void WriteCustom(LogEntryType type, string message, Exception exception = null)
+        public void Custom(LogEntryType type, string message, Exception exception = null)
         {
             Console.WriteLine("{0}: {1}", type.ToString().ToUpper(), message);
             WriteException(exception);
         }
 
-        public void WriteIncoming(Request request)
+        public void IncomingRequest(Request request)
         {
             Console.WriteLine("Incoming: {0} for scope '{1}'", request.Path, request.ServiceScope);
         }
 
-        public void WriteFinishedSuccessfully(Request request, TimeSpan executionTime)
+        public void ProcessedRequestSuccessfully(Request request, TimeSpan executionTime)
         {
             Console.WriteLine("Success: {0} for scope '{1}' within {2} ms", request.Path, request.ServiceScope, executionTime.TotalMilliseconds);
         }
 
-        public void WriteFinishedWithBadStatus(Request request, ResponseStatus responseStatus)
+        public void ProcessedRequestWithBadStatus(Request request, ResponseStatus responseStatus)
         {
             Console.WriteLine("Error ({0}): {1} for scope '{2}'", responseStatus, request.Path, request.ServiceScope);
         }
 
-        public void WriteFinishedWithException(Request request, Exception exception)
+        public void ProcessedRequestWithException(Request request, Exception exception)
         {
             Console.WriteLine("Exception: {0} for scope '{1}'", request.Path, request.ServiceScope);
             WriteException(exception);
