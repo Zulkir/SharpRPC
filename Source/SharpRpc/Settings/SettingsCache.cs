@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,35 +22,31 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace SharpRpc.TestCommon
+namespace SharpRpc.Settings
 {
-    public class MyService : IMyService, IServiceImplementation
+    public class SettingsCache : ISettingsCache
     {
-        public int Add(int a, int b)
+        private readonly ISettingsLoader loader;
+        private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> serviceSettings;
+        private IHostSettings hostSettings;
+
+        public SettingsCache(ISettingsLoader loader)
         {
-            return a + b;
+            this.loader = loader;
+            serviceSettings = new ConcurrentDictionary<string, IReadOnlyDictionary<string, string>>();
         }
 
-        public string Greet(string name)
+        public IHostSettings GetHostSettings()
         {
-            if (name == "exception")
-                throw new Exception("Hello!!!");
-            return string.Format("Hello, {0}!", name);
+            return hostSettings ?? (hostSettings = loader.LoadHostSettings());
         }
 
-        public void Dispose()
+        public IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName)
         {
-            
-        }
-
-        public ServiceImplementationState State { get; private set; }
-
-        public void Initialize(IRpcKernel kernel, IReadOnlyDictionary<string, string> settings, string scope)
-        {
-            State = ServiceImplementationState.Running;
+            return serviceSettings.GetOrAdd(serviceName, s => loader.LoadServiceSettings(s));
         }
     }
 }

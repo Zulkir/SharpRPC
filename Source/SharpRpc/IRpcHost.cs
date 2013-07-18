@@ -24,12 +24,14 @@ THE SOFTWARE.
 
 using System.Collections.Generic;
 using SharpRpc.Logs;
+using SharpRpc.Settings;
 
 namespace SharpRpc
 {
     public interface IRpcHost
     {
         ILogger Logger { get; }
+        ISettingsCache Settings { get; }
         void StartHost();
         void StopHost();
         IEnumerable<string> GetInitializedScopesFor<T>(); 

@@ -29,6 +29,6 @@ namespace SharpRpc.Settings
     public interface ISettingsLoader
     {
         IHostSettings LoadHostSettings();
-        IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName);
+        IReadOnlyDictionary<string, string> LoadServiceSettings(string serviceName);
     }
 }

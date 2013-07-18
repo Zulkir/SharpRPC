@@ -52,7 +52,7 @@ namespace SharpRpc.Settings
             return hostSettingsParser.Parse(File.ReadAllText(hostSettingsPath, encoding));
         }
 
-        public IReadOnlyDictionary<string, string> GetServiceSettings(string serviceName)
+        public IReadOnlyDictionary<string, string> LoadServiceSettings(string serviceName)
         {
             return serviceSettingsParser.Parse(File.ReadAllText(getServiceSettingsPath(serviceName), encoding));
         }

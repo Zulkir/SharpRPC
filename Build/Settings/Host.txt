@@ -1,0 +1,2 @@
+http://localhost:7001
+SharpRpc.TestCommon 	SharpRpc.TestCommon.IMyService 		SharpRpc.TestCommon.MyService

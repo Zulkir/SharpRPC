@@ -25,13 +25,19 @@ THE SOFTWARE.
 using System;
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
+using SharpRpc.Logs;
 using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
+using SharpRpc.Settings;
+using SharpRpc.Topology;
 
 namespace SharpRpc
 {
     public class RpcComponentOverrides
     {
+        public Func<IRpcComponentContainer, ITopologyLoader> TopologyLoader { get; set; }
+        public Func<IRpcComponentContainer, ISettingsLoader> SettingsLoader { get; set; }
+        public Func<IRpcComponentContainer, ILogger> Logger { get; set; }
         public Func<IRpcComponentContainer, IServiceDescriptionBuilder> ServiceDescriptionBuilder { get; set; }
         public Func<IRpcComponentContainer, IMethodDescriptionBuilder> MethodDescriptionBuilder { get; set; }
         public Func<IRpcComponentContainer, IServiceImplementationContainer> ServiceImplementationContainer { get; set; }

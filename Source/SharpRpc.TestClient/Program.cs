@@ -23,7 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using SharpRpc.Logs;
+using System.Text;
 using SharpRpc.Settings;
 using SharpRpc.TestCommon;
 using SharpRpc.Topology;
@@ -34,9 +34,10 @@ namespace SharpRpc.TestClient
     {
         static void Main(string[] args)
         {
-            var topology = new TopologyParser().Parse(@"MyService single http://localhost:7001");
-            var hostSettings = HostSettings.Empty;
-            var kernel = new RpcKernel(topology, hostSettings, new ConsoleLogger());
+            var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
+            var settingsLoader = new SettingsLoader("../Settings/Host.txt", x => string.Format("../Settings/{0}.txt", x), 
+                Encoding.UTF8, new HostSettingsParser(), new ServiceSettingsParser());
+            var kernel = new RpcKernel(topologyLoader, settingsLoader);
 
             var client = kernel.GetService<IMyService>(null);
 

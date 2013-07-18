@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
+using SharpRpc.Logs;
 using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 
@@ -32,6 +33,7 @@ namespace SharpRpc
     public interface IRpcComponentContainer
     {
         IRpcKernel Kernel { get; }
+        ILogger GetLogger();
         IMethodDescriptionBuilder GetMethodDescriptionBuilder();
         IServiceDescriptionBuilder GetServiceDescriptionBuilder();
         IServiceImplementationContainer GetServiceImplementationContainer();

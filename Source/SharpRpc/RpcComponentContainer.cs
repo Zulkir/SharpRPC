@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
+using SharpRpc.Logs;
 using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 
@@ -34,6 +35,7 @@ namespace SharpRpc
         private readonly IRpcKernel kernel;
         private readonly RpcComponentOverrides overrides;
 
+        private ILogger logger;
         private IMethodDescriptionBuilder methodDescriptionBuilder;
         private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private IServiceImplementationContainer serviceImplementationContainer;
@@ -54,6 +56,13 @@ namespace SharpRpc
         }
 
         public IRpcKernel Kernel { get { return kernel; } }
+
+        public ILogger GetLogger()
+        {
+            return logger ?? (logger = overrides.Logger != null
+                ? overrides.Logger(this)
+                : new ConsoleLogger());
+        }
 
         public IMethodDescriptionBuilder GetMethodDescriptionBuilder()
         {

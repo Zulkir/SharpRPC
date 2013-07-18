@@ -58,7 +58,8 @@ namespace SharpRpc.ServerSide
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
-                    ThreadGuard.RunOnce(implementationInfo.Implementation, x => x.Initialize(kernel, request.ServiceScope));
+                    ThreadGuard.RunOnce(implementationInfo.Implementation, x =>
+                        x.Initialize(kernel, kernel.Settings.GetServiceSettings(request.Path.ServiceName), request.ServiceScope));
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
                     return Response.InvalidImplementation;
 
