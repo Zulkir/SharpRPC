@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +22,19 @@ THE SOFTWARE.
 */
 #endregion
 
+using SharpRpc.Logs;
+using SharpRpc.ServerSide;
+
 namespace SharpRpc
 {
-    public interface IRpcKernel : IRpcClient, IRpcHost
+    public interface IRpcClientServerComponentContainer : IRpcClientComponentContainer
     {
+        IRpcServer Server { get; }
+        ILogger GetLogger();
+        IServiceImplementationContainer GetServiceImplementationContainer();
+        IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
+        IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
+        IIncomingRequestProcessor GetIncomingRequestProcessor();
+        IRequestReceiverContainer GetRequestReceiverContainer();
     }
 }

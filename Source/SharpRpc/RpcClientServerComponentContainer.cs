@@ -22,62 +22,37 @@ THE SOFTWARE.
 */
 #endregion
 
-using SharpRpc.ClientSide;
-using SharpRpc.Codecs;
 using SharpRpc.Logs;
-using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 
 namespace SharpRpc
 {
-    public class RpcComponentContainer : IRpcComponentContainer
+    public class RpcClientServerComponentContainer : RpcClientComponentContainer, IRpcClientServerComponentContainer
     {
-        private readonly IRpcKernel kernel;
+        private readonly IRpcClientServer clientServer;
         private readonly RpcComponentOverrides overrides;
 
         private ILogger logger;
-        private IMethodDescriptionBuilder methodDescriptionBuilder;
-        private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private IServiceImplementationContainer serviceImplementationContainer;
-        private ICodecContainer codecContainer;
         private IServiceMethodHandlerFactory serviceMethodHandlerFactory;
         private IServiceMethodHandlerContainer serviceMethodHandlerContainer;
         private IIncomingRequestProcessor incomingRequestProcessor;
         private IRequestReceiverContainer requestReceiverContainer;
-        private IRequestSenderContainer requestSenderContainer;
-        private IOutgoingMethodCallProcessor outgoingMethodCallProcessor;
-        private IServiceProxyClassFactory serviceProxyClassFactory;
-        private IServiceProxyContainer serviceProxyContainer;
 
-        public RpcComponentContainer(IRpcKernel kernel, RpcComponentOverrides overrides)
+        public RpcClientServerComponentContainer(IRpcClientServer clientServer, RpcComponentOverrides overrides) 
+            : base(clientServer, overrides)
         {
-            this.kernel = kernel;
+            this.clientServer = clientServer;
             this.overrides = overrides;
         }
 
-        public IRpcKernel Kernel { get { return kernel; } }
+        public IRpcServer Server { get { return clientServer; } }
 
         public ILogger GetLogger()
         {
             return logger ?? (logger = overrides.Logger != null
                 ? overrides.Logger(this)
                 : new ConsoleLogger());
-        }
-
-        public IMethodDescriptionBuilder GetMethodDescriptionBuilder()
-        {
-            return methodDescriptionBuilder ?? (methodDescriptionBuilder =
-                                                (overrides.MethodDescriptionBuilder != null 
-                                                     ? overrides.MethodDescriptionBuilder(this)
-                                                     : new MethodDescriptionBuilder()));
-        }
-
-        public IServiceDescriptionBuilder GetServiceDescriptionBuilder()
-        {
-            return serviceDescriptionBuilder ?? (serviceDescriptionBuilder = 
-                                                 overrides.ServiceDescriptionBuilder != null
-                                                     ? overrides.ServiceDescriptionBuilder(this) 
-                                                     : new ServiceDescriptionBuilder(GetMethodDescriptionBuilder()));
         }
 
         public IServiceImplementationContainer GetServiceImplementationContainer()
@@ -88,13 +63,7 @@ namespace SharpRpc
                                                           : new ServiceImplementationContainer(GetServiceDescriptionBuilder()));
         }
 
-        public ICodecContainer GetCodecContainer()
-        {
-            return codecContainer ?? (codecContainer =
-                                      overrides.CodecContainer != null
-                                          ? overrides.CodecContainer(this)
-                                          : new CodecContainer());
-        }
+        
 
         public IServiceMethodHandlerFactory GetServiceMethodHandlerFactory()
         {
@@ -117,7 +86,7 @@ namespace SharpRpc
             return incomingRequestProcessor ?? (incomingRequestProcessor =
                                                 overrides.IncomingRequestProcessor != null
                                                     ? overrides.IncomingRequestProcessor(this)
-                                                    : new IncomingRequestProcessor(kernel, GetServiceImplementationContainer(), 
+                                                    : new IncomingRequestProcessor(clientServer, GetServiceImplementationContainer(), 
                                                                                    GetServiceMethodHandlerContainer(), GetCodecContainer()));
         }
 
@@ -127,38 +96,6 @@ namespace SharpRpc
                                                 overrides.RequestReceiverContainer != null
                                                     ? overrides.RequestReceiverContainer(this)
                                                     : new RequestReceiverContainer(GetIncomingRequestProcessor()));
-        }
-
-        public IRequestSenderContainer GetRequestSenderContainer()
-        {
-            return requestSenderContainer ?? (requestSenderContainer =
-                                              overrides.RequestSenderContainer != null
-                                                  ? overrides.RequestSenderContainer(this)
-                                                  : new RequestSenderContainer());
-        }
-
-        public IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor()
-        {
-            return outgoingMethodCallProcessor ?? (outgoingMethodCallProcessor =
-                                                   overrides.OutgoingMethodCallProcessor != null
-                                                       ? overrides.OutgoingMethodCallProcessor(this)
-                                                       : new OutgoingMethodCallProcessor(kernel.Topology, GetRequestSenderContainer(), GetCodecContainer()));
-        }
-
-        public IServiceProxyClassFactory GetServiceProxyClassFactory()
-        {
-            return serviceProxyClassFactory ?? (serviceProxyClassFactory =
-                                                overrides.ServiceProxyClassFactory != null
-                                                    ? overrides.ServiceProxyClassFactory(this)
-                                                    : new ServiceProxyClassFactory(GetServiceDescriptionBuilder(), GetCodecContainer()));
-        }
-
-        public IServiceProxyContainer GetIServiceProxyContainer()
-        {
-            return serviceProxyContainer ?? (serviceProxyContainer =
-                                             overrides.ServiceProxyContainer != null
-                                                 ? overrides.ServiceProxyContainer(this)
-                                                 : new ServiceProxyContainer(GetOutgoingMethodCallProcessor(), GetServiceProxyClassFactory()));
         }
     }
 }

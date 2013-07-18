@@ -51,7 +51,7 @@ namespace SharpRpc.Tests.ServerSide
         class MyServiceImplementation : IMyService, IMyOtherService, IServiceImplementation
         {
             public ServiceImplementationState State { get; private set; }
-            public void Initialize(IRpcKernel kernel, IReadOnlyDictionary<string, string> settings, string scope) { throw new NotImplementedException(); }
+            public void Initialize(IRpcServer server, IReadOnlyDictionary<string, string> settings, string scope) { throw new NotImplementedException(); }
             public void Dispose() { throw new NotImplementedException(); }
             public void DoSomething() { throw new NotImplementedException(); }
         }

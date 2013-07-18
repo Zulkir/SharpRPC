@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,21 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Logs;
-using SharpRpc.ServerSide;
+using SharpRpc.ClientSide;
+using SharpRpc.Codecs;
+using SharpRpc.Reflection;
 
 namespace SharpRpc
 {
-    public class RpcComponentOverrides : RpcClientComponentOverrides
+    public interface IRpcClientComponentContainer
     {
-        public Func<IRpcClientServerComponentContainer, ILogger> Logger { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceImplementationContainer> ServiceImplementationContainer { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerFactory> ServiceMethodHandlerFactory { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerContainer> ServiceMethodHandlerContainer { get; set; }
-        public Func<IRpcClientServerComponentContainer, IIncomingRequestProcessor> IncomingRequestProcessor { get; set; }
-        public Func<IRpcClientServerComponentContainer, IRequestReceiverContainer> RequestReceiverContainer { get; set; }
+        IRpcClient Client { get; }
+        IMethodDescriptionBuilder GetMethodDescriptionBuilder();
+        IServiceDescriptionBuilder GetServiceDescriptionBuilder();
+        ICodecContainer GetCodecContainer();
+        IRequestSenderContainer GetRequestSenderContainer();
+        IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor();
+        IServiceProxyClassFactory GetServiceProxyClassFactory();
+        IServiceProxyContainer GetIServiceProxyContainer();
     }
 }

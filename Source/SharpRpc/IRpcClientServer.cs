@@ -22,19 +22,9 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Logs;
-using SharpRpc.ServerSide;
-
 namespace SharpRpc
 {
-    public class RpcComponentOverrides : RpcClientComponentOverrides
+    public interface IRpcClientServer : IRpcClient, IRpcServer
     {
-        public Func<IRpcClientServerComponentContainer, ILogger> Logger { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceImplementationContainer> ServiceImplementationContainer { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerFactory> ServiceMethodHandlerFactory { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerContainer> ServiceMethodHandlerContainer { get; set; }
-        public Func<IRpcClientServerComponentContainer, IIncomingRequestProcessor> IncomingRequestProcessor { get; set; }
-        public Func<IRpcClientServerComponentContainer, IRequestReceiverContainer> RequestReceiverContainer { get; set; }
     }
 }

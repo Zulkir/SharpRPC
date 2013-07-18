@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Text;
-using SharpRpc.Settings;
 using SharpRpc.TestCommon;
 using SharpRpc.Topology;
 
@@ -35,11 +34,9 @@ namespace SharpRpc.TestClient
         static void Main(string[] args)
         {
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
-            var settingsLoader = new SettingsLoader("../Settings/Host.txt", x => string.Format("../Settings/{0}.txt", x), 
-                Encoding.UTF8, new HostSettingsParser(), new ServiceSettingsParser());
-            var kernel = new RpcKernel(topologyLoader, settingsLoader);
+            var client = new RpcClient(topologyLoader);
 
-            var client = kernel.GetService<IMyService>(null);
+            var myService = client.GetService<IMyService>(null);
 
             string line;
             while ((line = Console.ReadLine()) != "exit")
@@ -50,7 +47,7 @@ namespace SharpRpc.TestClient
                     {
                         Console.Write("Enter a name: ");
                         var name = Console.ReadLine();
-                        var greeting = client.Greet(name);
+                        var greeting = myService.Greet(name);
                         Console.WriteLine(greeting);
                     }
                     break;
@@ -60,7 +57,7 @@ namespace SharpRpc.TestClient
                         var a = int.Parse(Console.ReadLine());
                         Console.Write("Enter b: ");
                         var b = int.Parse(Console.ReadLine());
-                        var sum = client.Add(a, b);
+                        var sum = myService.Add(a, b);
                         Console.WriteLine(sum);
                     }
                     break;

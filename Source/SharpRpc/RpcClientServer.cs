@@ -33,7 +33,7 @@ using SharpRpc.Topology;
 
 namespace SharpRpc
 {
-    public class RpcKernel : IRpcKernel
+    public class RpcClientServer : IRpcClientServer
     {
         private readonly ITopology topology;
         private readonly ISettingsCache settingsCache;
@@ -43,11 +43,11 @@ namespace SharpRpc
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcKernel(ITopologyLoader topologyLoader, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
+        public RpcClientServer(ITopologyLoader topologyLoader, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
         {
             topology = topologyLoader.Load();
             settingsCache = new SettingsCache(settingsLoader);
-            var componentContainer = new RpcComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
+            var componentContainer = new RpcClientServerComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
             logger = componentContainer.GetLogger();
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
             foreach (var pair in settingsCache.GetHostSettings().GetInterfaceImplementationsPairs())

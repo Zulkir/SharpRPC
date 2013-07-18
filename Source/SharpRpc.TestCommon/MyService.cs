@@ -48,7 +48,7 @@ namespace SharpRpc.TestCommon
 
         public ServiceImplementationState State { get; private set; }
 
-        public void Initialize(IRpcKernel kernel, IReadOnlyDictionary<string, string> settings, string scope)
+        public void Initialize(IRpcServer server, IReadOnlyDictionary<string, string> settings, string scope)
         {
             State = ServiceImplementationState.Running;
         }

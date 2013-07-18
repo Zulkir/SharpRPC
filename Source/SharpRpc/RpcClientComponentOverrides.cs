@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,29 +22,21 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
-using SharpRpc.Logs;
 using SharpRpc.Reflection;
-using SharpRpc.ServerSide;
 
 namespace SharpRpc
 {
-    public interface IRpcComponentContainer
+    public class RpcClientComponentOverrides
     {
-        IRpcKernel Kernel { get; }
-        ILogger GetLogger();
-        IMethodDescriptionBuilder GetMethodDescriptionBuilder();
-        IServiceDescriptionBuilder GetServiceDescriptionBuilder();
-        IServiceImplementationContainer GetServiceImplementationContainer();
-        ICodecContainer GetCodecContainer();
-        IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
-        IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
-        IIncomingRequestProcessor GetIncomingRequestProcessor();
-        IRequestReceiverContainer GetRequestReceiverContainer();
-        IRequestSenderContainer GetRequestSenderContainer();
-        IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor();
-        IServiceProxyClassFactory GetServiceProxyClassFactory();
-        IServiceProxyContainer GetIServiceProxyContainer();
+        public Func<IRpcClientComponentContainer, IServiceDescriptionBuilder> ServiceDescriptionBuilder { get; set; }
+        public Func<IRpcClientComponentContainer, IMethodDescriptionBuilder> MethodDescriptionBuilder { get; set; }
+        public Func<IRpcClientComponentContainer, ICodecContainer> CodecContainer { get; set; }
+        public Func<IRpcClientComponentContainer, IRequestSenderContainer> RequestSenderContainer { get; set; }
+        public Func<IRpcClientComponentContainer, IOutgoingMethodCallProcessor> OutgoingMethodCallProcessor { get; set; }
+        public Func<IRpcClientComponentContainer, IServiceProxyClassFactory> ServiceProxyClassFactory { get; set; }
+        public Func<IRpcClientComponentContainer, IServiceProxyContainer> ServiceProxyContainer { get; set; }
     }
 }

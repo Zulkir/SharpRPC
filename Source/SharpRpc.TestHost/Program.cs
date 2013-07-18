@@ -36,7 +36,7 @@ namespace SharpRpc.TestHost
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
             var settingsLoader = new SettingsLoader("../Settings/Host.txt", x => string.Format("../Settings/{0}.txt", x),
                 Encoding.UTF8, new HostSettingsParser(), new ServiceSettingsParser());
-            var kernel = new RpcKernel(topologyLoader, settingsLoader);
+            var kernel = new RpcClientServer(topologyLoader, settingsLoader);
 
             kernel.StartHost();
 

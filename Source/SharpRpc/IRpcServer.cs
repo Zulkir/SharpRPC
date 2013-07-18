@@ -28,7 +28,7 @@ using SharpRpc.Settings;
 
 namespace SharpRpc
 {
-    public interface IRpcHost
+    public interface IRpcServer
     {
         ILogger Logger { get; }
         ISettingsCache Settings { get; }
