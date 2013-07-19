@@ -60,7 +60,7 @@ namespace SharpRpc
         public ILogger Logger { get { return logger; } }
         public ISettingsCache Settings { get { return settingsCache; } }
 
-        public T GetService<T>(string scope) where T : class
+        public T GetService<T>(string scope = null) where T : class
         {
             var serviceName = typeof(T).GetServiceName();
 

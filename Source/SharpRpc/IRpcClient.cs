@@ -29,6 +29,6 @@ namespace SharpRpc
     public interface IRpcClient
     {
         ITopology Topology { get; }
-        T GetService<T>(string scope) where T : class; 
+        T GetService<T>(string scope = null) where T : class; 
     }
 }

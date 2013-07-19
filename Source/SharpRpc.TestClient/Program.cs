@@ -36,7 +36,7 @@ namespace SharpRpc.TestClient
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
             var client = new RpcClient(topologyLoader);
 
-            var myService = client.GetService<IMyService>(null);
+            var myService = client.GetService<IMyService>();
 
             string line;
             while ((line = Console.ReadLine()) != "exit")

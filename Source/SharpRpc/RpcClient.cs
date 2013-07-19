@@ -42,7 +42,7 @@ namespace SharpRpc
 
         public ITopology Topology { get { return topology; } }
 
-        public T GetService<T>(string scope) where T : class
+        public T GetService<T>(string scope = null) where T : class
         {
             var serviceName = typeof(T).GetServiceName();
 
