@@ -82,6 +82,7 @@
     <Compile Include="Settings\HostSettingsParser.cs" />
     <Compile Include="Settings\ISettingsCache.cs" />
     <Compile Include="Settings\SettingsCache.cs" />
+    <Compile Include="Topology\EndPointServiceTopology.cs" />
     <Compile Include="Topology\ITopologyLoader.cs" />
     <Compile Include="Topology\ITopologyParser.cs" />
     <Compile Include="Settings\SettingsLoader.cs" />

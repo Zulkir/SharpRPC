@@ -34,8 +34,8 @@ namespace SharpRpc.Topology
     {
         private static readonly char[] LineBreaks = new[] { '\r', '\n' };
         private static readonly char[] Comma = new [] {','};
-        private static readonly Regex ServiceTopologyRegex = new Regex(@"^(\w+)\s+(\w+)\s+([^\s].*)$");
-        private static readonly Regex MapElementRegex = new Regex(@"^(\w+)\s+([^\s]+)$");
+        private static readonly Regex ServiceTopologyRegex = new Regex(@"^(\w+)\s+(\w+)(\s+([^\s].*))?$");
+        private static readonly Regex MapElementRegex = new Regex(@"^([\@\w]+)\s+([^\s]+)$");
 
         public ITopology Parse(string text)
         {
@@ -50,7 +50,7 @@ namespace SharpRpc.Topology
                 throw new InvalidDataException(string.Format("'{0}' is not a valid service topology description", line));
             var serviceName = match.Groups[1].Value;
             var serviceTopologyType = match.Groups[2].Value;
-            var endPointsText = match.Groups[3].Value;
+            var endPointsText = match.Groups[4].Value;
 
             IServiceTopology serviceTopology;
             switch (serviceTopologyType)
@@ -59,6 +59,7 @@ namespace SharpRpc.Topology
                 case "even": serviceTopology = ParseEvenlyDistibutedServiceTopology(endPointsText); break;
                 case "random": serviceTopology = ParseRandomServiceTopology(endPointsText); break;
                 case "map": serviceTopology = ParseMapServiceTopology(endPointsText); break;
+                case "endpoint": serviceTopology = new EndPointServiceTopology(); break;
                 default: throw new InvalidDataException(string.Format("Unknown service topology type '{0}'", serviceTopologyType));
             }
 

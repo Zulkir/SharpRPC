@@ -85,6 +85,11 @@ namespace SharpRpc
 
         public static bool TryParse(string endPointString, out ServiceEndPoint endPoint)
         {
+            if (endPointString == null)
+            {
+                endPoint = default(ServiceEndPoint);
+                return false;
+            }
             var match = EndPointRegex.Match(endPointString);
             if (!match.Success)
             {

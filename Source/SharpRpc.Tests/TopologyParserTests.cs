@@ -45,7 +45,9 @@ namespace SharpRpc.Tests
             const string text = @"Storage			     single	      http://myhost:7000
                                   OrganizationDispatcher even         http://myhost:7020, http://myhost:7120, http://myhost:7220, http://myhost:7320 
 
-                                  MappedService          map          scope123 http://myhost:7123, scope234 http://myhost:7234, scope345 http://myhost:7345";
+                                  MappedService          map          @null http://myhost:7123, scope234 http://myhost:7234, scope345 http://myhost:7345, scope456 http://myhost:7456
+
+                                  HealthService          endpoint";
             var topology = parser.Parse(text);
             //Assert.That(parser.TryParse(text, out topology), Is.True);
             AssertEndPoint(topology, "Storage", null, new ServiceEndPoint("http", "myhost", 7000));
@@ -54,9 +56,11 @@ namespace SharpRpc.Tests
             AssertEndPoint(topology, "OrganizationDispatcher", GetStringWithHashCode(1), new ServiceEndPoint("http", "myhost", 7120));
             AssertEndPoint(topology, "OrganizationDispatcher", GetStringWithHashCode(2), new ServiceEndPoint("http", "myhost", 7220));
             AssertEndPoint(topology, "OrganizationDispatcher", GetStringWithHashCode(3), new ServiceEndPoint("http", "myhost", 7320));
-            AssertEndPoint(topology, "MappedService", "scope123", new ServiceEndPoint("http", "myhost", 7123));
+            AssertEndPoint(topology, "MappedService", null, new ServiceEndPoint("http", "myhost", 7123));
             AssertEndPoint(topology, "MappedService", "scope234", new ServiceEndPoint("http", "myhost", 7234));
             AssertEndPoint(topology, "MappedService", "scope345", new ServiceEndPoint("http", "myhost", 7345));
+            AssertEndPoint(topology, "MappedService", "scope456", new ServiceEndPoint("http", "myhost", 7456));
+            AssertEndPoint(topology, "HealthService", "http://myhost:1234", new ServiceEndPoint("http", "myhost", 1234));
         }
 
         [Test]
