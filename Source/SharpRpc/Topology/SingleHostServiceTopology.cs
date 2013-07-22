@@ -22,6 +22,8 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
+
 namespace SharpRpc.Topology
 {
     public class SingleHostServiceTopology : IServiceTopology
@@ -31,6 +33,11 @@ namespace SharpRpc.Topology
         public SingleHostServiceTopology(ServiceEndPoint endPoint)
         {
             this.endPoint = endPoint;
+        }
+
+        public IEnumerable<ServiceEndPoint> GetAllKnownEndPoints()
+        {
+            yield return endPoint;
         }
 
         public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)

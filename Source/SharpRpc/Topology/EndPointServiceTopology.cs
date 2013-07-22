@@ -22,10 +22,17 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
+
 namespace SharpRpc.Topology
 {
     public class EndPointServiceTopology : IServiceTopology
     {
+        public IEnumerable<ServiceEndPoint> GetAllKnownEndPoints()
+        {
+            yield break;
+        }
+
         public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
             return ServiceEndPoint.TryParse(scope, out endPoint);

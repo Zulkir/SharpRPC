@@ -38,6 +38,14 @@ namespace SharpRpc.Topology
             this.endPoints = endPoints.ToDictionary(x => x.Key, x => x.Value);
         }
 
+        public IEnumerable<ServiceEndPoint> GetAllKnownEndPoints()
+        {
+            if (nullEndPoint.HasValue)
+                yield return nullEndPoint.Value;
+            foreach (var endPoint in endPoints.Values)
+                yield return endPoint;
+        }
+
         public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
             if (scope == null)

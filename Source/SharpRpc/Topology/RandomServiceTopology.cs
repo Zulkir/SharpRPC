@@ -47,6 +47,11 @@ namespace SharpRpc.Topology
                 throw new ArgumentException("End point collection must have at least one element", "endPoints");
         }
 
+        public IEnumerable<ServiceEndPoint> GetAllKnownEndPoints()
+        {
+            return endPoints;
+        }
+
         public bool TryGetEndPoint(string scope, out ServiceEndPoint endPoint)
         {
             int index = random.Next(0, endPoints.Length);

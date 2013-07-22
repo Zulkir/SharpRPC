@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SharpRpc.Topology
 {
@@ -46,6 +47,11 @@ namespace SharpRpc.Topology
         {
             if (!serviceTopologies.TryAdd(serviceName, serviceTopology))
                 throw new InvalidOperationException(string.Format("Topology f the service '{0}' is already present", serviceName));
+        }
+
+        public IEnumerable<ServiceEndPoint> GetAllKnownEndPoints()
+        {
+            return serviceTopologies.SelectMany(x => x.Value.GetAllKnownEndPoints());
         }
 
         public bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint)

@@ -22,10 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
+
 namespace SharpRpc.Topology
 {
     public interface ITopology
     {
+        IEnumerable<ServiceEndPoint> GetAllKnownEndPoints();
         bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint);
     }
 }
