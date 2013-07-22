@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using SharpRpc.Topology;
 
@@ -72,8 +73,10 @@ namespace SharpRpc.Tests
             int c0 = 0, c1 = 0, c2 = 0;
             for (int i = 0; i < 100; i++)
             {
+                IServiceTopology serviceTopology;
                 ServiceEndPoint endPoint;
-                Assert.That(topology.TryGetEndPoint("Print", null, out endPoint), Is.True);
+                Assert.That(topology.TryGetValue("Print", out serviceTopology), Is.True);
+                Assert.That(serviceTopology.TryGetEndPoint(null, out endPoint), Is.True);
                 switch (endPoint.Port)
                 {
                     case 7008: c0++; break;
@@ -99,10 +102,12 @@ namespace SharpRpc.Tests
             }
         }
 
-        private static void AssertEndPoint(ITopology topology, string serviceName, string scope, ServiceEndPoint expectedEndPoint)
+        private static void AssertEndPoint(IReadOnlyDictionary<string, IServiceTopology> topology, string serviceName, string scope, ServiceEndPoint expectedEndPoint)
         {
+            IServiceTopology serviceTopology;
             ServiceEndPoint endPoint;
-            Assert.That(topology.TryGetEndPoint(serviceName, scope, out endPoint), Is.True);
+            Assert.That(topology.TryGetValue(serviceName, out serviceTopology), Is.True);
+            Assert.That(serviceTopology.TryGetEndPoint(scope, out endPoint), Is.True);
             Assert.That(endPoint, Is.EqualTo(expectedEndPoint));
         }
     }

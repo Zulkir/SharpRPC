@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -32,11 +33,11 @@ namespace SharpRpc.ClientSide
 {
     public class OutgoingMethodCallProcessor : IOutgoingMethodCallProcessor
     {
-        private readonly ITopology topology;
+        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
         private readonly IRequestSenderContainer requestSenderContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
 
-        public OutgoingMethodCallProcessor(ITopology topology, IRequestSenderContainer requestSenderContainer, ICodecContainer codecContainer)
+        public OutgoingMethodCallProcessor(IReadOnlyDictionary<string, IServiceTopology> topology, IRequestSenderContainer requestSenderContainer, ICodecContainer codecContainer)
         {
             this.topology = topology;
             this.requestSenderContainer = requestSenderContainer;
@@ -50,12 +51,7 @@ namespace SharpRpc.ClientSide
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid service path", pathSeparatedBySlashes));
 
             var serviceName = serviceInterface.GetServiceName();
-
-            ServiceEndPoint endPoint;
-            if (!topology.TryGetEndPoint(serviceName, serviceScope, out endPoint))
-                throw new ServiceTopologyException(string.Format("End point for {0} scope of {1} was not found in the topology",
-                    serviceName, serviceScope));
-
+            var endPoint = topology.GetEndPoint(serviceName, serviceScope);
             var sender = requestSenderContainer.GetSender(endPoint.Protocol);
             var request = new Request(path, serviceScope, data);
 

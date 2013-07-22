@@ -37,10 +37,10 @@ namespace SharpRpc.Topology
         private static readonly Regex ServiceTopologyRegex = new Regex(@"^(\w+)\s+(\w+)(\s+([^\s].*))?$");
         private static readonly Regex MapElementRegex = new Regex(@"^([\@\w]+)\s+([^\s]+)$");
 
-        public ITopology Parse(string text)
+        public IReadOnlyDictionary<string, IServiceTopology> Parse(string text)
         {
             var lines = text.Split(LineBreaks, StringSplitOptions.RemoveEmptyEntries);
-            return new Topology(lines.Select(ParseServiceNameAndTopology));
+            return lines.Select(ParseServiceNameAndTopology).ToDictionary(x => x.Key, x => x.Value);
         }
 
         private static KeyValuePair<string, IServiceTopology> ParseServiceNameAndTopology(string line)

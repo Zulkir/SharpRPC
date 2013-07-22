@@ -22,13 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
 using SharpRpc.Topology;
 
 namespace SharpRpc
 {
     public interface IRpcClient
     {
-        ITopology Topology { get; }
+        IReadOnlyDictionary<string, IServiceTopology> Topology { get; }
         T GetService<T>(string scope = null) where T : class; 
     }
 }

@@ -22,15 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #endregion
+
+using System.Collections.Generic;
 using SharpRpc.ClientSide;
-using SharpRpc.Reflection;
 using SharpRpc.Topology;
 
 namespace SharpRpc
 {
     public class RpcClient : IRpcClient
     {
-        private readonly ITopology topology;
+        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
         public RpcClient(ITopologyLoader topologyLoader, RpcClientComponentOverrides componentOverrides = null)
@@ -40,17 +41,10 @@ namespace SharpRpc
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
-        public ITopology Topology { get { return topology; } }
+        public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
 
         public T GetService<T>(string scope = null) where T : class
         {
-            var serviceName = typeof(T).GetServiceName();
-
-            ServiceEndPoint serviceEndPoint;
-            if (!topology.TryGetEndPoint(serviceName, scope, out serviceEndPoint))
-                throw new ServiceTopologyException(string.Format(
-                    "Service '{0}' with scope '{1}' was not found in the topology", serviceName, scope));
-
             return serviceProxyContainer.GetProxy<T>(scope);
         }
     }

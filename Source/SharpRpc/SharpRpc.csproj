@@ -106,7 +106,7 @@
     <Compile Include="Settings\ServiceSettingsParser.cs" />
     <Compile Include="Topology\SingleHostServiceTopology.cs" />
     <Compile Include="Logs\ConsoleLogger.cs" />
-    <Compile Include="Topology\Topology.cs" />
+    <Compile Include="Topology\TopologyExtensions.cs" />
     <Compile Include="Topology\TopologyLoader.cs" />
     <Compile Include="Topology\TopologyParser.cs" />
     <Compile Include="Utility\CommonImmutables.cs" />
@@ -143,7 +143,6 @@
     <Compile Include="Reflection\MethodParameterWay.cs" />
     <Compile Include="Reflection\SubserviceDescription.cs" />
     <Compile Include="IServiceImplementation.cs" />
-    <Compile Include="Topology\ITopology.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerSide\IIncomingRequestProcessor.cs" />
     <Compile Include="ServerSide\IServiceImplementationContainer.cs" />

@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -40,7 +41,7 @@ namespace SharpRpc.Topology
             this.topologyParser = topologyParser;
         }
 
-        public ITopology Load()
+        public IReadOnlyDictionary<string, IServiceTopology> Load()
         {
             var text = File.ReadAllText(topologyPath, encoding);
             return topologyParser.Parse(text);

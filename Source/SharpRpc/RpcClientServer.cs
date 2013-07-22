@@ -35,7 +35,7 @@ namespace SharpRpc
 {
     public class RpcClientServer : IRpcClientServer
     {
-        private readonly ITopology topology;
+        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
         private readonly ISettingsCache settingsCache;
         private readonly ILogger logger;
         
@@ -56,22 +56,15 @@ namespace SharpRpc
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
-        public ITopology Topology { get { return topology; } }
+        public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
         public ILogger Logger { get { return logger; } }
         public ISettingsCache Settings { get { return settingsCache; } }
 
         public T GetService<T>(string scope = null) where T : class
         {
             var serviceName = typeof(T).GetServiceName();
-
-            ServiceEndPoint serviceEndPoint;
-            if (!topology.TryGetEndPoint(serviceName, scope, out serviceEndPoint))
-                throw new ServiceTopologyException(string.Format(
-                    "Service '{0}' with scope '{1}' was not found in the topology", serviceName, scope));
-
-            if (serviceEndPoint == settingsCache.GetHostSettings().EndPoint)
+            if (topology.GetEndPoint(serviceName, scope) == settingsCache.GetHostSettings().EndPoint)
                 return (T)serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
-
             return serviceProxyContainer.GetProxy<T>(scope);
         }
 

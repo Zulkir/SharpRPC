@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,16 @@ using System.Collections.Generic;
 
 namespace SharpRpc.Topology
 {
-    public interface ITopology
+    public static class TopologyExtensions
     {
-        IEnumerable<ServiceEndPoint> GetAllKnownEndPoints();
-        bool TryGetEndPoint(string serviceName, string scope, out ServiceEndPoint endPoint);
+         public static ServiceEndPoint GetEndPoint(this IReadOnlyDictionary<string, IServiceTopology> topology, string serviceName, string scope)
+         {
+             IServiceTopology serviceTopology;
+             ServiceEndPoint endPoint;
+             if (!topology.TryGetValue(serviceName, out serviceTopology) || !serviceTopology.TryGetEndPoint(scope, out endPoint))
+                 throw new ServiceTopologyException(string.Format(
+                     "Service '{0}' with scope '{1}' was not found in the topology", serviceName, scope));
+             return endPoint;
+         }
     }
 }

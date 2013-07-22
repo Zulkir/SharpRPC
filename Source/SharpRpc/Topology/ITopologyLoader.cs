@@ -22,10 +22,12 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
+
 namespace SharpRpc.Topology
 {
     public interface ITopologyLoader
     {
-        ITopology Load();
+        IReadOnlyDictionary<string, IServiceTopology> Load();
     }
 }
