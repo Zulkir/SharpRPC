@@ -30,6 +30,6 @@ namespace SharpRpc
     public interface IServiceImplementation : IDisposable
     {
         ServiceImplementationState State { get; }
-        void Initialize(IRpcServer server, IReadOnlyDictionary<string, string> settings, string scope);
+        void Initialize(IRpcClientServer clientServer, IReadOnlyDictionary<string, string> settings, string scope);
     }
 }
