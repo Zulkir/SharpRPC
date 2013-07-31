@@ -70,7 +70,7 @@ namespace SharpRpc.ServerSide
             if (!implementationTypes.TryGetValue(serviceName, out pair))
                 throw new ArgumentOutOfRangeException("serviceName", string.Format("Implementation for service '{0}' was not found", serviceName));
             var implementation = (IServiceImplementation)Activator.CreateInstance(pair.ImplementationType);
-            return new ServiceImplementationInfo(pair.Interface, serviceDescriptionBuilder.Build(pair.Interface), implementation);
+            return new ServiceImplementationInfo(serviceDescriptionBuilder.Build(pair.Interface), implementation);
         }
     }
 }

@@ -49,7 +49,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             var serviceImplementation = Substitute.For<IServiceImplementation>();
             serviceImplementation.WhenForAnyArgs(x => x.Initialize(null, null)).Do(x => serviceImplementation.State.Returns(ServiceImplementationState.Running));
-            return new ServiceImplementationInfo(null, null, serviceImplementation);
+            return new ServiceImplementationInfo(null, serviceImplementation);
         }
         
         [Test]

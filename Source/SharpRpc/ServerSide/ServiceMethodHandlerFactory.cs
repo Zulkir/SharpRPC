@@ -53,7 +53,7 @@ namespace SharpRpc.ServerSide
 
         public ServiceMethodHandler CreateMethodHandler(ServiceImplementationInfo serviceImplementationInfo, ServicePath servicePath)
         {
-            var serviceInterface = serviceImplementationInfo.Interface;
+            var serviceInterface = serviceImplementationInfo.Description.Type;
 
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),

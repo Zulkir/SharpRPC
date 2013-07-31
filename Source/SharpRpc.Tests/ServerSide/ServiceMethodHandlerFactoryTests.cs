@@ -80,7 +80,7 @@ namespace SharpRpc.Tests.ServerSide
             var serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
             var globalServiceDescription =  serviceDescriptionBuilder.Build(typeof(IGlobalService));
             globalServiceImplementationInfo = 
-                new ServiceImplementationInfo(typeof(IGlobalService), globalServiceDescription, service);
+                new ServiceImplementationInfo(globalServiceDescription, service);
         }
 
         [Test]
