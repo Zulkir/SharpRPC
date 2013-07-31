@@ -22,13 +22,11 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-
 namespace SharpRpc.ServerSide
 {
-    public interface IServiceImplementationContainer
+    public interface IServiceImplementationFactory
     {
-        ServiceImplementationInfo GetImplementation(string serviceName, string scope);
-        IEnumerable<string> GetInitializedScopesFor(string serviceName);
+        bool CanCreate(string serviceName);
+        ServiceImplementationInfo CreateImplementation(string serviceName);
     }
 }

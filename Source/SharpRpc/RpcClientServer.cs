@@ -50,8 +50,6 @@ namespace SharpRpc
             var componentContainer = new RpcClientServerComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
             logger = componentContainer.GetLogger();
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
-            foreach (var pair in settingsCache.GetHostSettings().GetInterfaceImplementationsPairs())
-                serviceImplementationContainer.RegisterImplementation(pair.Interface, pair.ImplementationType);
             requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(settingsCache.GetHostSettings().EndPoint.Protocol);
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }

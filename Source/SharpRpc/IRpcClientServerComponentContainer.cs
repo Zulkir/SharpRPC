@@ -32,6 +32,7 @@ namespace SharpRpc
         IRpcServer Server { get; }
         ILogger GetLogger();
         IServiceImplementationContainer GetServiceImplementationContainer();
+        IServiceImplementationFactory GetServiceImplementationFactory();
         IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
         IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
         IIncomingRequestProcessor GetIncomingRequestProcessor();

@@ -79,6 +79,8 @@
     <Compile Include="RpcClient.cs" />
     <Compile Include="RpcClientComponentContainer.cs" />
     <Compile Include="RpcClientComponentOverrides.cs" />
+    <Compile Include="ServerSide\IServiceImplementationFactory.cs" />
+    <Compile Include="ServerSide\ServiceImplementationFactory.cs" />
     <Compile Include="Settings\HostSettingsParser.cs" />
     <Compile Include="Settings\ISettingsCache.cs" />
     <Compile Include="Settings\SettingsCache.cs" />

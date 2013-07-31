@@ -32,6 +32,7 @@ namespace SharpRpc
     {
         public Func<IRpcClientServerComponentContainer, ILogger> Logger { get; set; }
         public Func<IRpcClientServerComponentContainer, IServiceImplementationContainer> ServiceImplementationContainer { get; set; }
+        public Func<IRpcClientServerComponentContainer, IServiceImplementationFactory> ServiceImplementationFactory { get; set; }
         public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerFactory> ServiceMethodHandlerFactory { get; set; }
         public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerContainer> ServiceMethodHandlerContainer { get; set; }
         public Func<IRpcClientServerComponentContainer, IIncomingRequestProcessor> IncomingRequestProcessor { get; set; }
