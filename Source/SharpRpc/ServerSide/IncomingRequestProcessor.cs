@@ -26,23 +26,20 @@ using System;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Logs;
-using SharpRpc.Utility;
 
 namespace SharpRpc.ServerSide
 {
     public class IncomingRequestProcessor : IIncomingRequestProcessor
     {
-        private readonly IRpcClientServer clientServer;
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly IServiceMethodHandlerContainer serviceMethodHandlerContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
         private readonly ILogger logger;
 
-        public IncomingRequestProcessor(IRpcClientServer clientServer, IServiceImplementationContainer serviceImplementationContainer, 
+        public IncomingRequestProcessor(ILogger logger, IServiceImplementationContainer serviceImplementationContainer, 
             IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer)
         {
-            this.clientServer = clientServer;
-            this.logger = clientServer.Logger;
+            this.logger = logger;
             this.serviceImplementationContainer = serviceImplementationContainer;
             this.serviceMethodHandlerContainer = serviceMethodHandlerContainer;
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
@@ -56,12 +53,6 @@ namespace SharpRpc.ServerSide
                 var startTime = DateTime.Now;
 
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
-
-                if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
-                    ThreadGuard.RunOnce(implementationInfo.Implementation, x =>
-                        x.Initialize(clientServer, clientServer.Settings.GetServiceSettings(request.Path.ServiceName), request.ServiceScope));
-                if (implementationInfo.Implementation.State == ServiceImplementationState.NotInitialized)
-                    return Response.InvalidImplementation;
 
                 if (implementationInfo.Implementation.State == ServiceImplementationState.NotReady)
                     return Response.NotReady;

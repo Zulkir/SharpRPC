@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using NSubstitute;
+using NSubstitute.Core;
 using NUnit.Framework;
 using SharpRpc.ServerSide;
 
@@ -31,15 +32,31 @@ namespace SharpRpc.Tests.ServerSide
     [TestFixture]
     public class ServiceImplementationContainerTests
     {
+        private IRpcClientServer clientServer;
         private IServiceImplementationFactory serviceImplementationFactory;
         private ServiceImplementationContainer container;
 
         [SetUp]
         public void Setup()
         {
+            clientServer = Substitute.For<IRpcClientServer>();
             serviceImplementationFactory = Substitute.For<IServiceImplementationFactory>();
-            serviceImplementationFactory.CreateImplementation(null).ReturnsForAnyArgs(x => new ServiceImplementationInfo(null, null, Substitute.For<IServiceImplementation>()));
-            container = new ServiceImplementationContainer(serviceImplementationFactory);
+            serviceImplementationFactory.CreateImplementation(null).ReturnsForAnyArgs(CreateImplementationInfo);
+            container = new ServiceImplementationContainer(clientServer, serviceImplementationFactory);
+        }
+
+        private ServiceImplementationInfo CreateImplementationInfo(CallInfo callInfo)
+        {
+            var serviceImplementation = Substitute.For<IServiceImplementation>();
+            serviceImplementation.WhenForAnyArgs(x => x.Initialize(null, null, null)).Do(x => serviceImplementation.State.Returns(ServiceImplementationState.Running));
+            return new ServiceImplementationInfo(null, null, serviceImplementation);
+        }
+        
+        [Test]
+        public void Initialization()
+        {
+            var implementationInfo = container.GetImplementation("MyService", null);
+            Assert.That(implementationInfo.Implementation.State, Is.EqualTo(ServiceImplementationState.Running));
         }
 
         [Test]

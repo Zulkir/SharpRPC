@@ -61,7 +61,7 @@ namespace SharpRpc
             return serviceImplementationContainer ?? (serviceImplementationContainer =
                                                       overrides.ServiceImplementationContainer != null
                                                           ? overrides.ServiceImplementationContainer(this)
-                                                          : new ServiceImplementationContainer(GetServiceImplementationFactory()));
+                                                          : new ServiceImplementationContainer(clientServer, GetServiceImplementationFactory()));
         }
         
 
@@ -95,7 +95,7 @@ namespace SharpRpc
             return incomingRequestProcessor ?? (incomingRequestProcessor =
                                                 overrides.IncomingRequestProcessor != null
                                                     ? overrides.IncomingRequestProcessor(this)
-                                                    : new IncomingRequestProcessor(clientServer, GetServiceImplementationContainer(), 
+                                                    : new IncomingRequestProcessor(GetLogger(), GetServiceImplementationContainer(), 
                                                                                    GetServiceMethodHandlerContainer(), GetCodecContainer()));
         }
 

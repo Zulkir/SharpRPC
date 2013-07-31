@@ -62,7 +62,12 @@ namespace SharpRpc
         {
             var serviceName = typeof(T).GetServiceName();
             if (topology.GetEndPoint(serviceName, scope) == settingsCache.GetHostSettings().EndPoint)
-                return (T)serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
+            {
+                var implementation = serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
+                if (implementation.State == ServiceImplementationState.NotReady)
+                    throw new NotImplementedException();
+                return (T)implementation;
+            }   
             return serviceProxyContainer.GetProxy<T>(scope);
         }
 

@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ServerSide
 {
@@ -67,11 +68,13 @@ namespace SharpRpc.ServerSide
             }
         }
 
+        private readonly IRpcClientServer clientServer;
         private readonly IServiceImplementationFactory serviceImplementationFactory;
         private readonly ConcurrentDictionary<string, ImplementationSet> implementations;
 
-        public ServiceImplementationContainer(IServiceImplementationFactory serviceImplementationFactory)
+        public ServiceImplementationContainer(IRpcClientServer clientServer, IServiceImplementationFactory serviceImplementationFactory)
         {
+            this.clientServer = clientServer;
             this.serviceImplementationFactory = serviceImplementationFactory;
             implementations = new ConcurrentDictionary<string, ImplementationSet>();
         }
@@ -82,7 +85,21 @@ namespace SharpRpc.ServerSide
                 throw new InvalidPathException();
 
             var set = implementations.GetOrAdd(serviceName, x => new ImplementationSet(x, serviceImplementationFactory));
-            return set.GetForScope(scope);
+            var implementationInfo = set.GetForScope(scope);
+            EnsureInitialized(serviceName, scope, implementationInfo.Implementation);
+            return implementationInfo;
+        }
+
+        private void EnsureInitialized(string serviceName, string scope, IServiceImplementation implementation)
+        {
+            if (implementation.State == ServiceImplementationState.NotInitialized)
+                ThreadGuard.RunOnce(implementation, x =>
+                    {
+                        if (x.State == ServiceImplementationState.NotInitialized)
+                            x.Initialize(clientServer, clientServer.Settings.GetServiceSettings(serviceName), scope);
+                    });
+            if (implementation.State == ServiceImplementationState.NotInitialized)
+                throw new InvalidImplementationException();
         }
 
         public IEnumerable<string> GetInitializedScopesFor(string serviceName)
