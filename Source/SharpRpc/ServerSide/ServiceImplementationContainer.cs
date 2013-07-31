@@ -35,13 +35,13 @@ namespace SharpRpc.ServerSide
         {
             private readonly string serviceName;
             private readonly IServiceImplementationFactory serviceImplementationFactory;
-            private ServiceImplementationInfo? nullScopeImplementation;
-            private ConcurrentDictionary<string, ServiceImplementationInfo> scopedImplementations;
+            private readonly ConcurrentDictionary<ScopeKey, ServiceImplementationInfo> scopedImplementations;
 
             public ImplementationSet(string serviceName, IServiceImplementationFactory serviceImplementationFactory)
             {
                 this.serviceName = serviceName;
                 this.serviceImplementationFactory = serviceImplementationFactory;
+                scopedImplementations = new ConcurrentDictionary<ScopeKey, ServiceImplementationInfo>();
             }
 
             private ServiceImplementationInfo CreateNew()
@@ -51,20 +51,12 @@ namespace SharpRpc.ServerSide
 
             public ServiceImplementationInfo GetForScope(string scope)
             {
-                if (scope == null)
-                    return (nullScopeImplementation ?? (nullScopeImplementation = CreateNew())).Value;
-                if (scopedImplementations == null)
-                    scopedImplementations = new ConcurrentDictionary<string, ServiceImplementationInfo>();
-                return scopedImplementations.GetOrAdd(scope, s => CreateNew());
+                return scopedImplementations.GetOrAdd(new ScopeKey(scope), s => CreateNew());
             }
 
             public IEnumerable<string> GetInitializedScopes()
             {
-                if (nullScopeImplementation != null)
-                    yield return null;
-                if (scopedImplementations != null)
-                    foreach (var key in scopedImplementations.Keys)
-                        yield return key;
+                return scopedImplementations.Keys.Select(x => x.Scope);
             }
         }
 

@@ -148,6 +148,7 @@
     <Compile Include="ServerSide\ServiceImplementationInfo.cs" />
     <Compile Include="ServiceEndPoint.cs" />
     <Compile Include="ServiceTopologyException.cs" />
+    <Compile Include="Utility\ScopeKey.cs" />
     <Compile Include="Utility\ThreadGuard.cs" />
   </ItemGroup>
   <ItemGroup />

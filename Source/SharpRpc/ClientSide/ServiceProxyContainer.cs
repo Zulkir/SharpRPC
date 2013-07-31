@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -34,24 +35,18 @@ namespace SharpRpc.ClientSide
         {
             private readonly IOutgoingMethodCallProcessor processor;
             private readonly Func<IOutgoingMethodCallProcessor, string, T> constructor;
-            private readonly ConcurrentDictionary<string, T> scopedProxies;
-            private T nullScopeProxy;
+            private readonly ConcurrentDictionary<ScopeKey, T> scopedProxies;
 
             public ProxySet(IOutgoingMethodCallProcessor processor, Func<IOutgoingMethodCallProcessor, string, T> constructor)
             {
                 this.processor = processor;
                 this.constructor = constructor;
-                scopedProxies = new ConcurrentDictionary<string, T>();
-            }
-
-            public T GetUnscoped()
-            {
-                return nullScopeProxy ?? (nullScopeProxy = constructor(processor, null));
+                scopedProxies = new ConcurrentDictionary<ScopeKey, T>();
             }
 
             public T GetForScope(string scope)
             {
-                return scopedProxies.GetOrAdd(scope, s => constructor(processor, scope));
+                return scopedProxies.GetOrAdd(new ScopeKey(scope), s => constructor(processor, scope));
             }
         }
         #endregion
@@ -70,7 +65,7 @@ namespace SharpRpc.ClientSide
         public T GetProxy<T>(string scope) where T : class
         {
             var set = (ProxySet<T>)proxySets.GetOrAdd(typeof(T), t => new ProxySet<T>(processor, factory.CreateProxyClass<T>()));
-            return scope == null ? set.GetUnscoped() : set.GetForScope(scope);
+            return set.GetForScope(scope);
         }
     }
 }
