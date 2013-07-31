@@ -31,7 +31,6 @@ namespace SharpRpc
     public interface IRpcClientComponentContainer
     {
         IRpcClient Client { get; }
-        IMethodDescriptionBuilder GetMethodDescriptionBuilder();
         IServiceDescriptionBuilder GetServiceDescriptionBuilder();
         ICodecContainer GetCodecContainer();
         IRequestSenderContainer GetRequestSenderContainer();

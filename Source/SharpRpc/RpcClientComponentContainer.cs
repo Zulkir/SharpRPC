@@ -49,20 +49,9 @@ namespace SharpRpc
 
         public IRpcClient Client { get { return client; } }
 
-        public IMethodDescriptionBuilder GetMethodDescriptionBuilder()
-        {
-            return methodDescriptionBuilder ?? (methodDescriptionBuilder =
-                                                (overrides.MethodDescriptionBuilder != null
-                                                     ? overrides.MethodDescriptionBuilder(this)
-                                                     : new MethodDescriptionBuilder()));
-        }
-
         public IServiceDescriptionBuilder GetServiceDescriptionBuilder()
         {
-            return serviceDescriptionBuilder ?? (serviceDescriptionBuilder =
-                                                 overrides.ServiceDescriptionBuilder != null
-                                                     ? overrides.ServiceDescriptionBuilder(this)
-                                                     : new ServiceDescriptionBuilder(GetMethodDescriptionBuilder()));
+            return serviceDescriptionBuilder ?? (serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder()));
         }
 
         public ICodecContainer GetCodecContainer()

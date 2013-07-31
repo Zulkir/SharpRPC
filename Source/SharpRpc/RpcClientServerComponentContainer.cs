@@ -70,7 +70,7 @@ namespace SharpRpc
             return serviceImplementationFactory ?? (serviceImplementationFactory =
                                                       overrides.ServiceImplementationFactory != null
                                                           ? overrides.ServiceImplementationFactory(this)
-                                                          : new ServiceImplementationFactory(GetServiceDescriptionBuilder(), Server.Settings.GetHostSettings().GetInterfaceImplementationsPairs()));
+                                                          : new ServiceImplementationFactory(GetServiceDescriptionBuilder(), Server.Settings.GetInterfaceImplementationsPairs()));
         }
         
 

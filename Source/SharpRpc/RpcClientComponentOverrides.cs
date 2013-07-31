@@ -25,14 +25,11 @@ THE SOFTWARE.
 using System;
 using SharpRpc.ClientSide;
 using SharpRpc.Codecs;
-using SharpRpc.Reflection;
 
 namespace SharpRpc
 {
     public class RpcClientComponentOverrides
     {
-        public Func<IRpcClientComponentContainer, IServiceDescriptionBuilder> ServiceDescriptionBuilder { get; set; }
-        public Func<IRpcClientComponentContainer, IMethodDescriptionBuilder> MethodDescriptionBuilder { get; set; }
         public Func<IRpcClientComponentContainer, ICodecContainer> CodecContainer { get; set; }
         public Func<IRpcClientComponentContainer, IRequestSenderContainer> RequestSenderContainer { get; set; }
         public Func<IRpcClientComponentContainer, IOutgoingMethodCallProcessor> OutgoingMethodCallProcessor { get; set; }

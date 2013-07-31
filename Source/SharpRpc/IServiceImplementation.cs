@@ -23,13 +23,12 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
 
 namespace SharpRpc
 {
     public interface IServiceImplementation : IDisposable
     {
         ServiceImplementationState State { get; }
-        void Initialize(IRpcClientServer clientServer, IReadOnlyDictionary<string, string> settings, string scope);
+        void Initialize(IRpcClientServer clientServer, string scope);
     }
 }

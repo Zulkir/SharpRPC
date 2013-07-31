@@ -22,13 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-
 namespace SharpRpc.Settings
 {
     public interface ISettingsLoader
     {
         IHostSettings LoadHostSettings();
-        IReadOnlyDictionary<string, string> LoadServiceSettings(string serviceName);
     }
 }

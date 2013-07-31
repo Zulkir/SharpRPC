@@ -86,17 +86,17 @@ namespace SharpRpc.ServerSide
 
             var set = implementations.GetOrAdd(serviceName, x => new ImplementationSet(x, serviceImplementationFactory));
             var implementationInfo = set.GetForScope(scope);
-            EnsureInitialized(serviceName, scope, implementationInfo.Implementation);
+            EnsureInitialized(scope, implementationInfo.Implementation);
             return implementationInfo;
         }
 
-        private void EnsureInitialized(string serviceName, string scope, IServiceImplementation implementation)
+        private void EnsureInitialized(string scope, IServiceImplementation implementation)
         {
             if (implementation.State == ServiceImplementationState.NotInitialized)
                 ThreadGuard.RunOnce(implementation, x =>
                     {
                         if (x.State == ServiceImplementationState.NotInitialized)
-                            x.Initialize(clientServer, clientServer.Settings.GetServiceSettings(serviceName), scope);
+                            x.Initialize(clientServer, scope);
                     });
             if (implementation.State == ServiceImplementationState.NotInitialized)
                 throw new InvalidImplementationException();

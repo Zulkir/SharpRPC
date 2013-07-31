@@ -48,7 +48,7 @@ namespace SharpRpc.Tests.ServerSide
         private ServiceImplementationInfo CreateImplementationInfo(CallInfo callInfo)
         {
             var serviceImplementation = Substitute.For<IServiceImplementation>();
-            serviceImplementation.WhenForAnyArgs(x => x.Initialize(null, null, null)).Do(x => serviceImplementation.State.Returns(ServiceImplementationState.Running));
+            serviceImplementation.WhenForAnyArgs(x => x.Initialize(null, null)).Do(x => serviceImplementation.State.Returns(ServiceImplementationState.Running));
             return new ServiceImplementationInfo(null, null, serviceImplementation);
         }
         

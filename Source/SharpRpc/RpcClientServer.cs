@@ -36,32 +36,32 @@ namespace SharpRpc
     public class RpcClientServer : IRpcClientServer
     {
         private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
-        private readonly ISettingsCache settingsCache;
-        private readonly ILogger logger;
-        
+        private readonly IHostSettings settings;
+
         private readonly IServiceImplementationContainer serviceImplementationContainer;
+        private readonly ILogger logger;
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
         public RpcClientServer(ITopologyLoader topologyLoader, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
         {
             topology = topologyLoader.Load();
-            settingsCache = new SettingsCache(settingsLoader);
+            settings = settingsLoader.LoadHostSettings();
             var componentContainer = new RpcClientServerComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
             logger = componentContainer.GetLogger();
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
-            requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(settingsCache.GetHostSettings().EndPoint.Protocol);
+            requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(settings.EndPoint.Protocol);
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
         public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
-        public ILogger Logger { get { return logger; } }
-        public ISettingsCache Settings { get { return settingsCache; } }
+        public IHostSettings Settings { get { return settings; } }
+        public ILogger Logger { get { return logger; }}
 
         public T GetService<T>(string scope = null) where T : class
         {
             var serviceName = typeof(T).GetServiceName();
-            if (topology.GetEndPoint(serviceName, scope) == settingsCache.GetHostSettings().EndPoint)
+            if (topology.GetEndPoint(serviceName, scope) == settings.EndPoint)
             {
                 var implementation = serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
                 if (implementation.State == ServiceImplementationState.NotReady)
@@ -73,7 +73,7 @@ namespace SharpRpc
 
         public void StartHost()
         {
-            requestReceiver.Start(settingsCache.GetHostSettings().EndPoint.Port, Environment.ProcessorCount);
+            requestReceiver.Start(settings.EndPoint.Port, Environment.ProcessorCount);
         }
 
         public void StopHost()

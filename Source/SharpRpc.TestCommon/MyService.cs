@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
 
 namespace SharpRpc.TestCommon
 {
@@ -48,7 +47,7 @@ namespace SharpRpc.TestCommon
 
         public ServiceImplementationState State { get; private set; }
 
-        public void Initialize(IRpcClientServer clientServer, IReadOnlyDictionary<string, string> settings, string scope)
+        public void Initialize(IRpcClientServer clientServer, string scope)
         {
             State = ServiceImplementationState.Running;
         }

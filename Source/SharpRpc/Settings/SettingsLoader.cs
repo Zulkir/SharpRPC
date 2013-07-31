@@ -22,8 +22,6 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -32,29 +30,20 @@ namespace SharpRpc.Settings
     public class SettingsLoader : ISettingsLoader
     {
         private readonly string hostSettingsPath;
-        private readonly Func<string, string> getServiceSettingsPath;
         private readonly Encoding encoding;
         private readonly IHostSettingsParser hostSettingsParser;
-        private readonly IServiceSettingsParser serviceSettingsParser;
 
-        public SettingsLoader(string hostSettingsPath, Func<string, string> getServiceSettingsPath, Encoding encoding, 
-            IHostSettingsParser hostSettingsParser, IServiceSettingsParser serviceSettingsParser)
+        public SettingsLoader(string hostSettingsPath, Encoding encoding, 
+            IHostSettingsParser hostSettingsParser)
         {
             this.hostSettingsPath = hostSettingsPath;
-            this.getServiceSettingsPath = getServiceSettingsPath;
             this.encoding = encoding;
             this.hostSettingsParser = hostSettingsParser;
-            this.serviceSettingsParser = serviceSettingsParser;
         }
 
         public IHostSettings LoadHostSettings()
         {
             return hostSettingsParser.Parse(File.ReadAllText(hostSettingsPath, encoding));
-        }
-
-        public IReadOnlyDictionary<string, string> LoadServiceSettings(string serviceName)
-        {
-            return serviceSettingsParser.Parse(File.ReadAllText(getServiceSettingsPath(serviceName), encoding));
         }
     }
 }

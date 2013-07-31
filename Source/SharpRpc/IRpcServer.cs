@@ -31,7 +31,7 @@ namespace SharpRpc
     public interface IRpcServer
     {
         ILogger Logger { get; }
-        ISettingsCache Settings { get; }
+        IHostSettings Settings { get; }
         void StartHost();
         void StopHost();
         IEnumerable<string> GetInitializedScopesFor<T>(); 

@@ -63,7 +63,6 @@
     <Compile Include="Codecs\StringCodecTests.cs" />
     <Compile Include="HostSettingsParserTests.cs" />
     <Compile Include="ServiceEndPointTests.cs" />
-    <Compile Include="ServiceSettingsParserTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerContainerTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactoryTests.cs" />
     <Compile Include="InterfaceReflection\ServiceDescriptionBuilderTests.cs" />
