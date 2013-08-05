@@ -83,6 +83,11 @@ namespace SharpRpc.Codecs
                     return new IndirectCodec(type, new FieldsCodec(type, this));
                 else
                     return new FieldsCodec(type, this);
+            if (TypeIsCollection(type))
+            {
+                var elementType = GetCollectionElementType(type);
+                return new CollectionCodec(type, elementType, this);
+            }   
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
@@ -113,6 +118,19 @@ namespace SharpRpc.Codecs
         private static bool SomeMembersArePrivate(IEnumerable<PropertyInfo> members)
         {
             return members.Any(x => x.GetGetMethod() == null || x.GetSetMethod(true) == null);
+        }
+
+        private static bool TypeIsCollection(Type type)
+        {
+            return type.GetInterfaces()
+                .Any(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(ICollection<>));
+        }
+
+        private Type GetCollectionElementType(Type type)
+        {
+            return type.GetInterfaces()
+                .First(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(ICollection<>))
+                .GetGenericArguments()[0];
         }
     }
 }

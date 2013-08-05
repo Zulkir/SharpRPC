@@ -40,7 +40,7 @@ namespace SharpRpc.Tests.Codecs
         }
 
         [Test]
-        public void Emitting()
+        public void CacheEmitting()
         {
             var codec1 = codecContainer.GetEmittingCodecFor(typeof(decimal));
             var codec2 = codecContainer.GetEmittingCodecFor(typeof(decimal));
@@ -48,7 +48,7 @@ namespace SharpRpc.Tests.Codecs
         }
 
         [Test]
-        public void Manual()
+        public void CacheManual()
         {
             var codec1 = codecContainer.GetManualCodecFor<decimal>();
             var codec2 = codecContainer.GetManualCodecFor<decimal>();
@@ -56,7 +56,7 @@ namespace SharpRpc.Tests.Codecs
         }
 
         [Test]
-        public void ManualExceptions()
+        public void CacheManualExceptions()
         {
             var codec1 = codecContainer.GetManualCodecFor<Exception>();
             var codec2 = codecContainer.GetManualCodecFor<Exception>();
