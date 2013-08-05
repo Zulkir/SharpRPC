@@ -50,9 +50,13 @@
     <Compile Include="ClientSide\RequestSenderContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
+    <Compile Include="Codecs\ClassArrayCodec.cs" />
     <Compile Include="Codecs\CodecContainer.cs" />
-    <Compile Include="Codecs\DirectDataContractCodec.cs" />
-    <Compile Include="Codecs\IndirectDataContractCodec.cs" />
+    <Compile Include="Codecs\CollectionCodec.cs" />
+    <Compile Include="Codecs\CollectionCodecBase.cs" />
+    <Compile Include="Codecs\ReferenceArrayCodecBase.cs" />
+    <Compile Include="Codecs\DataContractCodec.cs" />
+    <Compile Include="Codecs\FieldsCodec.cs" />
     <Compile Include="Codecs\EmittingCodecExtensions.cs" />
     <Compile Include="Codecs\ArrayExtensions.cs" />
     <Compile Include="Codecs\ExceptionCodec.cs" />
@@ -70,8 +74,9 @@
     <Compile Include="Codecs\ManualCodecExtensions.cs" />
     <Compile Include="Codecs\NativeStructArrayCodec.cs" />
     <Compile Include="Codecs\NativeStructCodec.cs" />
-    <Compile Include="Codecs\ReferenceArrayCodec.cs" />
+    <Compile Include="Codecs\ReferenceStructArrayCodec.cs" />
     <Compile Include="Codecs\StringCodec.cs" />
+    <Compile Include="Codecs\StructuralCodecBase.cs" />
     <Compile Include="IRpcClientComponentContainer.cs" />
     <Compile Include="IRpcClientServerComponentContainer.cs" />
     <Compile Include="Logs\LogEntryType.cs" />

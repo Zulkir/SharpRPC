@@ -65,9 +65,12 @@ namespace SharpRpc.Tests.Codecs
                 Assert.That(p - pData, Is.EqualTo(size));
                 Assert.That(remainingBytes, Is.EqualTo(0));
 
-                p = pData;
-                remainingBytes = size - 1;
-                Assert.Throws<InvalidDataException>(() => manualCodec.Decode(ref p, ref remainingBytes, false));
+                if (size > 0)
+                {
+                    p = pData;
+                    remainingBytes = size - 1;
+                    Assert.Throws<InvalidDataException>(() => manualCodec.Decode(ref p, ref remainingBytes, false));
+                }
             }
         } 
     }

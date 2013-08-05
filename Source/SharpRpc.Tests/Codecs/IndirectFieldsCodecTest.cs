@@ -22,31 +22,27 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Runtime.Serialization;
 using NUnit.Framework;
 using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    public class IndirectDataContractCodecTests : CodecTestsBase
+    public class IndirectFieldsCodecTest : CodecTestsBase
     {
         #region Contracts
 
-        [DataContract]
-        public class ContractWithPrivateFields
+        public struct StructWithPrivateFields
         {
-            [DataMember] public int A { get; set; }
-            [DataMember] public int B { private get; set; }
-            [DataMember] public int C { get; private set; }
-            [DataMember] private int D { get; set; }
+            public int A;
+            private int B;
 
-            public ContractWithPrivateFields(int a, int b, int c, int d)
+            public StructWithPrivateFields(int a, int b)
             {
-                A = a; B = b; C = c; D = d;
+                A = a; B = b;
             }
 
-            public bool Equals(ContractWithPrivateFields other) { return A == other.A && B == other.B && C == other.C && D == other.D; }
-            public override bool Equals(object obj) { return obj is ContractWithPrivateFields && Equals((ContractWithPrivateFields)obj); }
+            public bool Equals(StructWithPrivateFields other) { return A == other.A && B == other.B; }
+            public override bool Equals(object obj) { return obj is StructWithPrivateFields && Equals((StructWithPrivateFields)obj); }
             public override int GetHashCode() { return 0; }
         }
 
@@ -60,22 +56,16 @@ namespace SharpRpc.Tests.Codecs
             codecContainer = new CodecContainer();
         }
 
-        private void DoTest<T>(T value) where T : class
+        private void DoTest<T>(T value) where T : struct 
         {
-            DoTest(new IndirectCodec(typeof(T), new DataContractCodec(typeof(T), codecContainer)), value, (o1, o2) =>
-            {
-                if (ReferenceEquals(o1, null))
-                    Assert.That(o2, Is.Null);
-                else
-                    Assert.That(o2, Is.EqualTo(o1));
-            });
+            DoTest(new IndirectCodec(typeof(T), new FieldsCodec(typeof(T), codecContainer)), value, (o1, o2) => Assert.That(o2, Is.EqualTo(o1)));
         }
 
         [Test]
         public void PrivateFields()
         {
-            DoTest((ContractWithPrivateFields)null);
-            DoTest(new ContractWithPrivateFields(123, 234, 345, 456));
+            DoTest(new StructWithPrivateFields());
+            DoTest(new StructWithPrivateFields(123, 234));
         }
     }
 }

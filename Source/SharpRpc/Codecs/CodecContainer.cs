@@ -62,8 +62,10 @@ namespace SharpRpc.Codecs
             if (type.IsArray)
                 if (TypeIsNativeStructure(type.GetElementType()))
                     return new NativeStructArrayCodec(type.GetElementType());
+                else if (type.IsValueType)
+                    return new ReferenceStructArrayCodec(type.GetElementType(), this);
                 else
-                    return new ReferenceArrayCodec(type.GetElementType(), this);
+                    return new ClassArrayCodec(type.GetElementType(), this);
             if (type.IsDataContract())
             {
                 var members = type.EnumerateDataMembers().ToArray();
@@ -73,10 +75,14 @@ namespace SharpRpc.Codecs
                     //return new RecursiveDataContractCodec(type, this);
                     throw new NotSupportedException("Recursive data contracts are not yet supported by SharpRPC");
                 if (SomeMembersArePrivate(members))
-                    return new IndirectDataContractCodec(type, this);
-                return new DirectDataContractCodec(type, this);
+                    return new IndirectCodec(type, new DataContractCodec(type, this));
+                return new DataContractCodec(type, this);
             }
-                
+            if (type.IsValueType)
+                if (SomeFieldsAreNotPublic(type))
+                    return new IndirectCodec(type, new FieldsCodec(type, this));
+                else
+                    return new FieldsCodec(type, this);
             throw new NotSupportedException(string.Format("Type '{0}' is not supported as an RPC parameter type", type.FullName));
         }
 
@@ -97,6 +103,11 @@ namespace SharpRpc.Codecs
         private static bool SomeMembersAreIncomplete(IEnumerable<PropertyInfo> members)
         {
             return members.Any(x => x.GetGetMethod(true) == null || x.GetSetMethod(true) == null);
+        }
+
+        private static bool SomeFieldsAreNotPublic(Type type)
+        {
+            return type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Any(x => !x.IsPublic);
         }
 
         private static bool SomeMembersArePrivate(IEnumerable<PropertyInfo> members)

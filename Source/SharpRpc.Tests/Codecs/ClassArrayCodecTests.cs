@@ -22,27 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
 using NUnit.Framework;
 using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
     [TestFixture]
-    public class ReferenceArrayCodecTests : CodecTestsBase
+    public class ClassArrayCodecTests : CodecTestsBase
     {
-        #region Custom element types
-        private struct StructWithReferences : IEquatable<StructWithReferences>
-        {
-            public double A;
-            public string B;
-
-            public bool Equals(StructWithReferences other) { return A == other.A && B == other.B; }
-            public override bool Equals(object obj) { return obj is StructWithReferences && Equals((StructWithReferences)obj); }
-            public override int GetHashCode() { return 0; }
-        }
-        #endregion
-
         private ICodecContainer codecContainer;
 
         [SetUp]
@@ -53,7 +40,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T[] array)
         {
-            DoTest(new ReferenceArrayCodec(typeof(T), codecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
+            DoTest(new ClassArrayCodec(typeof(T), codecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
         }
 
         private void DoTestBasic<T>() where T : class
@@ -62,16 +49,6 @@ namespace SharpRpc.Tests.Codecs
             DoTest(new T[0]);
             DoTest(new T[] { null });
             DoTest(new T[] { null, null, null, null });
-        }
-
-        [Test]
-        [Ignore("until StructWithReferencesCodec is created")]
-        public void StructsWithReferences()
-        {
-            DoTest((StructWithReferences[])null);
-            DoTest(new StructWithReferences[0]);
-            DoTest(new[] { new StructWithReferences { A = 123.456, B = null } });
-            DoTest(new[] { new StructWithReferences { A = 123.456, B = "ASdasd sdh qiwu diqwh d" } });
         }
 
         [Test]

@@ -1,4 +1,28 @@
-﻿using System;
+﻿#region License
+/*
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+#endregion
+
+using System;
 using System.Runtime.Serialization;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -6,7 +30,7 @@ using SharpRpc.Codecs;
 namespace SharpRpc.Tests.Codecs
 {
     [TestFixture]
-    public class DirectDataContractCodecTests : CodecTestsBase
+    public class DataContractCodecTests : CodecTestsBase
     {
         #region Contracts
         private static bool ArraysAreEqual<T>(T[] a1, T[] a2, Func<T, T, bool> areEqual)
@@ -146,7 +170,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new DirectDataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
+            DoTest(new DataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
                 {
                     if (ReferenceEquals(o1, null))
                         Assert.That(o2, Is.Null);

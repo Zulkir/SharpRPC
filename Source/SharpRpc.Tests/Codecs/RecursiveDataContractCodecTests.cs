@@ -73,7 +73,7 @@ namespace SharpRpc.Tests.Codecs
 
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new /*RecursiveDataContractCodec*/DirectDataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
+            DoTest(new /*RecursiveDataContractCodec*/DataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
             {
                 if (ReferenceEquals(o1, null))
                     Assert.That(o2, Is.Null);

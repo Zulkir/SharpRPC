@@ -173,5 +173,29 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Conv_U);
             il.Emit(OpCodes.Stloc, pinnedPointerVar);
         }
+
+        public static void EmitForLoop(this ILGenerator il, LocalBuilder lengthVar, Action<ILGenerator, LocalBuilder> ithLoopBody)
+        {
+            var loopStartLabel = il.DefineLabel();
+            var loopConditionLabel = il.DefineLabel();
+
+            var iVar = il.DeclareLocal(typeof(int));          // int i
+
+            il.Emit_Ldc_I4(0);                                // i = 0
+            il.Emit(OpCodes.Stloc, iVar);
+            il.Emit(OpCodes.Br, loopConditionLabel);          // goto loopConditionLabel
+
+            il.MarkLabel(loopStartLabel);                     // label loopStartLabel
+            ithLoopBody(il, iVar);
+            il.Emit(OpCodes.Ldloc, iVar);                     // i++
+            il.Emit_Ldc_I4(1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc, iVar);
+
+            il.MarkLabel(loopConditionLabel);                 // label loopConditionLabel
+            il.Emit(OpCodes.Ldloc, iVar);                     // if (i < (int)value.Length)
+            il.Emit(OpCodes.Ldloc, lengthVar);                //     goto loopStartLabel
+            il.Emit(OpCodes.Blt, loopStartLabel);
+        }
     }
 }
