@@ -31,7 +31,7 @@ namespace SharpRpc.Tests.Codecs
     [TestFixture]
     public unsafe class NativeStructCodecTests : CodecTestsBase
     {
-        private void DoTest<T>(T value) where T : struct
+        private void DoTest<T>(T value)
         {
             DoTest(new NativeStructCodec(typeof(T)), value);
         }
@@ -127,6 +127,14 @@ namespace SharpRpc.Tests.Codecs
             DoTest(System.DateTime.Now);
             DoTest(System.DateTime.MinValue);
             DoTest(System.DateTime.MaxValue);
+        }
+
+        [Test]
+        public void Nullable()
+        {
+            DoTest((int?)null);
+            DoTest((int?)0);
+            DoTest((int?)123456);
         }
 
         public struct MySimpleStruct : IEquatable<MySimpleStruct>

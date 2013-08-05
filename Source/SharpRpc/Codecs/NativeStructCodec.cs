@@ -30,7 +30,7 @@ namespace SharpRpc.Codecs
 {
     public class NativeStructCodec : IEmittingCodec
     {
-        private struct SizedWrapper<T> where T : struct
+        private struct SizedWrapper<T>
         {
             public T Value;
 
