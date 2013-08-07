@@ -72,17 +72,11 @@ namespace SharpRpc.Codecs
                 if (SomeMembersAreIncomplete(members))
                     throw new NotSupportedException(string.Format("Data contract '{0}' is incomplete (it has members with missing getters or setters)", type.FullName));
                 if (DataContractIsRecursive(type, members))
-                    //return new RecursiveDataContractCodec(type, this);
                     throw new NotSupportedException("Recursive data contracts are not yet supported by SharpRPC");
-                if (SomeMembersArePrivate(members))
-                    return new IndirectCodec(type, new DataContractCodec(type, this));
                 return new DataContractCodec(type, this);
             }
             if (type.IsValueType)
-                if (SomeFieldsAreNotPublic(type))
-                    return new IndirectCodec(type, new FieldsCodec(type, this));
-                else
-                    return new FieldsCodec(type, this);
+                return new FieldsCodec(type, this);
             if (TypeIsCollection(type))
             {
                 var elementType = GetCollectionElementType(type);
@@ -126,7 +120,7 @@ namespace SharpRpc.Codecs
                 .Any(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(ICollection<>));
         }
 
-        private Type GetCollectionElementType(Type type)
+        private static Type GetCollectionElementType(Type type)
         {
             return type.GetInterfaces()
                 .First(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(ICollection<>))

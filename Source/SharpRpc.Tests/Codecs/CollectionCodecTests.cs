@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using NUnit.Framework;
 using SharpRpc.Codecs;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.Tests.Codecs
 {
@@ -109,6 +110,18 @@ namespace SharpRpc.Tests.Codecs
             DoTest<Dictionary<int, MyContract>, KeyValuePair<int, MyContract>>(new Dictionary<int, MyContract> { { 1, new MyContract(12.34, "asd")}, { 2, null } });
             DoTestBasic<Dictionary<string, MyContract>, KeyValuePair<string, MyContract>>();
             DoTest<Dictionary<string, MyContract>, KeyValuePair<string, MyContract>>(new Dictionary<string, MyContract> { { "1", new MyContract(12.34, "asd") }, { "2", null } });
+        }
+
+        public interface IMyService
+        {
+            Dictionary<int, string> GetDictionary();
+        }
+
+        [Test]
+        public void Experimental()
+        {
+            var proxyFactory = new SharpRpc.ClientSide.ServiceProxyClassFactory(new ServiceDescriptionBuilder(new MethodDescriptionBuilder()), codecContainer);
+            var proxy = proxyFactory.CreateProxyClass<IMyService>();
         }
     }
 }

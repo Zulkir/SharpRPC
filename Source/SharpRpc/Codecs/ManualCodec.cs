@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 namespace SharpRpc.Codecs
 {
-    public unsafe class ManualCodec<T> : ManualCodecBase, IManualCodec<T>, IMethodBasedManualCodec
+    public unsafe class ManualCodec<T> : ManualCodecBase, IManualCodec<T>
     {
         private delegate int CalculateSizeDelegate(T value);
         private delegate void EncodeDelegate(ref byte* data, T value);
@@ -35,7 +35,7 @@ namespace SharpRpc.Codecs
         private readonly DecodeDelegate decodeDelegate;
         private readonly DecodeDelegate decodeFastDelegate;
 
-        public ManualCodec(IEmittingCodec emittingCodec, bool forceVisibilityChecks = false) : base(typeof(T), emittingCodec, forceVisibilityChecks)
+        public ManualCodec(IEmittingCodec emittingCodec) : base(typeof(T), emittingCodec)
         {
             calculateSizeDelegate = (CalculateSizeDelegate)CalculateSizeMethod.CreateDelegate(typeof(CalculateSizeDelegate));
             encodeDelegate = (EncodeDelegate)EncodeMethod.CreateDelegate(typeof(EncodeDelegate));

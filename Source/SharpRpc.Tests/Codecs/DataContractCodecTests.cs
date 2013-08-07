@@ -158,6 +158,28 @@ namespace SharpRpc.Tests.Codecs
             public override bool Equals(object obj) { return obj is NestedContract && Equals((NestedContract)obj); }
             public override int GetHashCode() { return 0; }
         }
+
+        [DataContract]
+        public class ContractWithPrivateFields
+        {
+            [DataMember]
+            public int A { get; set; }
+            [DataMember]
+            public int B { private get; set; }
+            [DataMember]
+            public int C { get; private set; }
+            [DataMember]
+            private int D { get; set; }
+
+            public ContractWithPrivateFields(int a, int b, int c, int d)
+            {
+                A = a; B = b; C = c; D = d;
+            }
+
+            public bool Equals(ContractWithPrivateFields other) { return A == other.A && B == other.B && C == other.C && D == other.D; }
+            public override bool Equals(object obj) { return obj is ContractWithPrivateFields && Equals((ContractWithPrivateFields)obj); }
+            public override int GetHashCode() { return 0; }
+        }
         #endregion
 
         private ICodecContainer codecContainer;
@@ -263,6 +285,13 @@ namespace SharpRpc.Tests.Codecs
                 E = "zxczxc",
                 F = new MixedContract { A = 987.123m, B = new[] {234.56f, 123.23f, 78.34f}, C = DateTime.Now, D = "sdfsdf"}
             });
+        }
+
+        [Test]
+        public void PrivateFields()
+        {
+            DoTest((ContractWithPrivateFields)null);
+            DoTest(new ContractWithPrivateFields(123, 234, 345, 456));
         }
     }
 }

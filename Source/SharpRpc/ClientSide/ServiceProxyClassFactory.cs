@@ -23,11 +23,13 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using System.Linq;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -94,7 +96,6 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit(OpCodes.Ldarg_2);
             cil.Emit(OpCodes.Stfld, scopeField);
-            
             #endregion
 
             foreach (var subserviceDesc in serviceDescription.Subservices)
@@ -134,137 +135,165 @@ namespace SharpRpc.ClientSide
             foreach (var methodDesc in serviceDescription.Methods)
             {
                 #region Emit Method
+                var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
+                var dynamicMethod = EmitDynamicMethod(type, path, methodDesc, parameterTypes, codecContainer);
+                var dynamicMethodPointer = MethodHelpers.ExtractDynamicMethodPointer(dynamicMethod);
+
                 var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
                     MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    methodDesc.ReturnType, methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray());
+                    dynamicMethod.ReturnType, parameterTypes);
                 methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
                 var il = methodBuilder.GetILGenerator();
-                
-                var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
-                {
-                    Description = x,
-                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                    ArgumentIndex = i + 1
-                }).ToArray();
-
-                var requestParameters = parameters
-                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
-                    .ToArray();
-
-                var responseParameters = parameters
-                    .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
-                    .ToArray();
-
-                bool hasRetval = methodDesc.ReturnType != typeof(void);
-                var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
-
-                var dataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
-
-                if (requestParameters.Any())
-                {
-                    bool hasSizeOnStack = false;
-                    foreach (var parameter in requestParameters)
-                    {
-                        switch (parameter.Description.Way)
-                        {
-                            case MethodParameterWay.Val:
-                                parameter.Codec.EmitCalculateSize(         // stack_0 += calculateSize(arg_i+1) 
-                                    il, parameter.ArgumentIndex);
-                                break;
-                            case MethodParameterWay.Ref:
-                                parameter.Codec.EmitCalculateSizeIndirect( // stack_0 += calculateSizeIndirect(arg_i+1)
-                                    il, parameter.ArgumentIndex, parameter.Description.Type); 
-                                break;
-                            default: 
-                                throw new ArgumentOutOfRangeException();
-                        }
-                        if (hasSizeOnStack)
-                            il.Emit(OpCodes.Add);
-                        else
-                            hasSizeOnStack = true;
-                    }
-
-                    il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
-                    il.Emit(OpCodes.Stloc, dataArrayVar);
-                    var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
-                        il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
-                    il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
-                    il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                    foreach (var parameter in requestParameters)
-                    {
-                        switch (parameter.Description.Way)
-                        {
-                            case MethodParameterWay.Val: 
-                                parameter.Codec.EmitEncode(              // encode(arg_i+1)
-                                    il, locals, parameter.ArgumentIndex); 
-                                break;
-                            case MethodParameterWay.Ref:
-                                parameter.Codec.EmitEncodeIndirect(     // encodeIndirect (arg_i+1)
-                                    il, locals, parameter.ArgumentIndex, parameter.Description.Type); 
-                                break;
-                            default: 
-                                throw new ArgumentOutOfRangeException();
-                        }
-                    }
-                    
-                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldnull);                            // dataArray = null
-                    il.Emit(OpCodes.Stloc, dataArrayVar);
-                }
-
-                il.Emit(OpCodes.Ldarg_0);                               // stack_0 = this.methodCallProcessor
+                il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, processorField);
-                il.Emit(OpCodes.Ldtoken, type);                         // stack_1 = typeof(T)
-                il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-                il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
-                    path, methodDesc.Name));
-                il.Emit(OpCodes.Ldarg_0);                               // stack_3 = this.scope
+                il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, scopeField);
-                il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
-                il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4)
-
-                if (responseParameters.Any() || hasRetval)
-                {
-                    il.Emit(OpCodes.Stloc, dataArrayVar);               // dataArray = stack_0
-                    il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
-                    il.Emit(OpCodes.Ldlen);
-                    il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                    var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
-                        il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
-                    il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
-                    il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                    foreach (var parameter in responseParameters)
-                    {
-                        il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);// arg_i+1 = decode(data, remainingBytes, false)
-                        parameter.Codec.EmitDecode(il, locals, false);
-                        il.Emit_Stind(parameter.Description.Type);
-                    }
-
-                    if (hasRetval)
-                    {
-                        var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
-                        retvalCodec.EmitDecode(il, locals, false);      // stack_0 = decode(data, remainingBytes, false)
-                    }
-
-                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
-                }
-                else
-                {
-                    il.Emit(OpCodes.Pop);                               // pop(stack_0)
-                }
-
+                for (int i = 0; i < methodDesc.Parameters.Count; i++)
+                    il.Emit(OpCodes.Ldarg, i + 1);
+                il.Emit_Ldc_IntPtr(dynamicMethodPointer);
+                il.EmitCalli(OpCodes.Calli, CallingConventions.Standard, 
+                    dynamicMethod.ReturnType, 
+                    dynamicMethod.GetParameters().Select(x => x.ParameterType).ToArray(), 
+                    null);
                 il.Emit(OpCodes.Ret);
                 #endregion
             }
 
             return typeBuilder.CreateType();
+        }
+
+        private static readonly Type[] ProcessorAndScopeParamTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string) };
+
+        private static DynamicMethod EmitDynamicMethod(Type type, string path, MethodDescription methodDesc, IEnumerable<Type> realParameterTypes, ICodecContainer codecContainer)
+        {
+            var dynamicMethod = new DynamicMethod("__dynproxy_" + path + "." + methodDesc,
+                methodDesc.ReturnType,
+                ProcessorAndScopeParamTypes.Concat(realParameterTypes).ToArray(),
+                Assembly.GetExecutingAssembly().ManifestModule, true);
+
+            var il = dynamicMethod.GetILGenerator();
+
+            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
+            {
+                Description = x,
+                Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                ArgumentIndex = i + 2
+            }).ToArray();
+
+            var requestParameters = parameters
+                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                .ToArray();
+
+            var responseParameters = parameters
+                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                .ToArray();
+
+            bool hasRetval = methodDesc.ReturnType != typeof(void);
+            var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
+
+            var dataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
+
+            if (requestParameters.Any())
+            {
+                bool hasSizeOnStack = false;
+                foreach (var parameter in requestParameters)
+                {
+                    switch (parameter.Description.Way)
+                    {
+                        case MethodParameterWay.Val:
+                            parameter.Codec.EmitCalculateSize(         // stack_0 += calculateSize(arg_i+1) 
+                                il, parameter.ArgumentIndex);
+                            break;
+                        case MethodParameterWay.Ref:
+                            parameter.Codec.EmitCalculateSizeIndirect( // stack_0 += calculateSizeIndirect(arg_i+1)
+                                il, parameter.ArgumentIndex, parameter.Description.Type);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                    if (hasSizeOnStack)
+                        il.Emit(OpCodes.Add);
+                    else
+                        hasSizeOnStack = true;
+                }
+
+                il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
+                il.Emit(OpCodes.Stloc, dataArrayVar);
+                var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
+                    il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
+                il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
+                il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                foreach (var parameter in requestParameters)
+                {
+                    switch (parameter.Description.Way)
+                    {
+                        case MethodParameterWay.Val:
+                            parameter.Codec.EmitEncode(              // encode(arg_i+1)
+                                il, locals, parameter.ArgumentIndex);
+                            break;
+                        case MethodParameterWay.Ref:
+                            parameter.Codec.EmitEncodeIndirect(     // encodeIndirect (arg_i+1)
+                                il, locals, parameter.ArgumentIndex, parameter.Description.Type);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+
+                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldnull);                            // dataArray = null
+                il.Emit(OpCodes.Stloc, dataArrayVar);
+            }
+
+            il.Emit(OpCodes.Ldarg_0);                               // stack_0 = methodCallProcessor
+            il.Emit(OpCodes.Ldtoken, type);                         // stack_1 = typeof(T)
+            il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+            il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
+                path, methodDesc.Name));
+            il.Emit(OpCodes.Ldarg_1);                               // stack_3 = scope
+            il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
+            il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4)
+
+            if (responseParameters.Any() || hasRetval)
+            {
+                il.Emit(OpCodes.Stloc, dataArrayVar);               // dataArray = stack_0
+                il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
+                il.Emit(OpCodes.Ldlen);
+                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
+                var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
+                    il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
+                il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
+                il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                foreach (var parameter in responseParameters)
+                {
+                    il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);// arg_i+1 = decode(data, remainingBytes, false)
+                    parameter.Codec.EmitDecode(il, locals, false);
+                    il.Emit_Stind(parameter.Description.Type);
+                }
+
+                if (hasRetval)
+                {
+                    var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                    retvalCodec.EmitDecode(il, locals, false);      // stack_0 = decode(data, remainingBytes, false)
+                }
+
+                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+            }
+            else
+            {
+                il.Emit(OpCodes.Pop);                               // pop(stack_0)
+            }
+
+            il.Emit(OpCodes.Ret);
+
+            return dynamicMethod;
         }
     }
 }

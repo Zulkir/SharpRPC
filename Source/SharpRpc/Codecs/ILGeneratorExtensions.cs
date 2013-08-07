@@ -56,6 +56,16 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Ldc_I4, c);
         }
 
+        public static void Emit_Ldc_IntPtr(this ILGenerator il, IntPtr c)
+        {
+            if (IntPtr.Size == 4)
+            {
+                il.Emit(OpCodes.Ldc_I4, c.ToInt32());
+                return;
+            }
+            il.Emit(OpCodes.Ldc_I8, c.ToInt64());
+        }
+
         public static void Emit_Ldarg(this ILGenerator il, int index)
         {
             switch (index)

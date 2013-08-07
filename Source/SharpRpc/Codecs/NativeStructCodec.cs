@@ -37,7 +37,7 @@ namespace SharpRpc.Codecs
             public SizedWrapper(T value)
             {
                 Value = value;
-            } 
+            }
         }
 
         private readonly Type type;

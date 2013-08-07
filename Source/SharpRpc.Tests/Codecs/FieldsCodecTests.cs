@@ -128,6 +128,21 @@ namespace SharpRpc.Tests.Codecs
             public override int GetHashCode() { return 0; }
         }
 
+        public struct StructWithPrivateFields
+        {
+            public int A;
+            private int B;
+
+            public StructWithPrivateFields(int a, int b)
+            {
+                A = a; B = b;
+            }
+
+            public bool Equals(StructWithPrivateFields other) { return A == other.A && B == other.B; }
+            public override bool Equals(object obj) { return obj is StructWithPrivateFields && Equals((StructWithPrivateFields)obj); }
+            public override int GetHashCode() { return 0; }
+        }
+
         #endregion
 
         private ICodecContainer codecContainer;
@@ -227,6 +242,13 @@ namespace SharpRpc.Tests.Codecs
                     E = "zxczxc",
                     F = new MixedStruct {A = 987.123m, B = new[] {234.56f, 123.23f, 78.34f}, C = DateTime.Now, D = "sdfsdf"}
                 });
+        }
+
+        [Test]
+        public void PrivateFields()
+        {
+            DoTest(new StructWithPrivateFields());
+            DoTest(new StructWithPrivateFields(123, 234));
         }
     }
 }

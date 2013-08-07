@@ -32,18 +32,16 @@ namespace SharpRpc.Codecs
     {
         private readonly Type type;
         private readonly IEmittingCodec emittingCodec;
-        private readonly bool forceVisibilityChecks;
 
         private readonly DynamicMethod calculateSizeMethod;
         private readonly DynamicMethod encodeMethod;
         private readonly DynamicMethod decodeMethod;
         private readonly DynamicMethod decodeFastMethod;
 
-        public ManualCodecBase(Type type, IEmittingCodec emittingCodec, bool forceVisibilityChecks = false)
+        public ManualCodecBase(Type type, IEmittingCodec emittingCodec)
         {
             this.type = type;
             this.emittingCodec = emittingCodec;
-            this.forceVisibilityChecks = forceVisibilityChecks;
 
             calculateSizeMethod = EmitCalculateSize();
             encodeMethod = EmitEncode();
@@ -62,7 +60,7 @@ namespace SharpRpc.Codecs
         private DynamicMethod EmitCalculateSize()
         {
             var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + type.FullName,
-                                                  typeof(int), new[] { type }, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
+                                                  typeof(int), new[] { type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             emittingCodec.EmitCalculateSize(il, 0);
             il.Emit(OpCodes.Ret);
@@ -73,7 +71,7 @@ namespace SharpRpc.Codecs
         private DynamicMethod EmitEncode()
         {
             var dynamicMethod = new DynamicMethod("_encode_manual_" + type.FullName,
-                                                  typeof(void), new[] { typeof(byte*).MakeByRefType(), type }, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
+                                                  typeof(void), new[] { typeof(byte*).MakeByRefType(), type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var locals = new LocalVariableCollection(il, false);
             il.Emit(OpCodes.Ldarg_0);
@@ -90,7 +88,7 @@ namespace SharpRpc.Codecs
         private DynamicMethod EmitDecode(bool doNoCheckBounds)
         {
             var dynamicMethod = new DynamicMethod("_decode_manual_" + type.FullName + (doNoCheckBounds ? "_dncb_" : ""),
-                                                  type, new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() }, Assembly.GetExecutingAssembly().ManifestModule, !forceVisibilityChecks);
+                                                  type, new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var locals = new LocalVariableCollection(il, true);
             il.Emit(OpCodes.Ldarg_0);

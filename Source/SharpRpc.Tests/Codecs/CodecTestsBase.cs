@@ -38,7 +38,7 @@ namespace SharpRpc.Tests.Codecs
 
         protected void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)
         {
-            var manualCodec = new ManualCodec<T>(codec, true);
+            var manualCodec = new ManualCodec<T>(codec);
 
             if (codec.FixedSize.HasValue)
                 Assert.That(manualCodec.CalculateSize(value), Is.EqualTo(codec.FixedSize));
