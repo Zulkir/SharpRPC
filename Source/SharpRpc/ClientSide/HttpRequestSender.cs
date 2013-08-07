@@ -45,10 +45,9 @@ namespace SharpRpc.ClientSide
             if (!string.IsNullOrEmpty(request.ServiceScope))
                 httpWebRequest.Headers["scope"] = request.ServiceScope;
 
+            var requestData = request.Data ?? new byte[0];
             using (var stream = httpWebRequest.GetRequestStream())
-            {
-                stream.Write(request.Data, 0, request.Data.Length);
-            }
+                stream.Write(requestData, 0, requestData.Length);
 
             Response response;
             using (var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
