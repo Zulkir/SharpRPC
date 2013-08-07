@@ -46,6 +46,7 @@ namespace SharpRpc.ClientSide
         private readonly ICodecContainer codecContainer;
         private readonly AssemblyBuilder assemblyBuilder;
         private readonly ModuleBuilder moduleBuilder;
+        private readonly List<DynamicMethod> dynamicMethods; 
 
         public ServiceProxyClassFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, ICodecContainer codecContainer)
         {
@@ -54,6 +55,7 @@ namespace SharpRpc.ClientSide
             var appDomain = AppDomain.CurrentDomain;
             assemblyBuilder = appDomain.DefineDynamicAssembly(new AssemblyName("SharpRpcServiceProxies"), AssemblyBuilderAccess.Run);
             moduleBuilder = assemblyBuilder.DefineDynamicModule("SharpRpcServiceProxyModule");
+            dynamicMethods = new List<DynamicMethod>();
         }
 
         private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string) };
@@ -137,6 +139,7 @@ namespace SharpRpc.ClientSide
                 #region Emit Method
                 var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
                 var dynamicMethod = EmitDynamicMethod(type, path, methodDesc, parameterTypes, codecContainer);
+                dynamicMethods.Add(dynamicMethod);
                 var dynamicMethodPointer = MethodHelpers.ExtractDynamicMethodPointer(dynamicMethod);
 
                 var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
