@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
-using System.Runtime.InteropServices;
 
 namespace SharpRpc.Codecs
 {
@@ -36,7 +35,7 @@ namespace SharpRpc.Codecs
         public NativeStructArrayCodec(Type typeOfStruct)
         {
             this.typeOfStruct = typeOfStruct;
-            sizeOfStruct = Marshal.SizeOf(typeOfStruct);
+            sizeOfStruct = NativeStructHelper.CalculateSize(typeOfStruct);
         }
 
         public bool HasFixedSize { get { return false; } }

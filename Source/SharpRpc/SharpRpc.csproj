@@ -54,6 +54,7 @@
     <Compile Include="Codecs\CodecContainer.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
+    <Compile Include="Utility\NativeStructHelper.cs" />
     <Compile Include="Codecs\ReferenceArrayCodecBase.cs" />
     <Compile Include="Codecs\DataContractCodec.cs" />
     <Compile Include="Codecs\FieldsCodec.cs" />

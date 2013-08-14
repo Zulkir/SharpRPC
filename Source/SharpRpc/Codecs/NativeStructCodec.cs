@@ -24,36 +24,18 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
-using System.Runtime.InteropServices;
 
 namespace SharpRpc.Codecs
 {
     public class NativeStructCodec : IEmittingCodec
     {
-        private struct SizedWrapper<T>
-        {
-            public T Value;
-
-            public SizedWrapper(T value)
-            {
-                Value = value;
-            }
-        }
-
         private readonly Type type;
         private readonly int sizeInBytes;
 
         public NativeStructCodec(Type type)
         {
             this.type = type;
-            try
-            {
-                sizeInBytes = Marshal.SizeOf(type);
-            }
-            catch
-            {
-                sizeInBytes = Marshal.SizeOf(Activator.CreateInstance(typeof(SizedWrapper<>).MakeGenericType(type)));
-            }
+            sizeInBytes = NativeStructHelper.CalculateSize(type);
         }
 
         public bool HasFixedSize { get { return true; } }
