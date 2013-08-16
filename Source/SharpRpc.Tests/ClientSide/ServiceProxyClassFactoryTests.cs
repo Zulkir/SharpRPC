@@ -56,8 +56,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Trivial()
         {
-            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomething();
 
@@ -66,13 +66,14 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
             Assert.That(arguments[2], Is.Null);
             Assert.That(arguments[3], Is.Null);
+            Assert.That(arguments[4], Is.Null);
         }
 
         [Test]
         public void TrivialScoped()
         {
-            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, "my scope");
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, "my scope", null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomething();
 
@@ -81,6 +82,24 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
             Assert.That(arguments[2], Is.EqualTo("my scope"));
             Assert.That(arguments[3], Is.Null);
+            Assert.That(arguments[4], Is.Null);
+        }
+
+        [Test]
+        public void TrivialWithScopeAndTimeout()
+        {
+            var timeoutSettings = new TimeoutSettings();
+            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, "my scope", timeoutSettings);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+
+            proxy.DoSomething();
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[0], Is.EqualTo(typeof(ITrivialService)));
+            Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
+            Assert.That(arguments[2], Is.EqualTo("my scope"));
+            Assert.That(arguments[3], Is.Null);
+            Assert.That(arguments[4], Is.EqualTo(timeoutSettings));
         }
 
         public interface IArgumentsService
@@ -92,8 +111,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Arguments()
         {
-            var proxy = factory.CreateProxyClass<IArgumentsService>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxyClass<IArgumentsService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.MethodWithArgs(123, 234.567);
 
@@ -125,8 +144,8 @@ namespace SharpRpc.Tests.ClientSide
                 *(double*)pData = 123.456;
             }
 
-            var proxy = factory.CreateProxyClass<IRetvalService>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs(retvalData);
+            var proxy = factory.CreateProxyClass<IRetvalService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(retvalData);
 
             var retval = proxy.MethodWithRetval();
 
@@ -146,8 +165,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Subservice()
         {
-            var proxy = factory.CreateProxyClass<ISuperService>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxyClass<ISuperService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.Trivial.DoSomething();
 
@@ -181,8 +200,8 @@ namespace SharpRpc.Tests.ClientSide
                 *(double*)(pData + 6) = 123.456;
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithMixedParameters>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxyClass<IServiceWithMixedParameters>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             bool b = false;
             ushort c;
@@ -213,8 +232,8 @@ namespace SharpRpc.Tests.ClientSide
                 *(char*) (pData + 6) = 'K';
             }
 
-            var proxy = factory.CreateProxyClass<IReferenceInRefService>()(methodCallProcessor, null);
-            methodCallProcessor.Process(null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxyClass<IReferenceInRefService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             string s = "";
             proxy.ReferenceInRef(ref s);

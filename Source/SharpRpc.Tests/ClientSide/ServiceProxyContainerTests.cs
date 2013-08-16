@@ -45,11 +45,13 @@ namespace SharpRpc.Tests.ClientSide
         {
             public IOutgoingMethodCallProcessor Processor { get; private set; }
             public string Scope { get; private set; }
+            public TimeoutSettings TimeoutSettings { get; private set; }
 
-            public MyServiceProxy(IOutgoingMethodCallProcessor processor, string scope)
+            public MyServiceProxy(IOutgoingMethodCallProcessor processor, string scope, TimeoutSettings timeoutSettings)
             {
                 Processor = processor;
                 Scope = scope;
+                TimeoutSettings = timeoutSettings;
             }
         }
 
@@ -62,24 +64,25 @@ namespace SharpRpc.Tests.ClientSide
         {
             processor = Substitute.For<IOutgoingMethodCallProcessor>();
             factory = Substitute.For<IServiceProxyClassFactory>();
-            factory.CreateProxyClass<IMyService>().Returns((p, s) => new MyServiceProxy(p, s));
+            factory.CreateProxyClass<IMyService>().Returns((p, s, t) => new MyServiceProxy(p, s, t));
             container = new ServiceProxyContainer(processor, factory);
         }
 
         [Test]
         public void Basic()
         {
-            var proxy = container.GetProxy<IMyService>(null);
+            var proxy = container.GetProxy<IMyService>(null, null);
             Assert.That(proxy, Is.TypeOf<MyServiceProxy>());
             var typedProxy = (MyServiceProxy)proxy;
             Assert.That(typedProxy.Processor, Is.EqualTo(processor));
             Assert.That(typedProxy.Scope, Is.Null);
+            Assert.That(typedProxy.TimeoutSettings, Is.Null);
         }
 
         [Test]
         public void BasicScoped()
         {
-            var proxy = container.GetProxy<IMyService>("myscope");
+            var proxy = container.GetProxy<IMyService>("myscope", null);
             Assert.That(proxy, Is.TypeOf<MyServiceProxy>());
             var typedProxy = (MyServiceProxy)proxy;
             Assert.That(typedProxy.Processor, Is.EqualTo(processor));
@@ -89,26 +92,26 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Unscoped()
         {
-            var proxy1 = container.GetProxy<IMyService>(null);
-            var proxy2 = container.GetProxy<IMyService>(null);
+            var proxy1 = container.GetProxy<IMyService>(null, null);
+            var proxy2 = container.GetProxy<IMyService>(null, null);
             Assert.That(proxy1, Is.EqualTo(proxy2));
         }
 
         [Test]
         public void Scoped()
         {
-            var proxy1 = container.GetProxy<IMyService>("mycope");
-            var proxy2 = container.GetProxy<IMyService>("mycope");
+            var proxy1 = container.GetProxy<IMyService>("mycope", null);
+            var proxy2 = container.GetProxy<IMyService>("mycope", null);
             Assert.That(proxy1, Is.EqualTo(proxy2));
         }
 
         [Test]
         public void MixedScopes()
         {
-            var proxyNull = container.GetProxy<IMyService>(null);
-            var proxy1 = container.GetProxy<IMyService>("scope1");
-            var proxy2 = container.GetProxy<IMyService>("scope2");
-            var anotherProxy1 = container.GetProxy<IMyService>("scope1");
+            var proxyNull = container.GetProxy<IMyService>(null, null);
+            var proxy1 = container.GetProxy<IMyService>("scope1", null);
+            var proxy2 = container.GetProxy<IMyService>("scope2", null);
+            var anotherProxy1 = container.GetProxy<IMyService>("scope1", null);
 
             Assert.That(proxyNull, Is.Not.EqualTo(proxy1));
             Assert.That(proxyNull, Is.Not.EqualTo(proxy2));
@@ -119,8 +122,16 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void DifferrentTypes()
         {
-            var proxy1 = container.GetProxy<IMyService>(null);
-            var proxy2 = container.GetProxy<IMyOtherService>(null);
+            var proxy1 = container.GetProxy<IMyService>(null, null);
+            var proxy2 = container.GetProxy<IMyOtherService>(null, null);
+            Assert.That(proxy1, Is.Not.EqualTo(proxy2));
+        }
+
+        [Test]
+        public void DifferentTimeouts()
+        {
+            var proxy1 = container.GetProxy<IMyService>(null, new TimeoutSettings(123));
+            var proxy2 = container.GetProxy<IMyService>(null, new TimeoutSettings(234));
             Assert.That(proxy1, Is.Not.EqualTo(proxy2));
         }
     }

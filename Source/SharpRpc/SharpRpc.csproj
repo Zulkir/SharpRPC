@@ -47,6 +47,7 @@
     <Compile Include="ClientSide\IServiceProxyContainer.cs" />
     <Compile Include="ClientSide\IServiceProxyClassFactory.cs" />
     <Compile Include="ClientSide\OutgoingMethodCallProcessor.cs" />
+    <Compile Include="ClientSide\ProxyKey.cs" />
     <Compile Include="ClientSide\RequestSenderContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
@@ -54,6 +55,9 @@
     <Compile Include="Codecs\CodecContainer.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
+    <Compile Include="RpcClientExtensions.cs" />
+    <Compile Include="ServiceTimeoutException.cs" />
+    <Compile Include="TimeoutSettings.cs" />
     <Compile Include="Utility\NativeStructHelper.cs" />
     <Compile Include="Codecs\ReferenceArrayCodecBase.cs" />
     <Compile Include="Codecs\DataContractCodec.cs" />

@@ -58,14 +58,14 @@ namespace SharpRpc.ClientSide
             dynamicMethods = new List<DynamicMethod>();
         }
 
-        private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string) };
+        private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings) };
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
 
-        public Func<IOutgoingMethodCallProcessor, string, T> CreateProxyClass<T>()
+        public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
             var proxyClass = CreateProxyClass(typeof(T), null);
-            return (p, s) => (T) Activator.CreateInstance(proxyClass, p, s);
+            return (p, s, t) => (T) Activator.CreateInstance(proxyClass, p, s, t);
         }
 
         private Type CreateProxyClass(Type type, string path)
@@ -78,9 +78,11 @@ namespace SharpRpc.ClientSide
                 typeof(object), new[] {type});
 
             #region Emit Fields
-            var processorField = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor), 
+            var processorField = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor),
                 FieldAttributes.Private | FieldAttributes.InitOnly);
             var scopeField = typeBuilder.DefineField("scope", typeof(string),
+                FieldAttributes.Private | FieldAttributes.InitOnly);
+            var timeoutSettingsField = typeBuilder.DefineField("timeoutSettings", typeof(TimeoutSettings),
                 FieldAttributes.Private | FieldAttributes.InitOnly);
             #endregion
 
@@ -98,6 +100,9 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit(OpCodes.Ldarg_2);
             cil.Emit(OpCodes.Stfld, scopeField);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit(OpCodes.Ldarg_3);
+            cil.Emit(OpCodes.Stfld, timeoutSettingsField);
             #endregion
 
             foreach (var subserviceDesc in serviceDescription.Subservices)
@@ -111,6 +116,7 @@ namespace SharpRpc.ClientSide
                 cil.Emit(OpCodes.Ldarg_0);
                 cil.Emit(OpCodes.Ldarg_1);
                 cil.Emit(OpCodes.Ldarg_2);
+                cil.Emit(OpCodes.Ldarg_3);
                 cil.Emit(OpCodes.Newobj, proxyClass.GetConstructor(ConstructorParameterTypes));
                 cil.Emit(OpCodes.Stfld, fieldBuilder);
 
@@ -153,6 +159,8 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldfld, processorField);
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, scopeField);
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, timeoutSettingsField);
                 for (int i = 0; i < methodDesc.Parameters.Count; i++)
                     il.Emit(OpCodes.Ldarg, i + 1);
                 il.Emit_Ldc_IntPtr(dynamicMethodPointer);
@@ -167,13 +175,11 @@ namespace SharpRpc.ClientSide
             return typeBuilder.CreateType();
         }
 
-        private static readonly Type[] ProcessorAndScopeParamTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string) };
-
         private static DynamicMethod EmitDynamicMethod(Type type, string path, MethodDescription methodDesc, IEnumerable<Type> realParameterTypes, ICodecContainer codecContainer)
         {
             var dynamicMethod = new DynamicMethod("__dynproxy_" + path + "." + methodDesc,
                 methodDesc.ReturnType,
-                ProcessorAndScopeParamTypes.Concat(realParameterTypes).ToArray(),
+                ConstructorParameterTypes.Concat(realParameterTypes).ToArray(),
                 Assembly.GetExecutingAssembly().ManifestModule, true);
 
             var il = dynamicMethod.GetILGenerator();
@@ -182,7 +188,7 @@ namespace SharpRpc.ClientSide
             {
                 Description = x,
                 Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                ArgumentIndex = i + 2
+                ArgumentIndex = i + 3
             }).ToArray();
 
             var requestParameters = parameters
@@ -261,7 +267,8 @@ namespace SharpRpc.ClientSide
                 path, methodDesc.Name));
             il.Emit(OpCodes.Ldarg_1);                               // stack_3 = scope
             il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
-            il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4)
+            il.Emit(OpCodes.Ldarg_2);                               // stack_5 = timeoutSettings
+            il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
 
             if (responseParameters.Any() || hasRetval)
             {

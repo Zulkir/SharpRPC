@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,29 +22,39 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-using SharpRpc.ClientSide;
-using SharpRpc.Topology;
+using System;
 
-namespace SharpRpc
+namespace SharpRpc.ClientSide
 {
-    public class RpcClient : IRpcClient
+    public struct ProxyKey : IEquatable<ProxyKey>
     {
-        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
-        private readonly IServiceProxyContainer serviceProxyContainer;
+        public string Scope;
+        public TimeoutSettings TimeoutSettings;
 
-        public RpcClient(ITopologyLoader topologyLoader, RpcClientComponentOverrides componentOverrides = null)
+        public ProxyKey(string scope, TimeoutSettings timeoutSettings)
         {
-            topology = topologyLoader.Load();
-            var componentContainer = new RpcClientComponentContainer(this, componentOverrides ?? new RpcClientComponentOverrides());
-            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
+            Scope = scope;
+            TimeoutSettings = timeoutSettings;
         }
 
-        public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
-
-        public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
+        public bool Equals(ProxyKey other)
         {
-            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
+            return Scope == other.Scope && TimeoutSettings == other.TimeoutSettings;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ProxyKey && Equals((ProxyKey)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return (TimeoutSettings != null ? TimeoutSettings.GetHashCode() : 0) ^ (Scope != null ? Scope.GetHashCode() : 0);
+        }
+
+        public override string ToString()
+        {
+            return string.Format(@"{{""{0}""; {1}}}", Scope, TimeoutSettings);
         }
     }
 }

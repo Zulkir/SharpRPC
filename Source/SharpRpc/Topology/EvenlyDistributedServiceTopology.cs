@@ -55,7 +55,7 @@ namespace SharpRpc.Topology
         {
             endPoint = scope == null 
                 ? endPoints[0] 
-                : endPoints[scope.GetHashCode() % endPoints.Length];
+                : endPoints[(uint)scope.GetHashCode() % endPoints.Length];
             return true;
         }
     }

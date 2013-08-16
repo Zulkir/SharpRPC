@@ -1,6 +1,7 @@
 ﻿#region License
+
 /*
-Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,31 +21,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#endregion
 
-using System.Collections.Generic;
-using SharpRpc.ClientSide;
-using SharpRpc.Topology;
+#endregion
 
 namespace SharpRpc
 {
-    public class RpcClient : IRpcClient
+    public static class RpcClientExtensions
     {
-        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
-        private readonly IServiceProxyContainer serviceProxyContainer;
-
-        public RpcClient(ITopologyLoader topologyLoader, RpcClientComponentOverrides componentOverrides = null)
+        public static T GetService<T>(this IRpcClient rpcClient) where T : class
         {
-            topology = topologyLoader.Load();
-            var componentContainer = new RpcClientComponentContainer(this, componentOverrides ?? new RpcClientComponentOverrides());
-            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
+            return rpcClient.GetService<T>(null, TimeoutSettings.NoTimeout);
         }
 
-        public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
-
-        public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
+        public static T GetService<T>(this IRpcClient rpcClient, string scope) where T : class
         {
-            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
+            return rpcClient.GetService<T>(scope, TimeoutSettings.NoTimeout);
+        }
+
+        public static T GetService<T>(this IRpcClient rpcClient, TimeoutSettings timeoutSettings) where T : class
+        {
+            return rpcClient.GetService<T>(null, timeoutSettings);
         }
     }
 }

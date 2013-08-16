@@ -28,6 +28,6 @@ namespace SharpRpc.ClientSide
 {
     public interface IServiceProxyClassFactory
     {
-        Func<IOutgoingMethodCallProcessor, string, T> CreateProxyClass<T>();
+        Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>();
     }
 }

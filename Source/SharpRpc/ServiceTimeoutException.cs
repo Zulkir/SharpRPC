@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin, Maxim Sannikov of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,29 +22,25 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
-using SharpRpc.ClientSide;
-using SharpRpc.Topology;
+using System;
+using SharpRpc.Interaction;
 
 namespace SharpRpc
 {
-    public class RpcClient : IRpcClient
+    public class ServiceTimeoutException : Exception
     {
-        private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
-        private readonly IServiceProxyContainer serviceProxyContainer;
+         public ServiceTimeoutException(Request request, int timeout, Exception innerException)
+             : base(string.Format("Request '{0}' for scope '{1}' has timed out ({2})", 
+                request.Path, request.ServiceScope, timeout), innerException)
+         {
+             
+         }
 
-        public RpcClient(ITopologyLoader topologyLoader, RpcClientComponentOverrides componentOverrides = null)
-        {
-            topology = topologyLoader.Load();
-            var componentContainer = new RpcClientComponentContainer(this, componentOverrides ?? new RpcClientComponentOverrides());
-            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
-        }
+         public ServiceTimeoutException(Request request, int attempts, int retryMilliseconds)
+             : base(string.Format("Request '{0}' for scope '{1}' has been attempted maximum number of times ({2}, {3}ms between each)", 
+                request.Path, request.ServiceScope, attempts, retryMilliseconds))
+         {
 
-        public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
-
-        public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
-        {
-            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
-        }
+         }
     }
 }

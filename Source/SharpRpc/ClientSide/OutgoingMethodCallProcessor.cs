@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -44,7 +45,7 @@ namespace SharpRpc.ClientSide
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
         }
 
-        public byte[] Process(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data)
+        public byte[] Process(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings)
         {
             ServicePath path;
             if (!ServicePath.TryParse(pathSeparatedBySlashes, out path))
@@ -54,44 +55,63 @@ namespace SharpRpc.ClientSide
             var endPoint = topology.GetEndPoint(serviceName, serviceScope);
             var sender = requestSenderContainer.GetSender(endPoint.Protocol);
             var request = new Request(path, serviceScope, data);
+            timeoutSettings = timeoutSettings ?? TimeoutSettings.NoTimeout;
 
-            Response response;
-            try
+            bool hasNetworkTimeout = timeoutSettings.MaxMilliseconds != -1 && timeoutSettings.MaxMilliseconds != 0 && timeoutSettings.MaxMilliseconds != int.MaxValue;
+            var startTime = DateTime.Now;
+            int remainingTries = timeoutSettings.NotReadyRetryCount + 1;
+
+            while (remainingTries > 0)
             {
-                response = sender.Send(endPoint.Host, endPoint.Port, request);
+                remainingTries--;
+
+                Response response;
+                try
+                {
+                    int? networkTimeout = hasNetworkTimeout ? (DateTime.Now - startTime).Milliseconds : (int?) null;
+                    response = sender.Send(endPoint.Host, endPoint.Port, request, networkTimeout);
+                }
+                catch (TimeoutException ex)
+                {
+                    throw new ServiceTimeoutException(request, timeoutSettings.MaxMilliseconds, ex);
+                }
+                catch (Exception ex)
+                {
+                    throw new ServiceNetworkException(string.Format("Sending a '{0}' request to {1} failed", pathSeparatedBySlashes, endPoint), ex);
+                }
+
+                switch (response.Status)
+                {
+                    case ResponseStatus.Ok:
+                        return response.Data;
+                    case ResponseStatus.NotReady:
+                        if (remainingTries > 0)
+                            Thread.Sleep(timeoutSettings.NotReadyRetryMilliseconds);
+                        break;
+                    case ResponseStatus.BadRequest:
+                        throw new ServiceTopologyException(string.Format("'{0}' seems to be a bad request for {1}",
+                            pathSeparatedBySlashes, endPoint));
+                    case ResponseStatus.ServiceNotFound:
+                        throw new ServiceTopologyException(string.Format("'{0}' service was not present at {1}",
+                            serviceName, endPoint));
+                    case ResponseStatus.Exception:
+                        {
+                            Exception remoteException;
+                            if (exceptionCodec.TryDecodeSingle(response.Data, out remoteException))
+                                throw remoteException;
+                            throw new ServiceNetworkException(
+                                string.Format("'{0}' request caused {1} to return an unknown exception",
+                                              pathSeparatedBySlashes, endPoint));
+                        }
+                    case ResponseStatus.InternalServerError:
+                        throw new Exception(string.Format("'{0}' request caused {1} to encounter an internal server error",
+                            pathSeparatedBySlashes, endPoint));
+                    default:
+                        throw new ArgumentOutOfRangeException("response.Status");
+                }
             }
-            catch (Exception ex)
-            {
-                throw new ServiceNetworkException(string.Format("Sending a '{0}' request to {1} failed", pathSeparatedBySlashes, endPoint), ex);
-            }
-            
-            switch (response.Status)
-            {
-                case ResponseStatus.Ok:
-                    return response.Data;
-                case ResponseStatus.NotReady:
-                    throw new NotImplementedException();
-                case ResponseStatus.BadRequest:
-                    throw new ServiceTopologyException(string.Format("'{0}' seems to be a bad request for {1}",
-                        pathSeparatedBySlashes, endPoint));
-                case ResponseStatus.ServiceNotFound:
-                    throw new ServiceTopologyException(string.Format("'{0}' service was not present at {1}",
-                        serviceName, endPoint));
-                case ResponseStatus.Exception:
-                    {
-                        Exception remoteException;
-                        if (exceptionCodec.TryDecodeSingle(response.Data, out remoteException))
-                            throw remoteException;
-                        throw new ServiceNetworkException(
-                            string.Format("'{0}' request caused {1} to return an unknown exception",
-                                          pathSeparatedBySlashes, endPoint));
-                    }
-                case ResponseStatus.InternalServerError:
-                    throw new Exception(string.Format("'{0}' request caused {1} to encounter an internal server error",
-                        pathSeparatedBySlashes, endPoint));
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+
+            throw new ServiceTimeoutException(request, timeoutSettings.NotReadyRetryCount, timeoutSettings.NotReadyRetryMilliseconds);
         }
     }
 }

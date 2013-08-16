@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
-using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -34,19 +33,19 @@ namespace SharpRpc.ClientSide
         private class ProxySet<T> where T : class
         {
             private readonly IOutgoingMethodCallProcessor processor;
-            private readonly Func<IOutgoingMethodCallProcessor, string, T> constructor;
-            private readonly ConcurrentDictionary<ScopeKey, T> scopedProxies;
+            private readonly Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> constructor;
+            private readonly ConcurrentDictionary<ProxyKey, T> scopedProxies;
 
-            public ProxySet(IOutgoingMethodCallProcessor processor, Func<IOutgoingMethodCallProcessor, string, T> constructor)
+            public ProxySet(IOutgoingMethodCallProcessor processor, Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> constructor)
             {
                 this.processor = processor;
                 this.constructor = constructor;
-                scopedProxies = new ConcurrentDictionary<ScopeKey, T>();
+                scopedProxies = new ConcurrentDictionary<ProxyKey, T>();
             }
 
-            public T GetForScope(string scope)
+            public T GetForScope(string scope, TimeoutSettings timeoutSettings)
             {
-                return scopedProxies.GetOrAdd(new ScopeKey(scope), s => constructor(processor, scope));
+                return scopedProxies.GetOrAdd(new ProxyKey(scope, timeoutSettings), s => constructor(processor, scope, timeoutSettings));
             }
         }
         #endregion
@@ -62,10 +61,10 @@ namespace SharpRpc.ClientSide
             proxySets = new ConcurrentDictionary<Type, object>();
         }
 
-        public T GetProxy<T>(string scope) where T : class
+        public T GetProxy<T>(string scope, TimeoutSettings timeoutSettings) where T : class
         {
             var set = (ProxySet<T>)proxySets.GetOrAdd(typeof(T), t => new ProxySet<T>(processor, factory.CreateProxyClass<T>()));
-            return set.GetForScope(scope);
+            return set.GetForScope(scope, timeoutSettings);
         }
     }
 }

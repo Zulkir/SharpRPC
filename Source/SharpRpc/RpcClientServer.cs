@@ -58,7 +58,7 @@ namespace SharpRpc
         public IHostSettings Settings { get { return settings; } }
         public ILogger Logger { get { return logger; }}
 
-        public T GetService<T>(string scope = null) where T : class
+        public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
         {
             var serviceName = typeof(T).GetServiceName();
             if (topology.GetEndPoint(serviceName, scope) == settings.EndPoint)
@@ -67,8 +67,8 @@ namespace SharpRpc
                 if (implementation.State == ServiceImplementationState.NotReady)
                     throw new NotImplementedException();
                 return (T)implementation;
-            }   
-            return serviceProxyContainer.GetProxy<T>(scope);
+            }
+            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
         }
 
         public void StartHost()

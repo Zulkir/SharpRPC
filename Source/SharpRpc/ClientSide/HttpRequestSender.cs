@@ -33,7 +33,7 @@ namespace SharpRpc.ClientSide
     {
         public string Protocol { get { return "http"; } }
 
-        public Response Send(string host, int port, Request request)
+        public Response Send(string host, int port, Request request, int? timeoutMilliseconds)
         {
             if (string.IsNullOrWhiteSpace(host))
                 throw new ArgumentException("Host name cannot be null, emtry, or whitespace");
@@ -48,6 +48,7 @@ namespace SharpRpc.ClientSide
             var requestData = request.Data ?? new byte[0];
             using (var stream = httpWebRequest.GetRequestStream())
                 stream.Write(requestData, 0, requestData.Length);
+            httpWebRequest.Timeout = timeoutMilliseconds.HasValue ? timeoutMilliseconds.Value : -1;
 
             Response response;
             using (var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
