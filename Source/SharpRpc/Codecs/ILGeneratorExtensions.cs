@@ -78,7 +78,7 @@ namespace SharpRpc.Codecs
 
             if (sbyte.MinValue <= index && index <= sbyte.MaxValue)
             {
-                il.Emit(OpCodes.Ldc_I4_S, (sbyte)index);
+                il.Emit(OpCodes.Ldarg_S, (sbyte)index);
                 return;
             }
 
