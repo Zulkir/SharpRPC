@@ -25,7 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Runtime.InteropServices;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Utility
 {
     public static class NativeStructHelper
     {

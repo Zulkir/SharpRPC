@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
