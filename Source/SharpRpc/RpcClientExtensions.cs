@@ -30,12 +30,12 @@ namespace SharpRpc
     {
         public static T GetService<T>(this IRpcClient rpcClient) where T : class
         {
-            return rpcClient.GetService<T>(null, TimeoutSettings.NoTimeout);
+            return rpcClient.GetService<T>(null, rpcClient.DefaultTimeout);
         }
 
         public static T GetService<T>(this IRpcClient rpcClient, string scope) where T : class
         {
-            return rpcClient.GetService<T>(scope, TimeoutSettings.NoTimeout);
+            return rpcClient.GetService<T>(scope, rpcClient.DefaultTimeout);
         }
 
         public static T GetService<T>(this IRpcClient rpcClient, TimeoutSettings timeoutSettings) where T : class

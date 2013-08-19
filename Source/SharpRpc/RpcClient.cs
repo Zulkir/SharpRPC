@@ -31,16 +31,19 @@ namespace SharpRpc
     public class RpcClient : IRpcClient
     {
         private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
+        private readonly TimeoutSettings defaultTimeout;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcClient(ITopologyLoader topologyLoader, RpcClientComponentOverrides componentOverrides = null)
+        public RpcClient(ITopologyLoader topologyLoader, TimeoutSettings defaultTimeout, RpcClientComponentOverrides componentOverrides = null)
         {
             topology = topologyLoader.Load();
+            this.defaultTimeout = defaultTimeout;
             var componentContainer = new RpcClientComponentContainer(this, componentOverrides ?? new RpcClientComponentOverrides());
             serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
         public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
+        public TimeoutSettings DefaultTimeout { get { return defaultTimeout; } }
 
         public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
         {

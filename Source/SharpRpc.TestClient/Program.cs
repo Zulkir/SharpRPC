@@ -34,7 +34,7 @@ namespace SharpRpc.TestClient
         static void Main(string[] args)
         {
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
-            var client = new RpcClient(topologyLoader);
+            var client = new RpcClient(topologyLoader, new TimeoutSettings(5000));
 
             var myService = client.GetService<IMyService>();
 

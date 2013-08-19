@@ -30,6 +30,7 @@ namespace SharpRpc
     public interface IRpcClient
     {
         IReadOnlyDictionary<string, IServiceTopology> Topology { get; }
-        T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class; 
+        TimeoutSettings DefaultTimeout { get; }
+        T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class;
     }
 }

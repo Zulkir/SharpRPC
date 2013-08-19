@@ -36,6 +36,7 @@ namespace SharpRpc
     public class RpcClientServer : IRpcClientServer
     {
         private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
+        private readonly TimeoutSettings defaultTimeout;
         private readonly IHostSettings settings;
 
         private readonly IServiceImplementationContainer serviceImplementationContainer;
@@ -43,9 +44,10 @@ namespace SharpRpc
         private readonly IRequestReceiver requestReceiver;
         private readonly IServiceProxyContainer serviceProxyContainer;
 
-        public RpcClientServer(ITopologyLoader topologyLoader, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
+        public RpcClientServer(ITopologyLoader topologyLoader, TimeoutSettings defaultTimeout, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
         {
             topology = topologyLoader.Load();
+            this.defaultTimeout = defaultTimeout;
             settings = settingsLoader.LoadHostSettings();
             var componentContainer = new RpcClientServerComponentContainer(this, componentOverrides ?? new RpcComponentOverrides());
             logger = componentContainer.GetLogger();
@@ -55,6 +57,7 @@ namespace SharpRpc
         }
 
         public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
+        public TimeoutSettings DefaultTimeout { get { return defaultTimeout; } }
         public IHostSettings Settings { get { return settings; } }
         public ILogger Logger { get { return logger; }}
 

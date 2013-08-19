@@ -28,9 +28,9 @@ namespace SharpRpc
 {
     public class TimeoutSettings : IEquatable<TimeoutSettings>
     {
-        public int MaxMilliseconds { get; set; }
-        public int NotReadyRetryCount { get; set; }
-        public int NotReadyRetryMilliseconds { get; set; }
+        public int MaxMilliseconds { get; private set; }
+        public int NotReadyRetryCount { get; private set; }
+        public int NotReadyRetryMilliseconds { get; private set; }
 
         public TimeoutSettings(int maxMilliseconds, int retryCount, int retryMilliseconds)
         {
