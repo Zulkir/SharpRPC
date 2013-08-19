@@ -59,16 +59,16 @@ namespace SharpRpc.ClientSide
 
             bool hasNetworkTimeout = timeoutSettings.MaxMilliseconds != -1 && timeoutSettings.MaxMilliseconds != 0 && timeoutSettings.MaxMilliseconds != int.MaxValue;
             var startTime = DateTime.Now;
-            int remainingTries = timeoutSettings.NotReadyRetryCount + 1;
+            int remainingTriesMinusOne = timeoutSettings.NotReadyRetryCount;
 
-            while (remainingTries > 0)
+            while (remainingTriesMinusOne >= 0)
             {
-                remainingTries--;
+                remainingTriesMinusOne--;
 
                 Response response;
                 try
                 {
-                    int? networkTimeout = hasNetworkTimeout ? (DateTime.Now - startTime).Milliseconds : (int?) null;
+                    int? networkTimeout = hasNetworkTimeout ? timeoutSettings.MaxMilliseconds - (DateTime.Now - startTime).Milliseconds : (int?) null;
                     response = sender.Send(endPoint.Host, endPoint.Port, request, networkTimeout);
                 }
                 catch (TimeoutException ex)
@@ -85,7 +85,7 @@ namespace SharpRpc.ClientSide
                     case ResponseStatus.Ok:
                         return response.Data;
                     case ResponseStatus.NotReady:
-                        if (remainingTries > 0)
+                        if (remainingTriesMinusOne >= 0)
                             Thread.Sleep(timeoutSettings.NotReadyRetryMilliseconds);
                         break;
                     case ResponseStatus.BadRequest:

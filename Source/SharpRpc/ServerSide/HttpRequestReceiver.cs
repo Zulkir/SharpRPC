@@ -89,7 +89,13 @@ namespace SharpRpc.ServerSide
                     }
                     finally
                     {
-                        context.Response.Close();
+                        try
+                        {
+                            context.Response.Close();
+                        }
+// ReSharper disable EmptyGeneralCatchClause
+                        catch {}
+// ReSharper restore EmptyGeneralCatchClause
                     }
 
                     hasRequest = requestQueue.TryDequeue(out context);
