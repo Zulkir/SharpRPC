@@ -29,9 +29,9 @@ namespace SharpRpc.ServerSide
     public struct ServiceImplementationInfo
     {
         public readonly ServiceDescription Description;
-        public readonly IServiceImplementation Implementation;
+        public readonly object Implementation;
 
-        public ServiceImplementationInfo(ServiceDescription description, IServiceImplementation implementation)
+        public ServiceImplementationInfo(ServiceDescription description, object implementation)
         {
             Description = description;
             Implementation = implementation;

@@ -47,7 +47,7 @@ namespace SharpRpc
             this.overrides = overrides;
         }
 
-        public IRpcServer Server { get { return clientServer; } }
+        public IRpcClientServer ClientServer { get { return clientServer; } }
 
         public ILogger GetLogger()
         {
@@ -70,7 +70,7 @@ namespace SharpRpc
             return serviceImplementationFactory ?? (serviceImplementationFactory =
                                                       overrides.ServiceImplementationFactory != null
                                                           ? overrides.ServiceImplementationFactory(this)
-                                                          : new ServiceImplementationFactory(GetServiceDescriptionBuilder(), Server.Settings.GetInterfaceImplementationsPairs()));
+                                                          : new ServiceImplementationFactory(GetServiceDescriptionBuilder(), ClientServer, ClientServer.Settings.GetInterfaceImplementationsPairs()));
         }
         
 

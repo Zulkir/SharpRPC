@@ -26,15 +26,8 @@ using System;
 
 namespace SharpRpc
 {
-    public interface IServiceImplementation : IDisposable
+    public class ServiceNotReadyException : Exception
     {
-        ServiceImplementationState State { get; }
-        void Initialize(IRpcClientServer clientServer, string scope);
-    }
-
-    public interface IServiceImplementationInfo
-    {
-        Type InterfaceType { get; }
-        ServiceImplementationState TryGetService(out object service);
+         
     }
 }

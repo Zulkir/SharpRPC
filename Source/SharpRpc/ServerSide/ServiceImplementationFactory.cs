@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Reflection;
 using SharpRpc.Reflection;
 using SharpRpc.Settings;
 using System.Linq;
@@ -33,44 +34,81 @@ namespace SharpRpc.ServerSide
 {
     public class ServiceImplementationFactory : IServiceImplementationFactory
     {
-        private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
-        private readonly ConcurrentDictionary<string, InterfaceImplementationTypePair> implementationTypes;
+        #region Nester Structs
+        private struct ImplemntationCreationInfo
+        {
+            public ServiceDescription Description;
+            public ConstructorInfo Constructor;
+        }
+        #endregion
 
-        public ServiceImplementationFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, IEnumerable<InterfaceImplementationTypePair> interfaceImplementationTypePairs)
+        private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
+        private readonly IRpcClientServer clientServer;
+        private readonly ConcurrentDictionary<string, ImplemntationCreationInfo> constructors;
+
+        public ServiceImplementationFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, IRpcClientServer clientServer, 
+            IEnumerable<InterfaceImplementationTypePair> interfaceImplementationTypePairs)
         {
             this.serviceDescriptionBuilder = serviceDescriptionBuilder;
-            implementationTypes = new ConcurrentDictionary<string, InterfaceImplementationTypePair>(interfaceImplementationTypePairs.Select(ConvertPair));
+            this.clientServer = clientServer;
+            constructors = new ConcurrentDictionary<string, ImplemntationCreationInfo>(interfaceImplementationTypePairs.Select(ConvertPair));
         }
 
-        private KeyValuePair<string, InterfaceImplementationTypePair> ConvertPair(InterfaceImplementationTypePair pair)
-        {
-            CheckImplementationPair(pair);
-            return new KeyValuePair<string, InterfaceImplementationTypePair>(pair.Interface.GetServiceName(), pair);
-        }
-
-        private void CheckImplementationPair(InterfaceImplementationTypePair pair)
+        private KeyValuePair<string, ImplemntationCreationInfo> ConvertPair(InterfaceImplementationTypePair pair)
         {
             var serviceName = pair.Interface.GetServiceName();
-            if (!typeof(IServiceImplementation).IsAssignableFrom(pair.ImplementationType))
-                throw new ArgumentException(string.Format("Given implementation for a '{0}' service ({1}) does not implement an IServiceImplementation interface", serviceName, pair.ImplementationType.FullName));
             if (!pair.Interface.IsAssignableFrom(pair.ImplementationType))
                 throw new ArgumentException(string.Format("Given implementation for a '{0}' service ({1}) does not implement its interface", serviceName, pair.ImplementationType.FullName));
-            if (pair.ImplementationType.GetConstructor(Type.EmptyTypes) == null)
-                throw new ArgumentException(string.Format("Given implementation of the {0} service does not have a parameterless constructor", serviceName));
+            var constructor = FindLargestAppropriateConstructor(pair.ImplementationType);
+            if (constructor == null)
+                throw new ArgumentException(string.Format("No appropriate constructor find for {0}", pair.ImplementationType.FullName));
+            var creationInfo = new ImplemntationCreationInfo
+                {
+                    Constructor = constructor,
+                    Description = serviceDescriptionBuilder.Build(pair.Interface)
+                };
+            return new KeyValuePair<string, ImplemntationCreationInfo>(pair.Interface.GetServiceName(), creationInfo);
+        }
+
+        private static ConstructorInfo FindLargestAppropriateConstructor(Type type)
+        {
+            return type.GetConstructors()
+                       .Where(x => x.GetParameters().All(ParameterIsIjectable))
+                       .OrderBy(x => x.GetParameters().Length)
+                       .FirstOrDefault();
+        }
+
+        private static bool ParameterIsIjectable(ParameterInfo parameterInfo)
+        {
+            var type = parameterInfo.ParameterType;
+            return type == typeof(string) || type == typeof(IRpcClient) || type == typeof(IRpcClientServer);
         }
 
         public bool CanCreate(string serviceName)
         {
-            return implementationTypes.ContainsKey(serviceName);
+            return constructors.ContainsKey(serviceName);
         }
 
-        public ServiceImplementationInfo CreateImplementation(string serviceName)
+        public ServiceImplementationInfo CreateImplementation(string serviceName, string scope)
         {
-            InterfaceImplementationTypePair pair;
-            if (!implementationTypes.TryGetValue(serviceName, out pair))
+            ImplemntationCreationInfo creationInfo;
+            if (!constructors.TryGetValue(serviceName, out creationInfo))
                 throw new ArgumentOutOfRangeException("serviceName", string.Format("Implementation for service '{0}' was not found", serviceName));
-            var implementation = (IServiceImplementation)Activator.CreateInstance(pair.ImplementationType);
-            return new ServiceImplementationInfo(serviceDescriptionBuilder.Build(pair.Interface), implementation);
+            return new ServiceImplementationInfo(creationInfo.Description, InvokeConstructor(creationInfo.Constructor, clientServer, scope));
+        }
+
+        private static object InvokeConstructor(ConstructorInfo constructor, IRpcClientServer clientServer, string scope)
+        {
+            var arguments = constructor.GetParameters().Select(x =>
+                {
+                    var paramType = x.ParameterType;
+                    if (paramType == typeof(string))
+                        return (object)scope;
+                    if (paramType == typeof(IRpcClient) || paramType == typeof(IRpcClientServer))
+                        return (object)clientServer;
+                    throw new InvalidOperationException("Should never happen");
+                }).ToArray();
+            return constructor.Invoke(arguments);
         }
     }
 }

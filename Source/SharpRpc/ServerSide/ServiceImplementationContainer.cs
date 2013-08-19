@@ -44,14 +44,14 @@ namespace SharpRpc.ServerSide
                 scopedImplementations = new ConcurrentDictionary<ScopeKey, ServiceImplementationInfo>();
             }
 
-            private ServiceImplementationInfo CreateNew()
+            private ServiceImplementationInfo CreateNew(string scope)
             {
-                return serviceImplementationFactory.CreateImplementation(serviceName);
+                return serviceImplementationFactory.CreateImplementation(serviceName, scope);
             }
 
             public ServiceImplementationInfo GetForScope(string scope)
             {
-                return scopedImplementations.GetOrAdd(new ScopeKey(scope), s => CreateNew());
+                return scopedImplementations.GetOrAdd(new ScopeKey(scope), s => CreateNew(s.Scope));
             }
 
             public IEnumerable<string> GetInitializedScopes()
@@ -77,21 +77,7 @@ namespace SharpRpc.ServerSide
                 throw new InvalidPathException();
 
             var set = implementations.GetOrAdd(serviceName, x => new ImplementationSet(x, serviceImplementationFactory));
-            var implementationInfo = set.GetForScope(scope);
-            EnsureInitialized(scope, implementationInfo.Implementation);
-            return implementationInfo;
-        }
-
-        private void EnsureInitialized(string scope, IServiceImplementation implementation)
-        {
-            if (implementation.State == ServiceImplementationState.NotInitialized)
-                ThreadGuard.RunOnce(implementation, x =>
-                    {
-                        if (x.State == ServiceImplementationState.NotInitialized)
-                            x.Initialize(clientServer, scope);
-                    });
-            if (implementation.State == ServiceImplementationState.NotInitialized)
-                throw new InvalidImplementationException();
+            return set.GetForScope(scope);
         }
 
         public IEnumerable<string> GetInitializedScopesFor(string serviceName)

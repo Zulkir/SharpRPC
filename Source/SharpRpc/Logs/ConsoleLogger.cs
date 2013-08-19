@@ -40,6 +40,11 @@ namespace SharpRpc.Logs
             Console.WriteLine("Incoming: {0} for scope '{1}'", request.Path, request.ServiceScope);
         }
 
+        public void ProcessNotReady(Request request)
+        {
+            Console.WriteLine("Not ready for request '{0}' for scope '{1}'", request.Path, request.ServiceScope);
+        }
+
         public void ProcessedRequestSuccessfully(Request request, TimeSpan executionTime)
         {
             Console.WriteLine("Success: {0} for scope '{1}' within {2} ms", request.Path, request.ServiceScope, executionTime.TotalMilliseconds);

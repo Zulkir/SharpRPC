@@ -29,7 +29,7 @@ namespace SharpRpc
 {
     public interface IRpcClientServerComponentContainer : IRpcClientComponentContainer
     {
-        IRpcServer Server { get; }
+        IRpcClientServer ClientServer { get; }
         ILogger GetLogger();
         IServiceImplementationContainer GetServiceImplementationContainer();
         IServiceImplementationFactory GetServiceImplementationFactory();

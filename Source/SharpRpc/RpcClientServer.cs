@@ -67,8 +67,7 @@ namespace SharpRpc
             if (topology.GetEndPoint(serviceName, scope) == settings.EndPoint)
             {
                 var implementation = serviceImplementationContainer.GetImplementation(serviceName, scope).Implementation;
-                if (implementation.State == ServiceImplementationState.NotReady)
-                    throw new NotImplementedException();
+                // todo: notready timeouts
                 return (T)implementation;
             }
             return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);

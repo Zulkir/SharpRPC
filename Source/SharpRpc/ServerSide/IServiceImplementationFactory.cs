@@ -27,6 +27,6 @@ namespace SharpRpc.ServerSide
     public interface IServiceImplementationFactory
     {
         bool CanCreate(string serviceName);
-        ServiceImplementationInfo CreateImplementation(string serviceName);
+        ServiceImplementationInfo CreateImplementation(string serviceName, string scope);
     }
 }

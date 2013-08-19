@@ -26,7 +26,7 @@ using System;
 
 namespace SharpRpc.TestCommon
 {
-    public class MyService : IMyService, IServiceImplementation
+    public class MyService : IMyService
     {
         public int Add(int a, int b)
         {
@@ -38,18 +38,6 @@ namespace SharpRpc.TestCommon
             if (name == "exception")
                 throw new Exception("Hello!!!");
             return string.Format("Hello, {0}!", name);
-        }
-
-        public void Dispose()
-        {
-            
-        }
-
-        public ServiceImplementationState State { get; private set; }
-
-        public void Initialize(IRpcClientServer clientServer, string scope)
-        {
-            State = ServiceImplementationState.Running;
         }
     }
 }

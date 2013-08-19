@@ -59,16 +59,11 @@ namespace SharpRpc.Tests.ServerSide
             void Trivial();
         }
 
-        public interface IGlobalServiceImplementation : IGlobalService, IServiceImplementation
-        {
-             
-        }
-
         #endregion
 
         private ICodecContainer codecContainer;
         private ServiceMethodHandlerFactory factory;
-        private IGlobalServiceImplementation service;
+        private IGlobalService service;
         private ServiceImplementationInfo globalServiceImplementationInfo;
 
         [SetUp]
@@ -76,7 +71,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             codecContainer = new CodecContainer();
             factory = new ServiceMethodHandlerFactory(codecContainer);
-            service = Substitute.For<IGlobalServiceImplementation>();
+            service = Substitute.For<IGlobalService>();
             var serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
             var globalServiceDescription =  serviceDescriptionBuilder.Build(typeof(IGlobalService));
             globalServiceImplementationInfo = 

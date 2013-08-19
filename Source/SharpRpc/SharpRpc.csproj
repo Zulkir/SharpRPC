@@ -56,6 +56,7 @@
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
     <Compile Include="RpcClientExtensions.cs" />
+    <Compile Include="ServiceNotReadyException.cs" />
     <Compile Include="ServiceTimeoutException.cs" />
     <Compile Include="TimeoutSettings.cs" />
     <Compile Include="Utility\NativeStructHelper.cs" />
@@ -149,7 +150,6 @@
     <Compile Include="Reflection\MethodParameterDescription.cs" />
     <Compile Include="Reflection\MethodParameterWay.cs" />
     <Compile Include="Reflection\SubserviceDescription.cs" />
-    <Compile Include="IServiceImplementation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerSide\IIncomingRequestProcessor.cs" />
     <Compile Include="ServerSide\IServiceImplementationContainer.cs" />

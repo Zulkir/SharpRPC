@@ -54,9 +54,6 @@ namespace SharpRpc.ServerSide
 
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
-                if (implementationInfo.Implementation.State == ServiceImplementationState.NotReady)
-                    return Response.NotReady;
-
                 var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo, request.Path);
 
                 var responseData = methodHandler(implementationInfo.Implementation, request.Data);
@@ -65,6 +62,11 @@ namespace SharpRpc.ServerSide
                 logger.ProcessedRequestSuccessfully(request, executionTime);
 
                 return new Response(ResponseStatus.Ok, responseData);
+            }
+            catch (ServiceNotReadyException)
+            {
+                logger.ProcessNotReady(request);
+                return Response.NotReady;
             }
             catch (ServiceNotFoundException)
             {

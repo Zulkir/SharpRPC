@@ -41,22 +41,13 @@ namespace SharpRpc.Tests.ServerSide
         {
             clientServer = Substitute.For<IRpcClientServer>();
             serviceImplementationFactory = Substitute.For<IServiceImplementationFactory>();
-            serviceImplementationFactory.CreateImplementation(null).ReturnsForAnyArgs(CreateImplementationInfo);
+            serviceImplementationFactory.CreateImplementation(null, null).ReturnsForAnyArgs(CreateImplementationInfo);
             container = new ServiceImplementationContainer(clientServer, serviceImplementationFactory);
         }
 
         private ServiceImplementationInfo CreateImplementationInfo(CallInfo callInfo)
         {
-            var serviceImplementation = Substitute.For<IServiceImplementation>();
-            serviceImplementation.WhenForAnyArgs(x => x.Initialize(null, null)).Do(x => serviceImplementation.State.Returns(ServiceImplementationState.Running));
-            return new ServiceImplementationInfo(null, serviceImplementation);
-        }
-        
-        [Test]
-        public void Initialization()
-        {
-            var implementationInfo = container.GetImplementation("MyService", null);
-            Assert.That(implementationInfo.Implementation.State, Is.EqualTo(ServiceImplementationState.Running));
+            return new ServiceImplementationInfo(null, Substitute.For<object>());
         }
 
         [Test]
@@ -65,7 +56,7 @@ namespace SharpRpc.Tests.ServerSide
             var implementationInfo = container.GetImplementation("MyService", null);
             var oneMoreImplementationinfo = container.GetImplementation("MyService", null);
 
-            serviceImplementationFactory.Received(1).CreateImplementation("MyService");
+            serviceImplementationFactory.Received(1).CreateImplementation("MyService", null);
             Assert.That(implementationInfo, Is.EqualTo(oneMoreImplementationinfo));
         }
 
@@ -74,10 +65,11 @@ namespace SharpRpc.Tests.ServerSide
         {
             var implementationInfo1 = container.GetImplementation("MyService", "scope1");
             var implementationInfo2 = container.GetImplementation("MyService", "scope2");
-
             var oneMoreImplementationInfo1 = container.GetImplementation("MyService", "scope1");
 
-            serviceImplementationFactory.Received(2).CreateImplementation("MyService");
+            serviceImplementationFactory.Received(1).CreateImplementation("MyService", "scope1");
+            serviceImplementationFactory.Received(1).CreateImplementation("MyService", "scope2");
+
             Assert.That(implementationInfo1, Is.Not.EqualTo(implementationInfo2));
             Assert.That(implementationInfo1, Is.EqualTo(oneMoreImplementationInfo1));
         }
@@ -88,8 +80,8 @@ namespace SharpRpc.Tests.ServerSide
             var implementationInfo = container.GetImplementation("MyService", null);
             var otherImplementationInfo = container.GetImplementation("MyOtherService", null);
 
-            serviceImplementationFactory.Received(1).CreateImplementation("MyService");
-            serviceImplementationFactory.Received(1).CreateImplementation("MyOtherService");
+            serviceImplementationFactory.Received(1).CreateImplementation("MyService", null);
+            serviceImplementationFactory.Received(1).CreateImplementation("MyOtherService", null);
             Assert.That(implementationInfo, Is.Not.EqualTo(otherImplementationInfo));
         }
 
@@ -102,8 +94,6 @@ namespace SharpRpc.Tests.ServerSide
             container.GetImplementation("MyOtherService", "otherS");
             container.GetImplementation("MyOtherService", "otherS2");
 
-            serviceImplementationFactory.Received(3).CreateImplementation("MyService");
-            serviceImplementationFactory.Received(2).CreateImplementation("MyOtherService");
             Assert.That(container.GetInitializedScopesFor("MyService"), Is.EquivalentTo(new[] { "S1", "S2", "S3" }));
             Assert.That(container.GetInitializedScopesFor("MyOtherService"), Is.EquivalentTo(new[] { "otherS", "otherS2" }));
         }

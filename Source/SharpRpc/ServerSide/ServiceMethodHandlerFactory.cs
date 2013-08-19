@@ -42,7 +42,7 @@ namespace SharpRpc.ServerSide
             public int ArgumentIndex;
         }
 
-        private static readonly Type[] ParameterTypes = new[] {typeof(IServiceImplementation), typeof (byte[])};
+        private static readonly Type[] ParameterTypes = new[] {typeof(object), typeof (byte[])};
 
         private readonly ICodecContainer codecContainer;
 

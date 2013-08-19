@@ -31,6 +31,7 @@ namespace SharpRpc.Logs
     {
         void Custom(LogEntryType type, string message, Exception exception = null);
         void IncomingRequest(Request request);
+        void ProcessNotReady(Request request);
         void ProcessedRequestSuccessfully(Request request, TimeSpan executionTime);
         void ProcessedRequestWithBadStatus(Request request, ResponseStatus responseStatus);
         void ProcessedRequestWithException(Request request, Exception exception);

@@ -64,6 +64,7 @@
     <Compile Include="Codecs\ReferenceStructArrayCodecTests.cs" />
     <Compile Include="Codecs\StringCodecTests.cs" />
     <Compile Include="HostSettingsParserTests.cs" />
+    <Compile Include="ServerSide\ServiceImplementationFactoryTests.cs" />
     <Compile Include="ServiceEndPointTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerContainerTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactoryTests.cs" />
