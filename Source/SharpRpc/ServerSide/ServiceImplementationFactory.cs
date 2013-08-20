@@ -35,7 +35,7 @@ namespace SharpRpc.ServerSide
     public class ServiceImplementationFactory : IServiceImplementationFactory
     {
         #region Nester Structs
-        private struct ImplemntationCreationInfo
+        private struct ImplementationCreationInfo
         {
             public ServiceDescription Description;
             public ConstructorInfo Constructor;
@@ -44,41 +44,41 @@ namespace SharpRpc.ServerSide
 
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
         private readonly IRpcClientServer clientServer;
-        private readonly ConcurrentDictionary<string, ImplemntationCreationInfo> constructors;
+        private readonly ConcurrentDictionary<string, ImplementationCreationInfo> constructors;
 
         public ServiceImplementationFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, IRpcClientServer clientServer, 
             IEnumerable<InterfaceImplementationTypePair> interfaceImplementationTypePairs)
         {
             this.serviceDescriptionBuilder = serviceDescriptionBuilder;
             this.clientServer = clientServer;
-            constructors = new ConcurrentDictionary<string, ImplemntationCreationInfo>(interfaceImplementationTypePairs.Select(ConvertPair));
+            constructors = new ConcurrentDictionary<string, ImplementationCreationInfo>(interfaceImplementationTypePairs.Select(ConvertPair));
         }
 
-        private KeyValuePair<string, ImplemntationCreationInfo> ConvertPair(InterfaceImplementationTypePair pair)
+        private KeyValuePair<string, ImplementationCreationInfo> ConvertPair(InterfaceImplementationTypePair pair)
         {
             var serviceName = pair.Interface.GetServiceName();
             if (!pair.Interface.IsAssignableFrom(pair.ImplementationType))
                 throw new ArgumentException(string.Format("Given implementation for a '{0}' service ({1}) does not implement its interface", serviceName, pair.ImplementationType.FullName));
             var constructor = FindLargestAppropriateConstructor(pair.ImplementationType);
             if (constructor == null)
-                throw new ArgumentException(string.Format("No appropriate constructor find for {0}", pair.ImplementationType.FullName));
-            var creationInfo = new ImplemntationCreationInfo
+                throw new ArgumentException(string.Format("No appropriate constructor found for {0}", pair.ImplementationType.FullName));
+            var creationInfo = new ImplementationCreationInfo
                 {
                     Constructor = constructor,
                     Description = serviceDescriptionBuilder.Build(pair.Interface)
                 };
-            return new KeyValuePair<string, ImplemntationCreationInfo>(pair.Interface.GetServiceName(), creationInfo);
+            return new KeyValuePair<string, ImplementationCreationInfo>(pair.Interface.GetServiceName(), creationInfo);
         }
 
         private static ConstructorInfo FindLargestAppropriateConstructor(Type type)
         {
             return type.GetConstructors()
-                       .Where(x => x.GetParameters().All(ParameterIsIjectable))
+                       .Where(x => x.GetParameters().All(ParameterIsInjectable))
                        .OrderBy(x => x.GetParameters().Length)
                        .FirstOrDefault();
         }
 
-        private static bool ParameterIsIjectable(ParameterInfo parameterInfo)
+        private static bool ParameterIsInjectable(ParameterInfo parameterInfo)
         {
             var type = parameterInfo.ParameterType;
             return type == typeof(string) || type == typeof(IRpcClient) || type == typeof(IRpcClientServer);
@@ -91,7 +91,7 @@ namespace SharpRpc.ServerSide
 
         public ServiceImplementationInfo CreateImplementation(string serviceName, string scope)
         {
-            ImplemntationCreationInfo creationInfo;
+            ImplementationCreationInfo creationInfo;
             if (!constructors.TryGetValue(serviceName, out creationInfo))
                 throw new ArgumentOutOfRangeException("serviceName", string.Format("Implementation for service '{0}' was not found", serviceName));
             return new ServiceImplementationInfo(creationInfo.Description, InvokeConstructor(creationInfo.Constructor, clientServer, scope));
