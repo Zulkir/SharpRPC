@@ -22,9 +22,18 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
+using SharpRpc.Logs;
+using SharpRpc.Settings;
+
 namespace SharpRpc
 {
-    public interface IRpcClientServer : IRpcClient, IRpcServer
+    public interface IRpcClientServer : IRpcClient
     {
+        ILogger Logger { get; }
+        IHostSettings Settings { get; }
+        void StartHost();
+        void StopHost();
+        IEnumerable<string> GetInitializedScopesFor<T>(); 
     }
 }

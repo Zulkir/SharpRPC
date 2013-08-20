@@ -32,17 +32,15 @@ namespace SharpRpc.Tests.ServerSide
     [TestFixture]
     public class ServiceImplementationContainerTests
     {
-        private IRpcClientServer clientServer;
         private IServiceImplementationFactory serviceImplementationFactory;
         private ServiceImplementationContainer container;
 
         [SetUp]
         public void Setup()
         {
-            clientServer = Substitute.For<IRpcClientServer>();
             serviceImplementationFactory = Substitute.For<IServiceImplementationFactory>();
             serviceImplementationFactory.CreateImplementation(null, null).ReturnsForAnyArgs(CreateImplementationInfo);
-            container = new ServiceImplementationContainer(clientServer, serviceImplementationFactory);
+            container = new ServiceImplementationContainer(serviceImplementationFactory);
         }
 
         private ServiceImplementationInfo CreateImplementationInfo(CallInfo callInfo)

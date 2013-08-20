@@ -61,7 +61,7 @@ namespace SharpRpc
             return serviceImplementationContainer ?? (serviceImplementationContainer =
                                                       overrides.ServiceImplementationContainer != null
                                                           ? overrides.ServiceImplementationContainer(this)
-                                                          : new ServiceImplementationContainer(clientServer, GetServiceImplementationFactory()));
+                                                          : new ServiceImplementationContainer(GetServiceImplementationFactory()));
         }
         
 

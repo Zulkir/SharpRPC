@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,13 +36,13 @@ namespace SharpRpc.ServerSide
         {
             private readonly string serviceName;
             private readonly IServiceImplementationFactory serviceImplementationFactory;
-            private readonly ConcurrentDictionary<ScopeKey, ServiceImplementationInfo> scopedImplementations;
+            private readonly ConcurrentDictionary<ScopeKey, Lazy<ServiceImplementationInfo>> scopedImplementations;
 
             public ImplementationSet(string serviceName, IServiceImplementationFactory serviceImplementationFactory)
             {
                 this.serviceName = serviceName;
                 this.serviceImplementationFactory = serviceImplementationFactory;
-                scopedImplementations = new ConcurrentDictionary<ScopeKey, ServiceImplementationInfo>();
+                scopedImplementations = new ConcurrentDictionary<ScopeKey, Lazy<ServiceImplementationInfo>>();
             }
 
             private ServiceImplementationInfo CreateNew(string scope)
@@ -51,7 +52,7 @@ namespace SharpRpc.ServerSide
 
             public ServiceImplementationInfo GetForScope(string scope)
             {
-                return scopedImplementations.GetOrAdd(new ScopeKey(scope), s => CreateNew(s.Scope));
+                return scopedImplementations.GetOrAdd(new ScopeKey(scope), s => new Lazy<ServiceImplementationInfo>(() => CreateNew(s.Scope), true)).Value;
             }
 
             public IEnumerable<string> GetInitializedScopes()
@@ -60,13 +61,11 @@ namespace SharpRpc.ServerSide
             }
         }
 
-        private readonly IRpcClientServer clientServer;
         private readonly IServiceImplementationFactory serviceImplementationFactory;
         private readonly ConcurrentDictionary<string, ImplementationSet> implementations;
 
-        public ServiceImplementationContainer(IRpcClientServer clientServer, IServiceImplementationFactory serviceImplementationFactory)
+        public ServiceImplementationContainer(IServiceImplementationFactory serviceImplementationFactory)
         {
-            this.clientServer = clientServer;
             this.serviceImplementationFactory = serviceImplementationFactory;
             implementations = new ConcurrentDictionary<string, ImplementationSet>();
         }
