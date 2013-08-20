@@ -126,7 +126,6 @@
     <Compile Include="RpcClientServer.cs" />
     <Compile Include="ServerSide\InvalidPathException.cs" />
     <Compile Include="ServerSide\ServiceNotFoundException.cs" />
-    <Compile Include="ServiceImplementationState.cs" />
     <Compile Include="ServiceNetworkException.cs" />
     <Compile Include="ServerSide\HttpRequestReceiver.cs" />
     <Compile Include="ClientSide\HttpRequestSender.cs" />
