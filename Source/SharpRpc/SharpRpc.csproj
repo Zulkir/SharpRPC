@@ -121,7 +121,6 @@
     <Compile Include="Settings\IHostSettings.cs" />
     <Compile Include="Settings\InterfaceImplementationTypePair.cs" />
     <Compile Include="IRpcClient.cs" />
-    <Compile Include="IRpcServer.cs" />
     <Compile Include="IRpcClientServer.cs" />
     <Compile Include="RpcClientServer.cs" />
     <Compile Include="ServerSide\InvalidPathException.cs" />
