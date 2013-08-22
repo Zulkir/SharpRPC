@@ -40,7 +40,9 @@ namespace SharpRpc.Reflection
 
         public ServiceDescription Build(Type interfaceType)
         {
-            var properties = interfaceType.GetProperties();
+            var allInterfaces = GetAllInterfaces(interfaceType).Distinct().ToArray();
+
+            var properties = allInterfaces.SelectMany(x => x.GetProperties());
             var subinterfaceDescs = new List<SubserviceDescription>();
             foreach (var propertyInfo in properties)
             {
@@ -49,10 +51,18 @@ namespace SharpRpc.Reflection
                 subinterfaceDescs.Add(new SubserviceDescription(propertyInfo.Name, Build(propertyInfo.PropertyType)));
             }
 
-            var methods = interfaceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            var methods = allInterfaces.SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 .Where(m => !properties.Any(p => p.GetMethod == m || p.SetMethod == m));
             var methodDescs = methods.Select(methodInfo => methodDescriptionBuilder.Build(methodInfo));
             return new ServiceDescription(interfaceType, interfaceType.Name.Substring(1), subinterfaceDescs, methodDescs);
         }
+
+        private IEnumerable<Type> GetAllInterfaces(Type baseInterface)
+        {
+            yield return baseInterface;
+            foreach (var subInterface in baseInterface.GetInterfaces())
+                foreach (var subsubinterface in GetAllInterfaces(subInterface))
+                    yield return subsubinterface;
+        } 
     }
 }

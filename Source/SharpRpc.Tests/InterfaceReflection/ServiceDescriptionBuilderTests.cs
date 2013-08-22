@@ -105,5 +105,49 @@ namespace SharpRpc.Tests.InterfaceReflection
             var desc = builder.Build(typeof(IComplex));
             Assert.That(desc.Methods, Is.Empty);
         }
+
+        interface IBase
+        {
+            void Foo();
+        }
+
+        interface IHeir : IBase
+        {
+            void Bar();
+        }
+
+        [Test]
+        public void Inheritance()
+        {
+            var heirDesc = builder.Build(typeof(IHeir));
+            Assert.That(heirDesc.Methods.Count, Is.EqualTo(2));
+        }
+
+        public interface ICommonBase
+        {
+            void Foo();
+        }
+
+        public interface IDirectHeir1 : ICommonBase
+        {
+            void Bar1();
+        }
+
+        public interface IDirectHeir2 : ICommonBase
+        {
+            void Bar2();
+        }
+
+        public interface IComplexHeir : IDirectHeir1, IDirectHeir2
+        {
+            void FooBar();
+        }
+
+        [Test]
+        public void ComplexInheritance()
+        {
+            var heirDesc = builder.Build(typeof(IComplexHeir));
+            Assert.That(heirDesc.Methods.Count, Is.EqualTo(4));
+        }
     }
 }
