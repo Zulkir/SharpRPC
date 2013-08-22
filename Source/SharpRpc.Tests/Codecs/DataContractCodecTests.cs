@@ -180,6 +180,24 @@ namespace SharpRpc.Tests.Codecs
             public override bool Equals(object obj) { return obj is ContractWithPrivateFields && Equals((ContractWithPrivateFields)obj); }
             public override int GetHashCode() { return 0; }
         }
+
+        [DataContract]
+        public class BaseContract
+        {
+            [DataMember]
+            public int A { get; set; }
+        }
+
+        [DataContract]
+        public class HeirContract : BaseContract, IEquatable<HeirContract>
+        {
+            [DataMember]
+            public int B { get; set; }
+
+            public bool Equals(HeirContract other) { return A == other.A && B == other.B; }
+            public override bool Equals(object obj) { return obj is HeirContract && Equals((HeirContract)obj); }
+            public override int GetHashCode() { return 0; }
+        }
         #endregion
 
         private ICodecContainer codecContainer;
@@ -292,6 +310,13 @@ namespace SharpRpc.Tests.Codecs
         {
             DoTest((ContractWithPrivateFields)null);
             DoTest(new ContractWithPrivateFields(123, 234, 345, 456));
+        }
+
+        [Test]
+        public void Inheritance()
+        {
+            DoTest((HeirContract)null);
+            DoTest(new HeirContract { A = 123, B = 234 });
         }
     }
 }
