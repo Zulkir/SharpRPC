@@ -38,8 +38,6 @@ namespace SharpRpc.Reflection
                 throw new ArgumentNullException("type");
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Method parameter name cannot be null, empty, or consist of whitespace characters");
-            if (!Expressions.Name.IsMatch(name))
-                throw new ArgumentException(string.Format("'{0}' is not a valid method parameter name", name), "name");
             Type = type;
             Name = name;
             Way = way;

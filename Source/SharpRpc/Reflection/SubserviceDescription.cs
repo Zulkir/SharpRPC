@@ -35,8 +35,6 @@ namespace SharpRpc.Reflection
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Subservice name cannot be null, empty, or consist of whitespace characters");
-            if (!Expressions.Name.IsMatch(name))
-                throw new ArgumentException(string.Format("'{0}' is not a valid subservice", name), "name");
             if (serviceDesc == null)
                 throw new ArgumentNullException("serviceDesc");
 

@@ -138,7 +138,6 @@
     <Compile Include="ServerSide\IncomingRequestProcessor.cs" />
     <Compile Include="Interaction\Response.cs" />
     <Compile Include="Interaction\ResponseStatus.cs" />
-    <Compile Include="Reflection\Expressions.cs" />
     <Compile Include="Reflection\IServiceDescriptionBuilder.cs" />
     <Compile Include="Reflection\IMethodDescriptionBuilder.cs" />
     <Compile Include="Reflection\ServiceDescription.cs" />
