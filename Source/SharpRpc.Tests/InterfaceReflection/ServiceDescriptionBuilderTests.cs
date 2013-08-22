@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Reflection;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Reflection;
@@ -148,6 +149,20 @@ namespace SharpRpc.Tests.InterfaceReflection
         {
             var heirDesc = builder.Build(typeof(IComplexHeir));
             Assert.That(heirDesc.Methods.Count, Is.EqualTo(4));
+        }
+
+        public interface IGenericGetter<T>
+        {
+            T Get();
+        }
+
+        [Test]
+        public void Generic()
+        {
+            builder.Build(typeof(IGenericGetter<int>));
+            methodDescriptionBuilder.Received(1).Build(Arg.Is<MethodInfo>(x => x.ReturnType == typeof(int)));
+            builder.Build(typeof(IGenericGetter<string>));
+            methodDescriptionBuilder.Received(1).Build(Arg.Is<MethodInfo>(x => x.ReturnType == typeof(string)));
         }
     }
 }
