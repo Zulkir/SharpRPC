@@ -57,7 +57,7 @@ namespace SharpRpc.ServerSide
 
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
-                typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule);
+                typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var locals = new LocalVariableCollection(il, true);
             
@@ -106,7 +106,7 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Ldlen);
                 il.Emit(OpCodes.Stloc, locals.RemainingBytes);
                 requestDataPointerVar =                                     // var pinned dataPointer = pin(arg_1)
-                    il.Emit_PinArray(typeof(byte), locals, 1);
+                    il.Emit_PinArray(typeof(byte), 1);
                 il.Emit(OpCodes.Ldloc, requestDataPointerVar);              // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
             }
@@ -166,7 +166,7 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Stloc, dataArrayVar);
 
                 var responseDataPointerVar =                                        // var pinned dataPointer = pin(dataArrayVar)
-                        il.Emit_PinArray(typeof(byte), locals, dataArrayVar);
+                        il.Emit_PinArray(typeof(byte), dataArrayVar);
                 il.Emit(OpCodes.Ldloc, responseDataPointerVar);                     // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 

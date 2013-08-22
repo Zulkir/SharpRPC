@@ -159,8 +159,7 @@ namespace SharpRpc.Codecs
                     il.MarkLabel(canReadFlagLabel);                             // label canReadFlagLabel
                 }
 
-                var flagVar = locals.GetOrAdd("existanceFlag",
-                lil => lil.DeclareLocal(typeof(int)));
+                var flagVar = il.DeclareLocal(typeof(int));
 
                 il.Emit(OpCodes.Ldloc, locals.DataPointer);                     // flag = *(int*) data
                 il.Emit(OpCodes.Ldind_I4);

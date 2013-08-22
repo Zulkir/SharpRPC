@@ -115,7 +115,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Stind_I4);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
             var arrayPointerVar = il.Emit_PinArray(                  // var pinned arrayPointer = pin(value)
-                typeOfStruct, locals, emitLoad);
+                typeOfStruct, emitLoad);
             il.Emit(OpCodes.Ldloc, locals.DataPointer);              // cpblk(data, (byte*)arrayPointer, sizeInBytes)
             il.Emit(OpCodes.Ldloc, arrayPointerVar);
             il.Emit(OpCodes.Conv_I);
@@ -200,7 +200,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Newarr, typeOfStruct);
             il.Emit(OpCodes.Stloc, resultVar);
             var arrayPointerVar = il.Emit_PinArray(                     // var pinned arrayPointer = pin(value)
-                typeOfStruct, locals, resultVar);
+                typeOfStruct, resultVar);
             il.Emit(OpCodes.Ldloc, arrayPointerVar);                    // cpblk((byte*)arrayPointer, data, sizeInBytes)
             il.Emit(OpCodes.Conv_I);
             il.Emit(OpCodes.Ldloc, locals.DataPointer);

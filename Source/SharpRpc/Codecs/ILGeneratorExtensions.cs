@@ -151,10 +151,9 @@ namespace SharpRpc.Codecs
             Emit_LoadSize(il, codec, lil => lil.Emit(OpCodes.Ldloc, localVar));
         }*/
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, Action<ILGenerator> load)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, Action<ILGenerator> load)
         {
-            var argsDataPointerVar = locals.GetOrAdd("pinnedArray" + elementType.FullName,
-                lil => lil.DeclareLocal(elementType.MakePointerType(), true));
+            var argsDataPointerVar = il.DeclareLocal(elementType.MakePointerType(), true);
             load(il);
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Ldelema, elementType);
@@ -162,19 +161,19 @@ namespace SharpRpc.Codecs
             return argsDataPointerVar;
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType)
         {
-            return Emit_PinArray(il, elementType, locals, lil => { });
+            return Emit_PinArray(il, elementType, lil => { });
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, LocalBuilder localVar)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, LocalBuilder localVar)
         {
-            return Emit_PinArray(il, elementType, locals, lil => lil.Emit(OpCodes.Ldloc, localVar));
+            return Emit_PinArray(il, elementType, lil => lil.Emit(OpCodes.Ldloc, localVar));
         }
 
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, ILocalVariableCollection locals, int argIndex)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, int argIndex)
         {
-            return Emit_PinArray(il, elementType, locals, lil => lil.Emit_Ldarg(argIndex));
+            return Emit_PinArray(il, elementType, lil => lil.Emit_Ldarg(argIndex));
         }
 
         public static void Emit_UnpinArray(this ILGenerator il, LocalBuilder pinnedPointerVar)
