@@ -171,7 +171,7 @@ namespace SharpRpc.Tests.ClientSide
             proxy.Trivial.DoSomething();
 
             var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
-            Assert.That(arguments[0], Is.EqualTo(typeof(ITrivialService)));
+            Assert.That(arguments[0], Is.EqualTo(typeof(ISuperService)));
             Assert.That(arguments[1], Is.EqualTo("SuperService/Trivial/DoSomething"));
             Assert.That(arguments[2], Is.Null);
             Assert.That(arguments[3], Is.Null);

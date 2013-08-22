@@ -64,11 +64,11 @@ namespace SharpRpc.ClientSide
 
         public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
-            var proxyClass = CreateProxyClass(typeof(T), null);
+            var proxyClass = CreateProxyClass(typeof(T), typeof(T), null);
             return (p, s, t) => (T) Activator.CreateInstance(proxyClass, p, s, t);
         }
 
-        private Type CreateProxyClass(Type type, string path)
+        private Type CreateProxyClass(Type rootType, Type type, string path)
         {
             var serviceDescription = serviceDescriptionBuilder.Build(type);
             path = path ?? serviceDescription.Name;
@@ -108,7 +108,7 @@ namespace SharpRpc.ClientSide
             foreach (var subserviceDesc in serviceDescription.Subservices)
             {
                 #region Emit Subservice Property
-                var proxyClass = CreateProxyClass(subserviceDesc.Service.Type, path + "/" + subserviceDesc.Name);
+                var proxyClass = CreateProxyClass(rootType, subserviceDesc.Service.Type, path + "/" + subserviceDesc.Name);
 
                 var fieldBuilder = typeBuilder.DefineField("_" + subserviceDesc.Name, proxyClass, 
                     FieldAttributes.Private | FieldAttributes.InitOnly);
@@ -144,7 +144,7 @@ namespace SharpRpc.ClientSide
             {
                 #region Emit Method
                 var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
-                var dynamicMethod = EmitDynamicMethod(type, path, methodDesc, parameterTypes, codecContainer);
+                var dynamicMethod = EmitDynamicMethod(rootType, path, methodDesc, parameterTypes, codecContainer);
                 dynamicMethods.Add(dynamicMethod);
                 var dynamicMethodPointer = MethodHelpers.ExtractDynamicMethodPointer(dynamicMethod);
 
@@ -175,7 +175,7 @@ namespace SharpRpc.ClientSide
             return typeBuilder.CreateType();
         }
 
-        private static DynamicMethod EmitDynamicMethod(Type type, string path, MethodDescription methodDesc, IEnumerable<Type> realParameterTypes, ICodecContainer codecContainer)
+        private static DynamicMethod EmitDynamicMethod(Type rootType, string path, MethodDescription methodDesc, IEnumerable<Type> realParameterTypes, ICodecContainer codecContainer)
         {
             var dynamicMethod = new DynamicMethod("__dynproxy_" + path + "." + methodDesc,
                 methodDesc.ReturnType,
@@ -261,7 +261,7 @@ namespace SharpRpc.ClientSide
             }
 
             il.Emit(OpCodes.Ldarg_0);                               // stack_0 = methodCallProcessor
-            il.Emit(OpCodes.Ldtoken, type);                         // stack_1 = typeof(T)
+            il.Emit(OpCodes.Ldtoken, rootType);                         // stack_1 = typeof(T)
             il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
             il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
                 path, methodDesc.Name));
