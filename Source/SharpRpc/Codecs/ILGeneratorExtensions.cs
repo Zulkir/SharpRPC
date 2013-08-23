@@ -132,24 +132,6 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Newobj, ExceptionConstructor);           //     "Unexpected end of request data")
             il.Emit(OpCodes.Throw);
         }
-        /*
-        public static void Emit_LoadSize(this ILGenerator il, IEmittingCodec codec)
-        {
-            if (codec.HasFixedSize)
-            {
-                il.Emit(OpCodes.Pop);
-                il.Emit_Ldc_I4(codec.FixedSize);
-            }
-            else
-            {
-                codec.EmitCalculateSize(il);
-            }
-        }
-
-        public static void Emit_LoadSize(this ILGenerator il, IEmittingCodec codec, LocalBuilder localVar)
-        {
-            Emit_LoadSize(il, codec, lil => lil.Emit(OpCodes.Ldloc, localVar));
-        }*/
 
         public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, Action<ILGenerator> load)
         {
@@ -159,11 +141,6 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Ldelema, elementType);
             il.Emit(OpCodes.Stloc, argsDataPointerVar);
             return argsDataPointerVar;
-        }
-
-        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType)
-        {
-            return Emit_PinArray(il, elementType, lil => { });
         }
 
         public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, LocalBuilder localVar)
