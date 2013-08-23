@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.IO;
 using System.Net;
 using SharpRpc.Interaction;
 using System.Linq;
@@ -61,7 +62,16 @@ namespace SharpRpc.ClientSide
                 using (var stream = httpWebResponse.GetResponseStream())
                 {
                     if (stream != null)
-                        stream.Read(responseData, 0, responseData.Length);
+                    {
+                        int offset = 0;
+                        while (offset < dataLength)
+                        {
+                            int read = stream.Read(responseData, offset, responseData.Length - offset);
+                            if (read == 0)
+                                throw new InvalidDataException("Unexpected end of response stream");
+                            offset += read;
+                        }   
+                    }
                 }
                 int status;
                 if (!httpWebResponse.Headers.AllKeys.Contains("status") || !int.TryParse(httpWebResponse.Headers["status"], out status))
