@@ -54,6 +54,7 @@ namespace SharpRpc.Tests.InterfaceReflection
         public void Trivial()
         {
             var desc = builder.Build(type.GetMethod("Trivial"));
+            Assert.That(desc.MethodInfo, Is.EqualTo(type.GetMethod("Trivial")));
             Assert.That(desc.ReturnType, Is.EqualTo(typeof(void)));
             Assert.That(desc.Name, Is.EqualTo("Trivial"));
             Assert.That(desc.Parameters, Is.Empty);

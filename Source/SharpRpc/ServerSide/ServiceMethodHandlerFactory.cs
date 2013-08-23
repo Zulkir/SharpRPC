@@ -76,7 +76,6 @@ namespace SharpRpc.ServerSide
             }
 
             var methodName = servicePath.MethodName;
-            var methodInfo = serviceDesc.Type.GetMethod(methodName);
             MethodDescription methodDesc;
             if (!serviceDesc.TryGetMethod(methodName, out methodDesc))
                 throw new InvalidPathException();
@@ -135,8 +134,8 @@ namespace SharpRpc.ServerSide
             {
                 il.Emit_UnpinArray(requestDataPointerVar);                  // unpin(dataPointer)
             }
-            
-            il.Emit(OpCodes.Callvirt, methodInfo);                          // stack_0 = stack_0.Method(stack_1, stack_2, ...)
+
+            il.Emit(OpCodes.Callvirt, methodDesc.MethodInfo);                          // stack_0 = stack_0.Method(stack_1, stack_2, ...)
 
             if (hasRetval || responseParameters.Any())
             {

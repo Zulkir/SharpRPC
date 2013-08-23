@@ -52,8 +52,8 @@ namespace SharpRpc.Tests.InterfaceReflection
         [Test]
         public void BuildSimple()
         {
-            var fooDesc = new MethodDescription(null, "Foo", new MethodParameterDescription[0]);
-            var barDesc = new MethodDescription(null, "Bar", new MethodParameterDescription[0]);
+            var fooDesc = new MethodDescription(null, null, "Foo", new MethodParameterDescription[0]);
+            var barDesc = new MethodDescription(null, null, "Bar", new MethodParameterDescription[0]);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Foo")).Returns(fooDesc);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Bar")).Returns(barDesc);
 
@@ -83,8 +83,8 @@ namespace SharpRpc.Tests.InterfaceReflection
         [Test]
         public void Nested()
         {
-            var fooDesc = new MethodDescription(null, "Foo", new MethodParameterDescription[0]);
-            var barDesc = new MethodDescription(null, "Bar", new MethodParameterDescription[0]);
+            var fooDesc = new MethodDescription(null, null, "Foo", new MethodParameterDescription[0]);
+            var barDesc = new MethodDescription(null, null, "Bar", new MethodParameterDescription[0]);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Foo")).Returns(fooDesc);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Bar")).Returns(barDesc);
 
@@ -98,8 +98,8 @@ namespace SharpRpc.Tests.InterfaceReflection
         [Test]
         public void PropertiesAreNotMethods()
         {
-            var fooDesc = new MethodDescription(null, "Foo", new MethodParameterDescription[0]);
-            var barDesc = new MethodDescription(null, "Bar", new MethodParameterDescription[0]);
+            var fooDesc = new MethodDescription(null, null, "Foo", new MethodParameterDescription[0]);
+            var barDesc = new MethodDescription(null, null, "Bar", new MethodParameterDescription[0]);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Foo")).Returns(fooDesc);
             methodDescriptionBuilder.Build(typeof(IFooBar).GetMethod("Bar")).Returns(barDesc);
 

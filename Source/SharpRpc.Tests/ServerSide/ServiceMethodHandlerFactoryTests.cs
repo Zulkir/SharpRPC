@@ -36,7 +36,12 @@ namespace SharpRpc.Tests.ServerSide
     public unsafe class ServiceMethodHandlerFactoryTests
     {
         #region Service interfaces and implementations
-        public interface IGlobalService
+        public interface IGlobalServiceBase
+        {
+            void DoBaseStuff();
+        }
+
+        public interface IGlobalService : IGlobalServiceBase
         {
             IMiddleService Middle { get; }
             void Trivial();
@@ -245,6 +250,13 @@ namespace SharpRpc.Tests.ServerSide
 
             var result = handler(service, data);
             Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void Inheritance()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "DoBaseStuff"));
+            handler(service, new byte[0]);
         }
     }
 }

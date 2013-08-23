@@ -25,25 +25,26 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace SharpRpc.Reflection
 {
     public class MethodDescription
     {
+        private readonly MethodInfo methodInfo;
         private readonly Type returnType;
         private readonly string name;
         private readonly MethodParameterDescription[] parameters;
 
-        public MethodDescription(Type returnType, string name, IEnumerable<MethodParameterDescription> parameters)
+        public MethodDescription(MethodInfo methodInfo, Type returnType, string name, IEnumerable<MethodParameterDescription> parameters)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Method name cannot be null, empty, or consist of whitespace characters");
-
+            this.methodInfo = methodInfo;
             this.returnType = returnType;
             this.name = name;
             this.parameters = parameters.ToArray();
         }
 
+        public MethodInfo MethodInfo { get { return methodInfo; } }
         public Type ReturnType { get { return returnType; } }
         public string Name { get { return name; } }
         public IReadOnlyList<MethodParameterDescription> Parameters { get { return parameters; } } 
