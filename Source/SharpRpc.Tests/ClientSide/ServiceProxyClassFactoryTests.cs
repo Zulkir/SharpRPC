@@ -256,7 +256,7 @@ namespace SharpRpc.Tests.ClientSide
         }
 
         [Test]
-        public void BadInterfaceTolerance()
+        public void ExceptionConsistency()
         {
             Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
             Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
