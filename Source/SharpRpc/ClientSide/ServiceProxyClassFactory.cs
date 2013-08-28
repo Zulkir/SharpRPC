@@ -46,7 +46,8 @@ namespace SharpRpc.ClientSide
         private readonly ICodecContainer codecContainer;
         private readonly AssemblyBuilder assemblyBuilder;
         private readonly ModuleBuilder moduleBuilder;
-        private readonly List<DynamicMethod> dynamicMethods; 
+        private readonly List<DynamicMethod> dynamicMethods;
+        private int classNameDisambiguator = 0;
 
         public ServiceProxyClassFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, ICodecContainer codecContainer)
         {
@@ -73,7 +74,7 @@ namespace SharpRpc.ClientSide
             var serviceDescription = serviceDescriptionBuilder.Build(type);
             path = path ?? serviceDescription.Name;
 
-            var typeBuilder = moduleBuilder.DefineType("__rpc_proxy_" + type.FullName,
+            var typeBuilder = moduleBuilder.DefineType("__rpc_proxy_" + type.FullName + "_" + classNameDisambiguator++,
                 TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class, 
                 typeof(object), new[] {type});
 

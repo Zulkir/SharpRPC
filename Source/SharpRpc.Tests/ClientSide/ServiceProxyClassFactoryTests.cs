@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;
@@ -241,6 +242,24 @@ namespace SharpRpc.Tests.ClientSide
             var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(s, Is.EqualTo("OK"));
+        }
+
+        public class BadData
+        {
+            public IntPtr A { get; set; }
+            public Func<int, string> B { get; set; }
+        }
+
+        public interface IBadService
+        {
+            BadData DoBadStuff(BadData arg);
+        }
+
+        [Test]
+        public void BadInterfaceTolerance()
+        {
+            Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
+            Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
         }
     }
 }
