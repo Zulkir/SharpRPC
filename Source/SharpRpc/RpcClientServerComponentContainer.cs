@@ -104,7 +104,7 @@ namespace SharpRpc
             return requestReceiverContainer ?? (requestReceiverContainer =
                                                 overrides.RequestReceiverContainer != null
                                                     ? overrides.RequestReceiverContainer(this)
-                                                    : new RequestReceiverContainer(GetIncomingRequestProcessor()));
+                                                    : new RequestReceiverContainer(GetIncomingRequestProcessor(), GetLogger()));
         }
     }
 }

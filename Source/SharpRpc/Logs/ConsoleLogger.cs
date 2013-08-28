@@ -35,6 +35,12 @@ namespace SharpRpc.Logs
             WriteException(exception);
         }
 
+        public void NetworkingException(string message, Exception exception)
+        {
+            Console.WriteLine(message);
+            WriteException(exception);
+        }
+
         public void IncomingRequest(Request request)
         {
             Console.WriteLine("Incoming: {0} for scope '{1}'", request.Path, request.ServiceScope);

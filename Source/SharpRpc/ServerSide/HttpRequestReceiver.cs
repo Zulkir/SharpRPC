@@ -30,20 +30,23 @@ using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
 using SharpRpc.Interaction;
+using SharpRpc.Logs;
 
 namespace SharpRpc.ServerSide
 {
     public class HttpRequestReceiver : IRequestReceiver
     {
         private readonly IIncomingRequestProcessor requestProcessor;
+        private readonly ILogger logger;
         private readonly ConcurrentQueue<HttpListenerContext> requestQueue;
         private HttpListener listener;
         private Thread listenerThread;
         private Thread[] workerThreads;
 
-        public HttpRequestReceiver(IIncomingRequestProcessor requestProcessor)
+        public HttpRequestReceiver(IIncomingRequestProcessor requestProcessor, ILogger logger)
         {
             this.requestProcessor = requestProcessor;
+            this.logger = logger;
             requestQueue = new ConcurrentQueue<HttpListenerContext>();
         }
 
@@ -52,8 +55,15 @@ namespace SharpRpc.ServerSide
             listener.Start();
             while (listener.IsListening)
             {
-                var context = listener.GetContext();
-                requestQueue.Enqueue(context);
+                try
+                {
+                    var context = listener.GetContext();
+                    requestQueue.Enqueue(context);
+                }
+                catch (Exception ex)
+                {
+                    logger.NetworkingException("Listener failed to get a context", ex);
+                }
             }
         }
 
@@ -82,8 +92,9 @@ namespace SharpRpc.ServerSide
                             context.Response.Headers["data-length"] = "0";
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        logger.NetworkingException("Processing a request failed unexpectedly", ex);
                         context.Response.Headers["status"] = ((int)ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
                         context.Response.Headers["data-length"] = "0";
                     }
@@ -93,9 +104,10 @@ namespace SharpRpc.ServerSide
                         {
                             context.Response.Close();
                         }
-// ReSharper disable EmptyGeneralCatchClause
-                        catch {}
-// ReSharper restore EmptyGeneralCatchClause
+                        catch (Exception ex)
+                        {
+                            logger.NetworkingException("Closing a response stream failed", ex);
+                        }
                     }
 
                     hasRequest = requestQueue.TryDequeue(out context);

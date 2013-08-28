@@ -30,6 +30,7 @@ namespace SharpRpc.Logs
     public interface ILogger
     {
         void Custom(LogEntryType type, string message, Exception exception = null);
+        void NetworkingException(string message, Exception exception);
         void IncomingRequest(Request request);
         void ProcessNotReady(Request request);
         void ProcessedRequestSuccessfully(Request request, TimeSpan executionTime);

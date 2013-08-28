@@ -23,24 +23,27 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Logs;
 
 namespace SharpRpc.ServerSide
 {
     public class RequestReceiverContainer : IRequestReceiverContainer 
     {
         private readonly IIncomingRequestProcessor requestProcessor;
+        private readonly ILogger logger;
         private HttpRequestReceiver httpReceiver;
 
-        public RequestReceiverContainer(IIncomingRequestProcessor requestProcessor)
+        public RequestReceiverContainer(IIncomingRequestProcessor requestProcessor, ILogger logger)
         {
             this.requestProcessor = requestProcessor;
+            this.logger = logger;
         }
 
         public IRequestReceiver GetReceiver(string protocol)
         {
             switch (protocol)
             {
-                case "http": return httpReceiver ?? (httpReceiver = new HttpRequestReceiver(requestProcessor));
+                case "http": return httpReceiver ?? (httpReceiver = new HttpRequestReceiver(requestProcessor, logger));
                 default: throw new NotSupportedException(string.Format("Protocol '{0}' is not supported", protocol));
             }
         }
