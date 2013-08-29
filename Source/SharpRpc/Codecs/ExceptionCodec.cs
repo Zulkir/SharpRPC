@@ -23,23 +23,28 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.Serialization;
 
 namespace SharpRpc.Codecs
 {
     public unsafe class ExceptionCodec : IManualCodec<Exception>
     {
-        private readonly IManualCodec<string> stringCodec; 
+        private readonly IManualCodec<string> stringCodec;
+        private readonly Func<Type, string, string, Exception> createException; 
 
         public ExceptionCodec(ICodecContainer codecContainer)
         {
             stringCodec = codecContainer.GetManualCodecFor<string>();
+            createException = CreateExceptionCreator();
         }
 
         public int CalculateSize(Exception value)
         {
             return stringCodec.CalculateSize(value.GetType().AssemblyQualifiedName) +
                    stringCodec.CalculateSize(value.Message) +
-                   stringCodec.CalculateSize(ComposStackTraceToEncode(value));
+                   stringCodec.CalculateSize(value.StackTrace);
         }
 
         public int? FixedSize { get { return null; } }
@@ -49,10 +54,8 @@ namespace SharpRpc.Codecs
         {
             stringCodec.Encode(ref data, value.GetType().AssemblyQualifiedName);
             stringCodec.Encode(ref data, value.Message);
-            stringCodec.Encode(ref data, ComposStackTraceToEncode(value));
+            stringCodec.Encode(ref data, value.StackTrace);
         }
-
-        private static readonly Type[] ExceptionConstructorParameterTypes = new[] {typeof(string), typeof(Exception)};
 
         public Exception Decode(ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
         {
@@ -62,18 +65,37 @@ namespace SharpRpc.Codecs
 
             var type = Type.GetType(typeName);
             if (type == null || !typeof(Exception).IsAssignableFrom(type))
-                return new Exception(message, new Exception(stackTrace));
-            var constructor = type.GetConstructor(ExceptionConstructorParameterTypes);
-            if (constructor == null)
-                return new Exception(message, new Exception(stackTrace));
-            return (Exception)constructor.Invoke(new object[] {message, new Exception(stackTrace)});
+                return createException(typeof(Exception), message, stackTrace);
+            return createException(type, message, stackTrace);
         }
 
-        private static string ComposStackTraceToEncode(Exception exception)
+        private static readonly MethodInfo GetUninitializedObject = typeof(FormatterServices).GetMethod("GetUninitializedObject");
+        private static readonly MethodInfo InitMethod = typeof(Exception).GetMethod("Init", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo MessageField = typeof(Exception).GetField("_message", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo RemoteStackTraceStringField = typeof(Exception).GetField("_remoteStackTraceString", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        private static Func<Type, string, string, Exception> CreateExceptionCreator()
         {
-            return exception.InnerException != null
-                ? exception.InnerException.Message + "--- NETWORK ---\r\n" + exception.StackTrace
-                : exception.StackTrace;
+            var dynamicMethod = new DynamicMethod(
+                "__srpc__CreateException",
+                typeof(Exception), new[] { typeof(Type), typeof(string), typeof(string) },
+                Assembly.GetExecutingAssembly().ManifestModule, true);
+            var il = dynamicMethod.GetILGenerator();
+
+            il.Emit_Ldarg(0);                               // stack_0 = (Exception)FormatterServices.GetUninitializedObject(typeof(T))
+            il.Emit(OpCodes.Call, GetUninitializedObject);
+            il.Emit(OpCodes.Castclass, typeof(Exception));
+
+            il.Emit(OpCodes.Dup);                           // stack_0.Init()
+            il.Emit(OpCodes.Call, InitMethod);
+            il.Emit(OpCodes.Dup);                           // stack_0._message = message
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Stfld, MessageField);
+            il.Emit(OpCodes.Dup);                           // stack_0._message = message
+            il.Emit(OpCodes.Ldarg_2);
+            il.Emit(OpCodes.Stfld, RemoteStackTraceStringField);
+            il.Emit(OpCodes.Ret);
+            return (Func<Type, string, string, Exception>)dynamicMethod.CreateDelegate(typeof(Func<Type, string, string, Exception>));
         }
     }
 }

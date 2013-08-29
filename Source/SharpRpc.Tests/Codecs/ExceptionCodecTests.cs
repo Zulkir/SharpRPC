@@ -45,46 +45,26 @@ namespace SharpRpc.Tests.Codecs
             exceptionCodec = new ExceptionCodec(codecContainer);
         }
 
-        private void DoTest(Exception exception)
+        private void DoTest<T>(T exception) where T : Exception
         {
-            var exceptionWithStackTrace = CreateExceptionWithStackTrace(exception);
-            Exception decodedException;
-            var data = new byte[exceptionCodec.CalculateSize(exceptionWithStackTrace)];
-            fixed (byte* pData = data)
-            {
-                var p = pData;
-                exceptionCodec.Encode(ref p, exceptionWithStackTrace);
-                p = pData;
-                int remainingBytes = data.Length;
-                decodedException = exceptionCodec.Decode(ref p, ref remainingBytes, false);
-            }
-            AssertExceptions(decodedException, exceptionWithStackTrace);
+            Exception exceptionWithStackTrace;
+            try { throw exception; }
+            catch (Exception catched) { exceptionWithStackTrace = catched; }
+
+            var data = exceptionCodec.EncodeSingle(exceptionWithStackTrace);
+            var decodedException = exceptionCodec.DecodeSingle(data);
+
+            Exception decodedExceptionWithStackTrace;
+            try { throw decodedException; }
+            catch (Exception catched) { decodedExceptionWithStackTrace = catched; }
+            AssertExceptions(decodedExceptionWithStackTrace, exceptionWithStackTrace);
         }
 
-        private static T CreateExceptionWithStackTrace<T>(T exception) where T : Exception
-        {
-            T exceptionWithStackTrace;
-            try
-            {
-                throw exception;
-            }
-            catch (T catched)
-            {
-                exceptionWithStackTrace = catched;
-            }
-            return exceptionWithStackTrace;
-        }
-
-        private void AssertExceptions(Exception decoded, Exception original)
+        private static void AssertExceptions(Exception decoded, Exception original)
         {
             Assert.That(decoded.GetType(), Is.EqualTo(original.GetType()));
             Assert.That(decoded.Message, Is.EqualTo(original.Message));
-            Assert.That(decoded.InnerException, Is.Not.Null);
-            if (original.InnerException != null)
-                Assert.That(decoded.InnerException.Message,
-                            Is.EqualTo(original.InnerException.Message + "--- NETWORK ---\r\n" + original.StackTrace));
-            else
-                Assert.That(decoded.InnerException.Message, Is.EqualTo(original.StackTrace));
+            Assert.That(decoded.StackTrace, Is.StringStarting(original.StackTrace));
         }
 
         [Test]
@@ -130,6 +110,19 @@ namespace SharpRpc.Tests.Codecs
         public void Indirect()
         {
             DoTest(new InvalidOperationException("asdasd", new InvalidOperationException("qweqwe")));
+        }
+
+        public class MyUnfriendlyException : Exception
+        {
+            public MyUnfriendlyException(int number)
+                : base("UnfriendlyMessage" + number)
+            { }
+        }
+
+        [Test]
+        public void BadConstructor()
+        {
+            DoTest(new MyUnfriendlyException(123));
         }
     }
 }
