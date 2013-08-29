@@ -62,11 +62,12 @@ namespace SharpRpc.Codecs
             var typeName = stringCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
             var message = stringCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
             var stackTrace = stringCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            var remoteStackTrace = stackTrace + Environment.NewLine + "--- NETWORK ---" + Environment.NewLine;
 
             var type = Type.GetType(typeName);
             if (type == null || !typeof(Exception).IsAssignableFrom(type))
-                return createException(typeof(Exception), message, stackTrace);
-            return createException(type, message, stackTrace);
+                return createException(typeof(Exception), message, remoteStackTrace);
+            return createException(type, message, remoteStackTrace);
         }
 
         private static readonly MethodInfo GetUninitializedObject = typeof(FormatterServices).GetMethod("GetUninitializedObject");

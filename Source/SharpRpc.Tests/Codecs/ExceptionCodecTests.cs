@@ -65,6 +65,12 @@ namespace SharpRpc.Tests.Codecs
             Assert.That(decoded.GetType(), Is.EqualTo(original.GetType()));
             Assert.That(decoded.Message, Is.EqualTo(original.Message));
             Assert.That(decoded.StackTrace, Is.StringStarting(original.StackTrace));
+            Assert.That(CountLines(decoded.StackTrace), Is.GreaterThan(CountLines(original.StackTrace) + 1));
+        }
+
+        private static int CountLines(string s)
+        {
+            return s.Split('\n').Length;
         }
 
         [Test]
