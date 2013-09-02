@@ -83,9 +83,8 @@ namespace SharpRpc
             requestReceiver.Stop();
         }
 
-        public IEnumerable<string> GetInitializedScopesFor<T>()
+        public IEnumerable<string> GetInitializedScopesFor(string serviceName)
         {
-            var serviceName = typeof(T).GetServiceName();
             return serviceImplementationContainer.GetInitializedScopesFor(serviceName);
         }
     }

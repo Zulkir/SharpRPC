@@ -34,6 +34,6 @@ namespace SharpRpc
         IHostSettings Settings { get; }
         void StartHost();
         void StopHost();
-        IEnumerable<string> GetInitializedScopesFor<T>(); 
+        IEnumerable<string> GetInitializedScopesFor(string serviceName); 
     }
 }
