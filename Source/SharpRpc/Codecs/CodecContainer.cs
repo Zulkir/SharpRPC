@@ -59,6 +59,8 @@ namespace SharpRpc.Codecs
                 return new NativeStructCodec(type);
             if (type == typeof (string))
                 return new StringCodec();
+            if (type == typeof(Type))
+                return new TypeCodec();
             if (type.IsArray)
                 if (TypeIsNativeStructure(type.GetElementType()))
                     return new NativeStructArrayCodec(type.GetElementType());
