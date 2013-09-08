@@ -63,6 +63,7 @@
     <Compile Include="Codecs\FieldsCodecTests.cs" />
     <Compile Include="Codecs\ReferenceStructArrayCodecTests.cs" />
     <Compile Include="Codecs\StringCodecTests.cs" />
+    <Compile Include="Codecs\TypeCodecTests.cs" />
     <Compile Include="HostSettingsParserTests.cs" />
     <Compile Include="ServerSide\ServiceImplementationFactoryTests.cs" />
     <Compile Include="ServiceEndPointTests.cs" />

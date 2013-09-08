@@ -23,25 +23,30 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace SharpRpc.Codecs
 {
-    public class StringCodec : StringCodecBase
+    public class TypeCodec : StringCodecBase
     {
-        public StringCodec() : base(true)
+        public TypeCodec() : base(true)
         {
             
         }
+
+        private static readonly MethodInfo GetTypeMethod = typeof(Type).GetMethod("GetType", new[] { typeof(string) });
+        private static readonly MethodInfo GetAssemblyQualifiedNameMethod = typeof(Type).GetMethod("get_AssemblyQualifiedName");
 
         protected override void EmitLoadAsString(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             emitLoad(il);
+            il.Emit(OpCodes.Callvirt, GetAssemblyQualifiedNameMethod);
         }
 
         protected override void EmitParseFromString(ILGenerator il)
         {
-            
+            il.Emit(OpCodes.Call, GetTypeMethod);
         }
     }
 }

@@ -33,7 +33,7 @@ namespace SharpRpc.Tests.Codecs
     {
         protected void DoTest<T>(IEmittingCodec codec, T value)
         {
-            DoTest(codec, value, (a, b) => Assert.That(b, Is.EqualTo(a)));
+            DoTest(codec, value, (a, b) => Assert.That(a, Is.EqualTo(b)));
         }
 
         protected void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)

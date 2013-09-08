@@ -23,25 +23,59 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
+using System.Collections.Generic;
+using NUnit.Framework;
+using SharpRpc.Codecs;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Tests.Codecs
 {
-    public class StringCodec : StringCodecBase
+    public class TypeCodecTests : CodecTestsBase
     {
-        public StringCodec() : base(true)
+        private void DoTest(Type value)
         {
-            
+            DoTest(new TypeCodec(), value);
         }
 
-        protected override void EmitLoadAsString(ILGenerator il, Action<ILGenerator> emitLoad)
+        private void DoTest<T>()
         {
-            emitLoad(il);
+            DoTest(typeof(T));
         }
 
-        protected override void EmitParseFromString(ILGenerator il)
+        [Test]
+        public void Null()
         {
-            
+            DoTest(null);
+        }
+
+        [Test]
+        public void Void()
+        {
+            DoTest(typeof(void));
+        }
+
+        [Test]
+        public void System()
+        {
+            DoTest<int>();
+            DoTest<string>();
+            DoTest<DateTime>();
+            DoTest<ArgumentOutOfRangeException>();
+        }
+
+        public class MyCustomType { public int A { get; set; } public string B { get; set; } }
+
+        [Test]
+        public void Custom()
+        {
+            DoTest<MyCustomType>();
+        }
+
+        [Test]
+        public void Generic()
+        {
+            DoTest(typeof(Dictionary<,>));
+            DoTest(typeof(Dictionary<int, string>));
+            DoTest(typeof(Dictionary<MyCustomType, MyCustomType>));
         }
     }
 }
