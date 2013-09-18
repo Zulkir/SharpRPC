@@ -34,6 +34,7 @@ namespace SharpRpc.Reflection
         private readonly MethodInfo methodInfo;
         private readonly Type returnType;
         private readonly string name;
+        private readonly GenericParameterDescription[] genericParameters;
         private readonly MethodParameterDescription[] parameters;
 
         public MethodDescription(MethodInfo methodInfo, Type returnType, string name, IEnumerable<MethodParameterDescription> parameters)
@@ -41,12 +42,23 @@ namespace SharpRpc.Reflection
             this.methodInfo = methodInfo;
             this.returnType = returnType;
             this.name = name;
+            this.genericParameters = null;
+            this.parameters = parameters.ToArray();
+        }
+
+        public MethodDescription(MethodInfo methodInfo, Type returnType, string name, IEnumerable<GenericParameterDescription> genericParameters, IEnumerable<MethodParameterDescription> parameters)
+        {
+            this.methodInfo = methodInfo;
+            this.returnType = returnType;
+            this.name = name;
+            this.genericParameters = genericParameters.ToArray();
             this.parameters = parameters.ToArray();
         }
 
         public MethodInfo MethodInfo { get { return methodInfo; } }
         public Type ReturnType { get { return returnType; } }
         public string Name { get { return name; } }
+        public IReadOnlyList<GenericParameterDescription> GenericParameters { get { return genericParameters; } }
         public IReadOnlyList<MethodParameterDescription> Parameters { get { return parameters; } } 
     }
 }

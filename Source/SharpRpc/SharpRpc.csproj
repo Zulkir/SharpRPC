@@ -57,6 +57,7 @@
     <Compile Include="Codecs\CollectionCodecBase.cs" />
     <Compile Include="Codecs\StringCodecBase.cs" />
     <Compile Include="Codecs\TypeCodec.cs" />
+    <Compile Include="Reflection\GenericParameterDescription.cs" />
     <Compile Include="RpcClientExtensions.cs" />
     <Compile Include="ServiceNotReadyException.cs" />
     <Compile Include="ServiceTimeoutException.cs" />
