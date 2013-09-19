@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Linq;
 using System.Reflection;
 
@@ -33,6 +34,11 @@ namespace SharpRpc.Reflection
         {
             var parameters = methodInfo.GetParameters();
             var parameterDescs = parameters.Select(BuildParameterDescription);
+            if (methodInfo.IsGenericMethod)
+            {
+                var genericParameters = methodInfo.GetGenericArguments().Select(BuildGenericParameterDescription);
+                return new MethodDescription(methodInfo, methodInfo.ReturnType, methodInfo.Name, genericParameters, parameterDescs);
+            }
             return new MethodDescription(methodInfo, methodInfo.ReturnType, methodInfo.Name, parameterDescs);
         }
 
@@ -52,6 +58,11 @@ namespace SharpRpc.Reflection
             if (parameterInfo.ParameterType.IsByRef)
                 return MethodParameterWay.Ref;
             return MethodParameterWay.Val;
+        }
+
+        private static GenericParameterDescription BuildGenericParameterDescription(Type type)
+        {
+            return new GenericParameterDescription(type.Name);
         }
     }
 }

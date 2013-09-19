@@ -42,6 +42,7 @@ namespace SharpRpc.Tests.InterfaceReflection
             void ProcessClassesAndInterfaces(string c, ITest i);
             void ModifyVariables(ref int a, ref string b);
             void GetManySomething(out int a, out string b);
+            void GenericMethod<TFirst, TSecond>(TFirst first, TSecond second);
         }
 
         [SetUp]
@@ -115,6 +116,15 @@ namespace SharpRpc.Tests.InterfaceReflection
             Assert.That(desc.Parameters[0].Way, Is.EqualTo(MethodParameterWay.Out));
             Assert.That(desc.Parameters[1].Type, Is.EqualTo(typeof(string)));
             Assert.That(desc.Parameters[1].Way, Is.EqualTo(MethodParameterWay.Out));
+        }
+
+        [Test]
+        public void Generic()
+        {
+            var desc = builder.Build(type.GetMethod("GenericMethod"));
+            Assert.That(desc.GenericParameters.Count, Is.EqualTo(2));
+            Assert.That(desc.GenericParameters[0].Name, Is.EqualTo("TFirst"));
+            Assert.That(desc.GenericParameters[1].Name, Is.EqualTo("TSecond"));
         }
     }
 }
