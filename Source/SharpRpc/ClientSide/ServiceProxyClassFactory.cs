@@ -229,11 +229,11 @@ namespace SharpRpc.ClientSide
                         hasSizeOnStack = true;
                 }
 
-                il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
+                il.Emit(OpCodes.Newarr, typeof(byte));              // dataArray = new byte[stack_0]
                 il.Emit(OpCodes.Stloc, dataArrayVar);
-                var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
+                var pinInfo =                                       // var pinned dataPointer = pin(dataArray)
                     il.Emit_PinArray(typeof(byte), dataArrayVar);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
+                il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);         // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
                 foreach (var parameter in requestParameters)
@@ -253,7 +253,7 @@ namespace SharpRpc.ClientSide
                     }
                 }
 
-                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                il.Emit_UnpinArray(pinInfo);                        // unpin(dataPointer)
             }
             else
             {
@@ -277,9 +277,9 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
                 il.Emit(OpCodes.Ldlen);
                 il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
+                var pinInfo =                                       // var pinned dataPointer = pin(dataArray)
                     il.Emit_PinArray(typeof(byte), dataArrayVar);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
+                il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);         // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
                 foreach (var parameter in responseParameters)
@@ -295,7 +295,7 @@ namespace SharpRpc.ClientSide
                     retvalCodec.EmitDecode(il, locals, false);      // stack_0 = decode(data, remainingBytes, false)
                 }
 
-                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                il.Emit_UnpinArray(pinInfo);                        // unpin(dataPointer)
             }
             else
             {
