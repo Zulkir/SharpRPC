@@ -37,6 +37,11 @@ namespace SharpRpc.Codecs
         {
         }
 
+        protected override bool IsMemberPublic(PropertyInfo member)
+        {
+            return member.GetGetMethod(true).IsPublic && member.GetSetMethod(true).IsPublic;
+        }
+
         protected override IEnumerable<PropertyInfo> EnumerateMembers(Type structuralType)
         {
             return structuralType.EnumerateDataMembers();

@@ -22,10 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
+
 namespace SharpRpc.Codecs
 {
     public interface ICodec
     {
+        Type Type { get; }
         int? FixedSize { get; }
         int? MaxSize { get; }
     }

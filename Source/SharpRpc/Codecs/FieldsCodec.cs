@@ -36,6 +36,11 @@ namespace SharpRpc.Codecs
         {
         }
 
+        protected override bool IsMemberPublic(FieldInfo member)
+        {
+            return member.IsPublic;
+        }
+
         protected override IEnumerable<FieldInfo> EnumerateMembers(Type structuralType)
         {
             return structuralType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);

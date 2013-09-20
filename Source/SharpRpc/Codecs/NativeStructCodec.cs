@@ -39,9 +39,11 @@ namespace SharpRpc.Codecs
             sizeInBytes = NativeStructHelper.CalculateSize(type);
         }
 
-        public bool HasFixedSize { get { return true; } }
+        public Type Type { get { return type; } }
         public int? FixedSize { get { return sizeInBytes; } }
         public int? MaxSize { get { return sizeInBytes; } }
+        public bool CanBeInlined { get { return true; } }
+        public int EncodingComplexity { get { return 1; } }
 
         // todo: special op-codes for basic types
 

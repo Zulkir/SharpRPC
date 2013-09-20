@@ -54,6 +54,7 @@ namespace SharpRpc.Codecs
         public DynamicMethod DecodeMethod { get { return decodeMethod; } }
         public DynamicMethod DecodeFastMethod { get { return decodeFastMethod; } }
 
+        public Type Type { get { return emittingCodec.Type; } }
         public int? FixedSize { get { return emittingCodec.FixedSize; } }
         public int? MaxSize { get { return emittingCodec.MaxSize; } }
 

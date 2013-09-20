@@ -39,9 +39,11 @@ namespace SharpRpc.Codecs
             sizeOfStruct = NativeStructHelper.CalculateSize(typeOfStruct);
         }
 
-        public bool HasFixedSize { get { return false; } }
+        public Type Type { get { return typeOfStruct.MakeArrayType(); } }
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return null; } }
+        public bool CanBeInlined { get { return true; } }
+        public int EncodingComplexity { get { return 1; } }
 
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {

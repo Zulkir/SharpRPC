@@ -29,6 +29,8 @@ namespace SharpRpc.Codecs
 {
     public interface IEmittingCodec : ICodec
     {
+        bool CanBeInlined { get; }
+        int EncodingComplexity { get; }
         void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad);
         void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad);
         void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds);

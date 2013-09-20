@@ -41,6 +41,9 @@ namespace SharpRpc.Codecs
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return null; } }
 
+        public abstract Type Type { get; }
+        public abstract bool CanBeInlined { get; }
+        public abstract int EncodingComplexity { get; }
         protected abstract void EmitLoadAsString(ILGenerator il, Action<ILGenerator> emitLoad);
         protected abstract void EmitParseFromString(ILGenerator il);
 

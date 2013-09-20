@@ -44,9 +44,14 @@ namespace SharpRpc.Codecs
         private readonly int numFixedProperties;
         private readonly int fixedPartOfSize;
         private readonly int? maxSize;
+        private readonly bool canBeInlined;
+        private readonly int encodingComplexity;
 
+        public Type Type { get { return type; } }
         public int? FixedSize { get { return CanBeNull || !maxSize.HasValue || maxSize.Value != fixedPartOfSize ? (int?)null : fixedPartOfSize; } }
         public int? MaxSize { get { return maxSize; } }
+        public bool CanBeInlined { get { return canBeInlined; } }
+        public int EncodingComplexity { get { return encodingComplexity; } }
 
         public StructuralCodecBase(Type type, ICodecContainer codecContainer, bool doNotCalculateMaxSize = false)
         {
@@ -67,8 +72,11 @@ namespace SharpRpc.Codecs
             maxSize = doNotCalculateMaxSize 
                 ? null 
                 : memberInfos.All(x => x.Codec.MaxSize.HasValue) ? memberInfos.Sum(x => x.Codec.MaxSize) : null;
+            canBeInlined = memberInfos.All(x => IsMemberPublic(x.Member) && x.Codec.CanBeInlined);
+            encodingComplexity = memberInfos.Sum(x => x.Codec.EncodingComplexity);
         }
 
+        protected abstract bool IsMemberPublic(TMember member);
         protected abstract IEnumerable<TMember> EnumerateMembers(Type structuralType);
         protected abstract Type GetMemberType(TMember member);
         protected abstract void EmitLoadMember(ILGenerator il, Action<ILGenerator> emitLoad, TMember member);

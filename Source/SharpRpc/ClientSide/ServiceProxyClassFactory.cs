@@ -29,7 +29,6 @@ using System.Reflection.Emit;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using System.Linq;
-using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -41,6 +40,8 @@ namespace SharpRpc.ClientSide
             public IEmittingCodec Codec;
             public int ArgumentIndex;
         }
+
+        private const int MaxInlinableComplexity = 16;
 
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
         private readonly ICodecContainer codecContainer;
@@ -59,14 +60,18 @@ namespace SharpRpc.ClientSide
             dynamicMethods = new List<DynamicMethod>();
         }
 
-        private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings) };
+        private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
+        private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
+        private static readonly MethodInfo CalculateSizeMethod = typeof(IManualCodec<>).GetMethod("CalculateSize");
+        private static readonly MethodInfo EncodeMethod = typeof(IManualCodec<>).GetMethod("Encode");
+        private static readonly MethodInfo DecodeMethod = typeof(IManualCodec<>).GetMethod("Decode");
 
         public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
             var proxyClass = CreateProxyClass(typeof(T), typeof(T), null);
-            return (p, s, t) => (T) Activator.CreateInstance(proxyClass, p, s, t);
+            return (p, s, t) => (T) Activator.CreateInstance(proxyClass, p, s, t, codecContainer);
         }
 
         private Type CreateProxyClass(Type rootType, Type type, string path)
@@ -85,7 +90,123 @@ namespace SharpRpc.ClientSide
                 FieldAttributes.Private | FieldAttributes.InitOnly);
             var timeoutSettingsField = typeBuilder.DefineField("timeoutSettings", typeof(TimeoutSettings),
                 FieldAttributes.Private | FieldAttributes.InitOnly);
+            var codecsField = typeBuilder.DefineField("codecs", typeof(IManualCodec[]),
+                FieldAttributes.Private | FieldAttributes.InitOnly);
             #endregion
+
+            var manualCodecTypes = new List<Type>();
+
+            foreach (var methodDesc in serviceDescription.Methods)
+            {
+                #region Emit Method
+                var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
+
+                var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
+                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
+                    MethodAttributes.NewSlot | MethodAttributes.Virtual,
+                    methodDesc.ReturnType, parameterTypes);
+                methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
+
+                var il = methodBuilder.GetILGenerator();
+
+                var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
+                {
+                    Description = x,
+                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                    ArgumentIndex = i + 1
+                }).ToArray();
+
+                var requestParameters = parameters
+                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                    .ToArray();
+
+                var responseParameters = parameters
+                    .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                    .ToArray();
+
+                bool hasRetval = methodDesc.ReturnType != typeof(void);
+                var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
+
+                var dataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
+
+                if (requestParameters.Any())
+                {
+                    bool hasSizeOnStack = false;
+                    foreach (var parameter in requestParameters)
+                    {
+                        EmitCalculateSize(il, parameter, manualCodecTypes, codecsField);
+                        if (hasSizeOnStack)
+                            il.Emit(OpCodes.Add);
+                        else
+                            hasSizeOnStack = true;
+                    }
+
+                    il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
+                    il.Emit(OpCodes.Stloc, dataArrayVar);
+                    var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
+                        il.Emit_PinArray(typeof(byte), dataArrayVar);
+                    il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
+                    il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                    foreach (var parameter in requestParameters)
+                        EmitEncode(il, locals, parameter, manualCodecTypes, codecsField);
+
+                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldnull);                            // dataArray = null
+                    il.Emit(OpCodes.Stloc, dataArrayVar);
+                }
+
+                il.Emit_Ldarg(0);                                       // stack_0 = methodCallProcessor
+                il.Emit(OpCodes.Ldfld, processorField);
+                il.Emit(OpCodes.Ldtoken, rootType);                     // stack_1 = typeof(T)
+                il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+                il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
+                    path, methodDesc.Name));
+                il.Emit_Ldarg(0);                                       // stack_3 = scope
+                il.Emit(OpCodes.Ldfld, scopeField);
+                il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
+                il.Emit_Ldarg(0);                                       // stack_5 = timeoutSettings
+                il.Emit(OpCodes.Ldfld, timeoutSettingsField);
+                il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+
+                if (responseParameters.Any() || hasRetval)
+                {
+                    il.Emit(OpCodes.Stloc, dataArrayVar);               // dataArray = stack_0
+                    il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
+                    il.Emit(OpCodes.Ldlen);
+                    il.Emit(OpCodes.Stloc, locals.RemainingBytes);
+                    var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
+                        il.Emit_PinArray(typeof(byte), dataArrayVar);
+                    il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
+                    il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                    foreach (var parameter in responseParameters)
+                    {
+                        il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);// arg_i+1 = decode(data, remainingBytes, false)
+                        EmitDecode(il, locals, parameter.Codec, manualCodecTypes, codecsField);
+                        il.Emit_Stind(parameter.Description.Type);
+                    }
+
+                    if (hasRetval)
+                    {
+                        // stack_0 = decode(data, remainingBytes, false)
+                        var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                        EmitDecode(il, locals, retvalCodec, manualCodecTypes, codecsField);
+                    }
+
+                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                }
+                else
+                {
+                    il.Emit(OpCodes.Pop);                               // pop(stack_0)
+                }
+
+                il.Emit(OpCodes.Ret);
+                #endregion
+            }
 
             #region Begin Emit Constructor
             var constructorBuilder = typeBuilder.DefineConstructor(
@@ -104,6 +225,20 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit(OpCodes.Ldarg_3);
             cil.Emit(OpCodes.Stfld, timeoutSettingsField);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit_Ldc_I4(manualCodecTypes.Count);
+            cil.Emit(OpCodes.Newarr, typeof(IManualCodec));
+            cil.Emit(OpCodes.Stfld, codecsField);
+            for (int i = 0; i < manualCodecTypes.Count; i++)
+            {
+                var codecType = manualCodecTypes[i];
+                cil.Emit_Ldarg(0);
+                cil.Emit(OpCodes.Ldfld, codecsField);
+                cil.Emit_Ldc_I4(i);
+                cil.Emit_Ldarg(4);
+                cil.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(codecType));
+                cil.Emit(OpCodes.Stelem_Ref);
+            }
             #endregion
 
             foreach (var subserviceDesc in serviceDescription.Subservices)
@@ -114,10 +249,11 @@ namespace SharpRpc.ClientSide
                 var fieldBuilder = typeBuilder.DefineField("_" + subserviceDesc.Name, proxyClass, 
                     FieldAttributes.Private | FieldAttributes.InitOnly);
 
-                cil.Emit(OpCodes.Ldarg_0);
-                cil.Emit(OpCodes.Ldarg_1);
-                cil.Emit(OpCodes.Ldarg_2);
-                cil.Emit(OpCodes.Ldarg_3);
+                cil.Emit_Ldarg(0);
+                cil.Emit_Ldarg(1);
+                cil.Emit_Ldarg(2);
+                cil.Emit_Ldarg(3);
+                cil.Emit_Ldarg(4);
                 cil.Emit(OpCodes.Newobj, proxyClass.GetConstructor(ConstructorParameterTypes));
                 cil.Emit(OpCodes.Stfld, fieldBuilder);
 
@@ -141,170 +277,113 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ret);
             #endregion
 
-            foreach (var methodDesc in serviceDescription.Methods)
-            {
-                #region Emit Method
-                var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
-                var dynamicMethod = EmitDynamicMethod(rootType, path, methodDesc, parameterTypes, codecContainer);
-                dynamicMethods.Add(dynamicMethod);
-                var dynamicMethodPointer = MethodHelpers.ExtractDynamicMethodPointer(dynamicMethod);
-
-                var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
-                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
-                    MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    dynamicMethod.ReturnType, parameterTypes);
-                methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
-
-                var il = methodBuilder.GetILGenerator();
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldfld, processorField);
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldfld, scopeField);
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldfld, timeoutSettingsField);
-                for (int i = 0; i < methodDesc.Parameters.Count; i++)
-                    il.Emit(OpCodes.Ldarg, i + 1);
-                il.Emit_Ldc_IntPtr(dynamicMethodPointer);
-                il.EmitCalli(OpCodes.Calli, CallingConventions.Standard, 
-                    dynamicMethod.ReturnType, 
-                    dynamicMethod.GetParameters().Select(x => x.ParameterType).ToArray(), 
-                    null);
-                il.Emit(OpCodes.Ret);
-                #endregion
-            }
-
             return typeBuilder.CreateType();
         }
 
-        private static DynamicMethod EmitDynamicMethod(Type rootType, string path, MethodDescription methodDesc, IEnumerable<Type> realParameterTypes, ICodecContainer codecContainer)
+        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, FieldBuilder codecsField)
         {
-            var dynamicMethod = new DynamicMethod("__dynproxy_" + path + "." + methodDesc,
-                methodDesc.ReturnType,
-                ConstructorParameterTypes.Concat(realParameterTypes).ToArray(),
-                Assembly.GetExecutingAssembly().ManifestModule, true);
+            var codec = parameterNecessity.Codec;
 
-            var il = dynamicMethod.GetILGenerator();
-
-            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
+            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
             {
-                Description = x,
-                Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                ArgumentIndex = i + 3
-            }).ToArray();
-
-            var requestParameters = parameters
-                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
-                .ToArray();
-
-            var responseParameters = parameters
-                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
-                .ToArray();
-
-            bool hasRetval = methodDesc.ReturnType != typeof(void);
-            var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
-
-            var dataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
-
-            if (requestParameters.Any())
-            {
-                bool hasSizeOnStack = false;
-                foreach (var parameter in requestParameters)
+                switch (parameterNecessity.Description.Way)
                 {
-                    switch (parameter.Description.Way)
-                    {
-                        case MethodParameterWay.Val:
-                            parameter.Codec.EmitCalculateSize(         // stack_0 += calculateSize(arg_i+1) 
-                                il, parameter.ArgumentIndex);
-                            break;
-                        case MethodParameterWay.Ref:
-                            parameter.Codec.EmitCalculateSizeIndirect( // stack_0 += calculateSizeIndirect(arg_i+1)
-                                il, parameter.ArgumentIndex, parameter.Description.Type);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                    if (hasSizeOnStack)
-                        il.Emit(OpCodes.Add);
-                    else
-                        hasSizeOnStack = true;
+                    case MethodParameterWay.Val: codec.EmitCalculateSize(il, parameterNecessity.ArgumentIndex); break;
+                    case MethodParameterWay.Ref: codec.EmitCalculateSizeIndirect(il, parameterNecessity.ArgumentIndex, codec.Type); break;
+                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
                 }
-
-                il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
-                il.Emit(OpCodes.Stloc, dataArrayVar);
-                var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
-                    il.Emit_PinArray(typeof(byte), dataArrayVar);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                foreach (var parameter in requestParameters)
-                {
-                    switch (parameter.Description.Way)
-                    {
-                        case MethodParameterWay.Val:
-                            parameter.Codec.EmitEncode(              // encode(arg_i+1)
-                                il, locals, parameter.ArgumentIndex);
-                            break;
-                        case MethodParameterWay.Ref:
-                            parameter.Codec.EmitEncodeIndirect(     // encodeIndirect (arg_i+1)
-                                il, locals, parameter.ArgumentIndex, parameter.Description.Type);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                }
-
-                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
             }
             else
             {
-                il.Emit(OpCodes.Ldnull);                            // dataArray = null
-                il.Emit(OpCodes.Stloc, dataArrayVar);
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                if (indexOfCodec == -1)
+                {
+                    indexOfCodec = manualCodecTypes.Count;
+                    manualCodecTypes.Add(codec.Type);
+                }
+                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit_Ldc_I4(indexOfCodec);
+                il.Emit(OpCodes.Ldelem_Ref);
+                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                switch (parameterNecessity.Description.Way)
+                {
+                    case MethodParameterWay.Val:
+                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
+                        break;
+                    case MethodParameterWay.Ref:
+                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
+                        il.Emit(OpCodes.Ldobj, codec.Type);
+                        break;
+                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
+                }
+                il.Emit(OpCodes.Callvirt, CalculateSizeMethod);
             }
+        }
 
-            il.Emit(OpCodes.Ldarg_0);                               // stack_0 = methodCallProcessor
-            il.Emit(OpCodes.Ldtoken, rootType);                         // stack_1 = typeof(T)
-            il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",         // stack_2 = SuperServicePath/ServiceName/MethodName
-                path, methodDesc.Name));
-            il.Emit(OpCodes.Ldarg_1);                               // stack_3 = scope
-            il.Emit(OpCodes.Ldloc, dataArrayVar);                   // stack_4 = dataArray
-            il.Emit(OpCodes.Ldarg_2);                               // stack_5 = timeoutSettings
-            il.Emit(OpCodes.Callvirt, ProcessMethod);               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, FieldBuilder codecsField)
+        {
+            var codec = parameterNecessity.Codec;
 
-            if (responseParameters.Any() || hasRetval)
+            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
             {
-                il.Emit(OpCodes.Stloc, dataArrayVar);               // dataArray = stack_0
-                il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
-                il.Emit(OpCodes.Ldlen);
-                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
-                    il.Emit_PinArray(typeof(byte), dataArrayVar);
-                il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                foreach (var parameter in responseParameters)
+                switch (parameterNecessity.Description.Way)
                 {
-                    il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);// arg_i+1 = decode(data, remainingBytes, false)
-                    parameter.Codec.EmitDecode(il, locals, false);
-                    il.Emit_Stind(parameter.Description.Type);
+                    case MethodParameterWay.Val: codec.EmitEncode(il, locals, parameterNecessity.ArgumentIndex); break;
+                    case MethodParameterWay.Ref: codec.EmitEncodeIndirect(il, locals, parameterNecessity.ArgumentIndex, codec.Type); break;
+                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
                 }
-
-                if (hasRetval)
-                {
-                    var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
-                    retvalCodec.EmitDecode(il, locals, false);      // stack_0 = decode(data, remainingBytes, false)
-                }
-
-                il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
             }
             else
             {
-                il.Emit(OpCodes.Pop);                               // pop(stack_0)
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                if (indexOfCodec == -1)
+                {
+                    indexOfCodec = manualCodecTypes.Count;
+                    manualCodecTypes.Add(codec.Type);
+                }
+                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit_Ldc_I4(indexOfCodec);
+                il.Emit(OpCodes.Ldelem_Ref);
+                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                switch (parameterNecessity.Description.Way)
+                {
+                    case MethodParameterWay.Val:
+                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
+                        break;
+                    case MethodParameterWay.Ref:
+                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
+                        il.Emit(OpCodes.Ldobj, codec.Type);
+                        break;
+                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
+                }
+                il.Emit(OpCodes.Callvirt, EncodeMethod);
             }
+        }
 
-            il.Emit(OpCodes.Ret);
-
-            return dynamicMethod;
+        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, FieldBuilder codecsField)
+        {
+            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
+            {
+                codec.EmitDecode(il, locals, false);
+            }
+            else
+            {
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                if (indexOfCodec == -1)
+                {
+                    indexOfCodec = manualCodecTypes.Count;
+                    manualCodecTypes.Add(codec.Type);
+                }
+                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit_Ldc_I4(indexOfCodec);
+                il.Emit(OpCodes.Ldelem_Ref);
+                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
+                il.Emit_Ldc_I4(0);
+                il.Emit(OpCodes.Callvirt, DecodeMethod);
+            }
         }
     }
 }

@@ -35,8 +35,11 @@ namespace SharpRpc.Codecs
         private readonly Type elementType;
         private readonly IEmittingCodec elementCodec;
 
+        public Type Type { get { return type; } }
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return null; } }
+        public bool CanBeInlined { get { return elementCodec.CanBeInlined; } }
+        public int EncodingComplexity { get { return elementCodec.EncodingComplexity; } }
 
         protected Type ElementType { get { return elementType; } }
         protected IEmittingCodec ElementCodec { get { return elementCodec; } }
@@ -52,7 +55,7 @@ namespace SharpRpc.Codecs
         protected abstract void EmitLoadCount(ILGenerator il, Action<ILGenerator> emitLoad);
         protected abstract void EmitEnumerateCollection(ILGenerator il, Action<ILGenerator> emitLoad, EnumerateLoopBody loopBody);
         protected abstract void EmitDecodeAndStore(ILGenerator il, ILocalVariableCollection locals, LocalBuilder collectionVar, LocalBuilder iVar, bool doNotCheckBounds);
-        
+
         public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             var valueIsNullOrEmptyLabel = il.DefineLabel();

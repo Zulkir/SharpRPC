@@ -47,6 +47,7 @@ namespace SharpRpc.Codecs
                    stringCodec.CalculateSize(value.StackTrace);
         }
 
+        public Type Type { get { return typeof(Exception); } }
         public int? FixedSize { get { return null; } }
         public int? MaxSize { get { return null; } }
 

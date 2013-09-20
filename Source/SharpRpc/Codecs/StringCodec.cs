@@ -34,6 +34,10 @@ namespace SharpRpc.Codecs
             
         }
 
+        public override Type Type { get { return typeof(string); } }
+        public override bool CanBeInlined { get { return true; } }
+        public override int EncodingComplexity { get { return 1; } }
+
         protected override void EmitLoadAsString(ILGenerator il, Action<ILGenerator> emitLoad)
         {
             emitLoad(il);

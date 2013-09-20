@@ -36,8 +36,10 @@ namespace SharpRpc.Tests.Codecs
             DoTest(codec, value, (a, b) => Assert.That(a, Is.EqualTo(b)));
         }
 
-        protected void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)
+        protected static void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)
         {
+            Assert.That(codec.Type, Is.EqualTo(typeof(T)));
+
             var manualCodec = new ManualCodec<T>(codec);
 
             if (codec.FixedSize.HasValue)
