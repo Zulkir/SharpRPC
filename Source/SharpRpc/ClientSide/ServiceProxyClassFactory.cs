@@ -143,15 +143,15 @@ namespace SharpRpc.ClientSide
 
                     il.Emit(OpCodes.Newarr, typeof(byte));                // dataArray = new byte[stack_0]
                     il.Emit(OpCodes.Stloc, dataArrayVar);
-                    var dataPointerVar =                                  // var pinned dataPointer = pin(dataArray)
+                    var pinInfo =                                  // var pinned dataPointer = pin(dataArray)
                         il.Emit_PinArray(typeof(byte), dataArrayVar);
-                    il.Emit(OpCodes.Ldloc, dataPointerVar);               // data = dataPointer
+                    il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);               // data = dataPointer
                     il.Emit(OpCodes.Stloc, locals.DataPointer);
 
                     foreach (var parameter in requestParameters)
                         EmitEncode(il, locals, parameter, manualCodecTypes, codecsField);
 
-                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                    il.Emit_UnpinArray(pinInfo);                 // unpin(dataPointer)
                 }
                 else
                 {
@@ -178,9 +178,9 @@ namespace SharpRpc.ClientSide
                     il.Emit(OpCodes.Ldloc, dataArrayVar);               // remainingBytes = dataArray.Length
                     il.Emit(OpCodes.Ldlen);
                     il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                    var dataPointerVar =                                // var pinned dataPointer = pin(dataArray)
+                    var pinInfo =                                // var pinned dataPointer = pin(dataArray)
                         il.Emit_PinArray(typeof(byte), dataArrayVar);
-                    il.Emit(OpCodes.Ldloc, dataPointerVar);             // data = dataPointer
+                    il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);             // data = dataPointer
                     il.Emit(OpCodes.Stloc, locals.DataPointer);
 
                     foreach (var parameter in responseParameters)
@@ -197,7 +197,7 @@ namespace SharpRpc.ClientSide
                         EmitDecode(il, locals, retvalCodec, manualCodecTypes, codecsField);
                     }
 
-                    il.Emit_UnpinArray(dataPointerVar);                 // unpin(dataPointer)
+                    il.Emit_UnpinArray(pinInfo);                 // unpin(dataPointer)
                 }
                 else
                 {
@@ -301,10 +301,13 @@ namespace SharpRpc.ClientSide
                     indexOfCodec = manualCodecTypes.Count;
                     manualCodecTypes.Add(codec.Type);
                 }
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
+                //il.Emit_Ldc_I4(8);
+                il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, codecsField);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
-                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                il.Emit(OpCodes.Isinst, concreteCodecType);
                 switch (parameterNecessity.Description.Way)
                 {
                     case MethodParameterWay.Val:
@@ -316,7 +319,7 @@ namespace SharpRpc.ClientSide
                         break;
                     default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
                 }
-                il.Emit(OpCodes.Callvirt, CalculateSizeMethod);
+                il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("CalculateSize"));
             }
         }
 
@@ -341,10 +344,12 @@ namespace SharpRpc.ClientSide
                     indexOfCodec = manualCodecTypes.Count;
                     manualCodecTypes.Add(codec.Type);
                 }
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
+                il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, codecsField);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
-                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                il.Emit(OpCodes.Isinst, concreteCodecType);
                 il.Emit(OpCodes.Ldloca, locals.DataPointer);
                 switch (parameterNecessity.Description.Way)
                 {
@@ -357,7 +362,7 @@ namespace SharpRpc.ClientSide
                         break;
                     default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
                 }
-                il.Emit(OpCodes.Callvirt, EncodeMethod);
+                il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Encode"));
             }
         }
 
@@ -375,14 +380,16 @@ namespace SharpRpc.ClientSide
                     indexOfCodec = manualCodecTypes.Count;
                     manualCodecTypes.Add(codec.Type);
                 }
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
+                il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, codecsField);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
-                il.Emit(OpCodes.Isinst, typeof(IManualCodec<>).MakeGenericType(codec.Type));
+                il.Emit(OpCodes.Isinst, concreteCodecType);
                 il.Emit(OpCodes.Ldloca, locals.DataPointer);
                 il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
                 il.Emit_Ldc_I4(0);
-                il.Emit(OpCodes.Callvirt, DecodeMethod);
+                il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Decode"));
             }
         }
     }

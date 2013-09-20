@@ -23,6 +23,8 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Runtime.Serialization;
+using System.Threading;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;
@@ -242,6 +244,116 @@ namespace SharpRpc.Tests.ClientSide
             var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(s, Is.EqualTo("OK"));
+        }
+
+        [DataContract]
+        public class MyUninlineableContract
+        {
+            public MyUninlineableContract(int a) { A = a; }
+
+            [DataMember]
+            public int A { get; private set; }
+        }
+
+        public interface IUninlineableStuffService
+        {
+            void DoWithArg(MyUninlineableContract a);
+            MyUninlineableContract GetRetval();
+            MyUninlineableContract Modify(MyUninlineableContract a);
+            MyUninlineableContract DoComplexStuff(int a, MyUninlineableContract b, ref MyUninlineableContract c, out MyUninlineableContract d);
+        }
+
+        [Test]
+        public void UninlineableArgs()
+        {
+            var expectedArgsData = new byte[8];
+            fixed (byte* pData = expectedArgsData)
+            {
+                *(int*)pData = 1;
+                *(int*)(pData + 4) = 123;
+            }
+
+            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+
+            proxy.DoWithArg(new MyUninlineableContract(123));
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
+
+        [Test]
+        public void UninlineableRetval()
+        {
+            var returnData = new byte[8];
+            fixed (byte* pData = returnData)
+            {
+                *(int*)pData = 1;
+                *(int*)(pData + 4) = 123;
+            }
+
+            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+
+            var result = proxy.GetRetval();
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.Null);
+            Assert.That(result.A, Is.EqualTo(123));
+        }
+
+        [Test]
+        public void UninlineableArgsAndRetval()
+        {
+            var returnData = new byte[8];
+            fixed (byte* pData = returnData)
+            {
+                *(int*)pData = 1;
+                *(int*)(pData + 4) = 123;
+            }
+
+            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+
+            var result = proxy.Modify(new MyUninlineableContract(123));
+        }
+
+        [Test]
+        public void UninlineableMixed()
+        {
+            var expectedArgsData = new byte[20];
+            fixed (byte* pData = expectedArgsData)
+            {
+                *(int*)(pData + 0) = 123;
+                *(int*)(pData + 4) = 1;
+                *(int*)(pData + 8) = 234;
+                *(int*)(pData + 12) = 1;
+                *(int*)(pData + 16) = 345;
+            }
+
+            var returnData = new byte[24];
+            fixed (byte* pData = returnData)
+            {
+                *(int*)(pData + 0) = 1;
+                *(int*)(pData + 4) = 456;
+                *(int*)(pData + 8) = 1;
+                *(int*)(pData + 12) = 567;
+                *(int*)(pData + 16) = 1;
+                *(int*)(pData + 20) = 678;
+            }
+
+            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+
+            var c = new MyUninlineableContract(345);
+            MyUninlineableContract d;
+            var result = proxy.DoComplexStuff(123, new MyUninlineableContract(234), ref c, out d);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+            Assert.That(c.A, Is.EqualTo(456));
+            Assert.That(d.A, Is.EqualTo(567));
+            Assert.That(result.A, Is.EqualTo(678));
         }
 
         public class BadData

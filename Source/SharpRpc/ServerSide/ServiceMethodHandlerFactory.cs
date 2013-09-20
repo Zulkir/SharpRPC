@@ -98,15 +98,15 @@ namespace SharpRpc.ServerSide
                 .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
                 .ToArray();
 
-            LocalBuilder requestDataPointerVar = null;
+            var pinInfo = default(PinInfo);
             if (requestParameters.Any())
             {
                 il.Emit(OpCodes.Ldarg_1);                                   // remainingBytes = arg_1.Length
                 il.Emit(OpCodes.Ldlen);
                 il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                requestDataPointerVar =                                     // var pinned dataPointer = pin(arg_1)
+                pinInfo =                                                   // var pinned dataPointer = pin(arg_1)
                     il.Emit_PinArray(typeof(byte), 1);
-                il.Emit(OpCodes.Ldloc, requestDataPointerVar);              // data = dataPointer
+                il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);                 // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
             }
 
@@ -132,7 +132,7 @@ namespace SharpRpc.ServerSide
 
             if (requestParameters.Any())
             {
-                il.Emit_UnpinArray(requestDataPointerVar);                  // unpin(dataPointer)
+                il.Emit_UnpinArray(pinInfo);                  // unpin(dataPointer)
             }
 
             il.Emit(OpCodes.Callvirt, methodDesc.MethodInfo);                          // stack_0 = stack_0.Method(stack_1, stack_2, ...)
@@ -164,9 +164,9 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Newarr, typeof(byte));
                 il.Emit(OpCodes.Stloc, dataArrayVar);
 
-                var responseDataPointerVar =                                        // var pinned dataPointer = pin(dataArrayVar)
+                var responsePinInfo =                                               // var pinned dataPointer = pin(dataArrayVar)
                         il.Emit_PinArray(typeof(byte), dataArrayVar);
-                il.Emit(OpCodes.Ldloc, responseDataPointerVar);                     // data = dataPointer
+                il.Emit(OpCodes.Ldloc, responsePinInfo.PointerVar);                 // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
                 foreach (var parameter in responseParameters)
@@ -175,7 +175,7 @@ namespace SharpRpc.ServerSide
                 if (hasRetval)
                     retvalCodec.EmitEncode(il, locals, retvalVar);                  // encode(data, ret)
 
-                il.Emit_UnpinArray(responseDataPointerVar);                         // unpin(dataPointer)
+                il.Emit_UnpinArray(responsePinInfo);                                // unpin(dataPointer)
                 il.Emit(OpCodes.Ldloc, dataArrayVar);                               // stack_0 = dataArray
             }
             else
