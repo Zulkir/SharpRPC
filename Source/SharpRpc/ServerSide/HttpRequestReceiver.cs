@@ -137,7 +137,7 @@ namespace SharpRpc.ServerSide
         }
 
 
-        private static readonly Regex UrlEx = new Regex(@"^http://[\w\.]+:\d+/(.+)$");
+        private static readonly Regex UrlEx = new Regex(@"^http://[\w\.\-]+:\d+/(.+)$");
         private static bool TryDecodeRequest(HttpListenerRequest httpWebRequest, out Request request)
         {
             var urlMatch = UrlEx.Match(httpWebRequest.Url.ToString());
