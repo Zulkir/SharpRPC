@@ -24,7 +24,6 @@ THE SOFTWARE.
 
 using System;
 using System.Runtime.Serialization;
-using System.Threading;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;

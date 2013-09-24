@@ -116,8 +116,7 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Ldloc, tempIntegerVar);
             il.Emit(OpCodes.Stind_I4);
             il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
-            var pinnedString = locals.GetOrAdd("pinnedString",          // var pinned pinnedString = stringValue
-                g => g.DeclareLocal(typeof(string), true));
+            var pinnedString = il.DeclareLocal(typeof(string), true);   // var pinned pinnedString = stringValue
             il.Emit(OpCodes.Ldloc, stringValueVar);
             il.Emit(OpCodes.Stloc, pinnedString);
             il.Emit(OpCodes.Ldloc, pinnedString);                       // stack_0 = (byte*)pinnedString

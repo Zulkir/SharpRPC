@@ -133,61 +133,33 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Throw);
         }
 
-        public static PinInfo Emit_PinArray(this ILGenerator il, Type elementType, Action<ILGenerator> load)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, Action<ILGenerator> load)
         {
-            var pointerVar = il.DeclareLocal(elementType.MakePointerType());
-            var auxiliaryArrayVar = il.DeclareLocal(elementType.MakeArrayType(), true);
-            var arrayIsNullLabel = il.DefineLabel();
-            var arrayIsNotEmptyLabel = il.DefineLabel();
-            var endOfFixationLabel = il.DefineLabel();
+            var pointerVar = il.DeclareLocal(elementType.MakeByRefType(), true);
 
             load(il);
-            il.Emit(OpCodes.Dup);
-            il.Emit(OpCodes.Stloc, auxiliaryArrayVar);
-            il.Emit(OpCodes.Brfalse, arrayIsNullLabel);
-
-            il.Emit(OpCodes.Ldloc, auxiliaryArrayVar);
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Conv_I4);
-            il.Emit(OpCodes.Brtrue, arrayIsNotEmptyLabel);
-
-            il.MarkLabel(arrayIsNullLabel);
-            il.Emit(OpCodes.Ldc_I4_0);
-            il.Emit(OpCodes.Conv_U);
-            il.Emit(OpCodes.Stloc, pointerVar);
-            il.Emit(OpCodes.Br, endOfFixationLabel);
-
-            il.MarkLabel(arrayIsNotEmptyLabel);
-            il.Emit(OpCodes.Ldloc, auxiliaryArrayVar);
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Ldelema, elementType);
             il.Emit(OpCodes.Stloc, pointerVar);
-            il.MarkLabel(endOfFixationLabel);
 
-            return new PinInfo
-            {
-                PointerVar = pointerVar,
-                AuxiliaryArrayVar = auxiliaryArrayVar
-            };
+            return pointerVar;
         }
 
-        public static PinInfo Emit_PinArray(this ILGenerator il, Type elementType, LocalBuilder localVar)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, LocalBuilder localVar)
         {
             return Emit_PinArray(il, elementType, lil => lil.Emit(OpCodes.Ldloc, localVar));
         }
 
-        public static PinInfo Emit_PinArray(this ILGenerator il, Type elementType, int argIndex)
+        public static LocalBuilder Emit_PinArray(this ILGenerator il, Type elementType, int argIndex)
         {
             return Emit_PinArray(il, elementType, lil => lil.Emit_Ldarg(argIndex));
         }
 
-        public static void Emit_UnpinArray(this ILGenerator il, PinInfo pinInfo)
+        public static void Emit_UnpinArray(this ILGenerator il, LocalBuilder pointerVar)
         {
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Conv_U);
-            il.Emit(OpCodes.Stloc, pinInfo.PointerVar);
-            il.Emit(OpCodes.Ldnull);
-            il.Emit(OpCodes.Stloc, pinInfo.AuxiliaryArrayVar);
+            il.Emit(OpCodes.Stloc, pointerVar);
         }
 
         public static void EmitForLoop(this ILGenerator il, LocalBuilder lengthVar, Action<ILGenerator, LocalBuilder> ithLoopBody)

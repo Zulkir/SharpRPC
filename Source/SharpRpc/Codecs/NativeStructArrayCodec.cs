@@ -75,56 +75,55 @@ namespace SharpRpc.Codecs
             var arrayIsNotEmptylabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                            // if (value)
-            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);            //     goto arrayIsNotNullLabel
+            emitLoad(il);                                             // if (value)
+            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);             //     goto arrayIsNotNullLabel
 
             // Array is null branch
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = -1
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);               // *(int*) data = -1
             il.Emit_Ldc_I4(-1);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfSubmethodLabel
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int)); // data += sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                 // goto endOfSubmethodLabel
 
             il.MarkLabel(arrayIsNotNullLabel);
-            emitLoad(il);                                            // if (value.Length)
-            il.Emit(OpCodes.Ldlen);                                  //     goto arrayIsNotEmptylabel
+            emitLoad(il);                                             // if (value.Length)
+            il.Emit(OpCodes.Ldlen);                                   //     goto arrayIsNotEmptylabel
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Brtrue, arrayIsNotEmptylabel);
 
             // Array is empty branch
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = 0
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);               // *(int*) data = 0
             il.Emit_Ldc_I4(0);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfSubmethodLabel
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int)); // data += sizeof(int)
+            il.Emit(OpCodes.Br, endOfSubmethodLabel);                 // goto endOfSubmethodLabel
 
             // Array is not empty branch
             il.MarkLabel(arrayIsNotEmptylabel);
-            var lengthVar = locals.GetOrAdd("length",                // var length = value.Length
+            var lengthVar = locals.GetOrAdd("length",                 // var length = value.Length
                 lil => lil.DeclareLocal(typeof(int)));
             emitLoad(il);                                   
             il.Emit(OpCodes.Ldlen);
             il.Emit(OpCodes.Conv_I4);
             il.Emit(OpCodes.Stloc, lengthVar);
-            var sizeVar = locals.GetOrAdd("sizeInBytes",             // var sizeInBytes = length * sizeOfStruct
+            var sizeVar = locals.GetOrAdd("sizeInBytes",              // var sizeInBytes = length * sizeOfStruct
                 lil => lil.DeclareLocal(typeof(int)));
             il.Emit(OpCodes.Ldloc, lengthVar);
             il.Emit_Ldc_I4(sizeOfStruct);
             il.Emit(OpCodes.Mul);
             il.Emit(OpCodes.Stloc, sizeVar);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = length
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);               // *(int*) data = length
             il.Emit(OpCodes.Ldloc, lengthVar);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
-            var pinInfo = il.Emit_PinArray(                          // var pinned arrayPointer = pin(value)
-                typeOfStruct, emitLoad);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // cpblk(data, (byte*)arrayPointer, sizeInBytes)
-            il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);
+            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int)); // data += sizeof(int)
+            var pointerVar = il.Emit_PinArray(typeOfStruct, emitLoad);// var pinned arrayPointer = pin(value)
+            il.Emit(OpCodes.Ldloc, locals.DataPointer);               // cpblk(data, (byte*)arrayPointer, sizeInBytes)
+            il.Emit(OpCodes.Ldloc, pointerVar);
             il.Emit(OpCodes.Conv_I);
             il.Emit(OpCodes.Ldloc, sizeVar);
             il.Emit(OpCodes.Cpblk);
-            il.Emit_UnpinArray(pinInfo);                             // unpin(arrayPointer)
-            il.Emit_IncreasePointer(locals.DataPointer, sizeVar);    // data += sizeInBytes
+            il.Emit_UnpinArray(pointerVar);                           // unpin(arrayPointer)
+            il.Emit_IncreasePointer(locals.DataPointer, sizeVar);     // data += sizeInBytes
             il.MarkLabel(endOfSubmethodLabel);
         }
 
@@ -201,14 +200,13 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Ldloc, lengthVar);
             il.Emit(OpCodes.Newarr, typeOfStruct);
             il.Emit(OpCodes.Stloc, resultVar);
-            var pinInfo = il.Emit_PinArray(                             // var pinned arrayPointer = pin(value)
-                typeOfStruct, resultVar);
-            il.Emit(OpCodes.Ldloc, pinInfo.PointerVar);                 // cpblk((byte*)arrayPointer, data, sizeInBytes)
+            var pointerVar = il.Emit_PinArray(typeOfStruct, resultVar); // var pinned arrayPointer = pin(value)
+            il.Emit(OpCodes.Ldloc, pointerVar);                         // cpblk((byte*)arrayPointer, data, sizeInBytes)
             il.Emit(OpCodes.Conv_I);
             il.Emit(OpCodes.Ldloc, locals.DataPointer);
             il.Emit(OpCodes.Ldloc, sizeVar);
             il.Emit(OpCodes.Cpblk);
-            il.Emit_UnpinArray(pinInfo);                                // unpin(arrayPointer)
+            il.Emit_UnpinArray(pointerVar);                                // unpin(arrayPointer)
             il.Emit_IncreasePointer(locals.DataPointer, sizeVar);       // data += size
             il.Emit_DecreaseInteger(locals.RemainingBytes, sizeVar);    // remainingBytes -= size
             il.Emit(OpCodes.Ldloc, resultVar);                          // stack_0 = result
