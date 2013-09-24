@@ -52,69 +52,87 @@ namespace SharpRpc.ServerSide
 
         private void DoListen()
         {
-            listener.Start();
-            while (listener.IsListening)
+            try
             {
-                try
+                listener.Start();
+                while (listener.IsListening)
                 {
-                    var context = listener.GetContext();
-                    requestQueue.Enqueue(context);
+                    try
+                    {
+                        var context = listener.GetContext();
+                        requestQueue.Enqueue(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (listener != null && !listener.IsListening)
+                            logger.Info("Listener was stopped while getting a context");
+                        else
+                            logger.NetworkingException("Listener failed to get a context", ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    logger.NetworkingException("Listener failed to get a context", ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                logger.Fatal("Listener thread died", ex);
             }
         }
 
         private void DoWork()
         {
-            HttpListenerContext context;
-            bool hasRequest = requestQueue.TryDequeue(out context);
-            while (hasRequest || listener.IsListening)
+            try
             {
-                while (hasRequest)
+                HttpListenerContext context;
+                bool hasRequest = requestQueue.TryDequeue(out context);
+                while (hasRequest || listener.IsListening)
                 {
-                    context.Response.StatusCode = 200;
-                    try
+                    while (hasRequest)
                     {
-                        Request request;
-                        if (TryDecodeRequest(context.Request, out request))
-                        {
-                            var response = requestProcessor.Process(request);
-                            context.Response.Headers["status"] = ((int)response.Status).ToString(CultureInfo.InvariantCulture);
-                            context.Response.Headers["data-length"] = response.Data.Length.ToString(CultureInfo.InvariantCulture);
-                            context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
-                        }
-                        else
-                        {
-                            context.Response.Headers["status"] = ((int)ResponseStatus.BadRequest).ToString(CultureInfo.InvariantCulture);
-                            context.Response.Headers["data-length"] = "0";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.NetworkingException("Processing a request failed unexpectedly", ex);
-                        context.Response.Headers["status"] = ((int)ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
-                        context.Response.Headers["data-length"] = "0";
-                    }
-                    finally
-                    {
+                        context.Response.StatusCode = 200;
                         try
                         {
-                            context.Response.Close();
+                            Request request;
+                            if (TryDecodeRequest(context.Request, out request))
+                            {
+                                var response = requestProcessor.Process(request);
+                                context.Response.Headers["status"] = ((int) response.Status).ToString(CultureInfo.InvariantCulture);
+                                context.Response.Headers["data-length"] = response.Data.Length.ToString(CultureInfo.InvariantCulture);
+                                context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
+                            }
+                            else
+                            {
+                                logger.Error(string.Format("Failed to decode request '{0}'", context.Request.Url));
+                                context.Response.Headers["status"] = ((int) ResponseStatus.BadRequest).ToString(CultureInfo.InvariantCulture);
+                                context.Response.Headers["data-length"] = "0";
+                            }
                         }
                         catch (Exception ex)
                         {
-                            logger.NetworkingException("Closing a response stream failed", ex);
+                            logger.NetworkingException("Processing a request failed unexpectedly", ex);
+                            context.Response.Headers["status"] = ((int) ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
+                            context.Response.Headers["data-length"] = "0";
                         }
+                        finally
+                        {
+                            try
+                            {
+                                context.Response.Close();
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.NetworkingException("Closing a response stream failed", ex);
+                            }
+                        }
+
+                        hasRequest = requestQueue.TryDequeue(out context);
                     }
 
+                    Thread.Sleep(1);
                     hasRequest = requestQueue.TryDequeue(out context);
                 }
-
-                Thread.Sleep(1);
-                hasRequest = requestQueue.TryDequeue(out context);
+            }
+            catch (Exception ex)
+            {
+                logger.Fatal("Worker thread died", ex);   
             }
         }
 
