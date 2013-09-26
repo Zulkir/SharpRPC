@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -161,7 +162,15 @@ namespace SharpRpc.ServerSide
             var data = new byte[httpWebRequest.ContentLength64];
             using (var stream = httpWebRequest.InputStream)
             {
-                stream.Read(data, 0, data.Length);
+                int offset = 0;
+                while (offset < data.Length)
+                {
+                    int read = stream.Read(data, offset, data.Length - offset);
+                    if (read == 0)
+                        throw new InvalidDataException("Unexpected end of response stream");
+                    offset += read;
+                }
+                
             }
 
             request = new Request(servicePath, scope, data);
