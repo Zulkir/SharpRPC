@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using SharpRpc.Topology;
 
@@ -88,6 +89,33 @@ namespace SharpRpc.Tests
             Assert.That(c0, Is.GreaterThan(0));
             Assert.That(c1, Is.GreaterThan(0));
             Assert.That(c2, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void EvenDistribution()
+        {
+            var dict = new Dictionary<string, int>
+                {
+                    {"http://myhost:7020", 0},
+                    {"http://myhost:7120", 0},
+                    {"http://myhost:7220", 0},
+                    {"http://myhost:7320", 0},
+                    {"http://myhost:7420", 0},
+                };
+
+            const string text = @"OrganizationDispatcher even http://myhost:7020, http://myhost:7120, http://myhost:7220, http://myhost:7320, http://myhost:7420";
+            var topology = parser.Parse(text);
+
+            for (int i = 0; i < 10000; i++)
+            {
+                var scope = string.Format("{0};{1}", Guid.NewGuid(), Guid.NewGuid());
+                dict[topology.GetEndPoint("OrganizationDispatcher", scope).ToString()]++;
+            }
+
+            double avgHits = dict.Values.Average();
+
+            foreach (var hits in dict.Values)
+                Assert.That(Math.Abs(hits - avgHits), Is.LessThan(0.05 * avgHits));
         }
 
         private static string GetStringWithHashCode(int hashCode)

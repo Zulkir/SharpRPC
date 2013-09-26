@@ -55,13 +55,16 @@ namespace SharpRpc.Topology
         {
             endPoint = scope == null 
                 ? endPoints[0]
-                : endPoints[GetStableHashCode(scope) % endPoints.Length];
+                : endPoints[(uint)GetStableHashCode(scope) % endPoints.Length];
             return true;
         }
 
         private static int GetStableHashCode(string str)
         {
-            return str.Select((x, i) => (int)x * (1 << (i & 31))).Sum();
+            int sum = 0;
+            for (int i = 0; i < str.Length; i++)
+                sum += str[i] * (1 << (i & 31));
+            return sum;
         }
     }
 }
