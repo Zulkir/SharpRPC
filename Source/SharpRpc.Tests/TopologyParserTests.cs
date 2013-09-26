@@ -94,10 +94,10 @@ namespace SharpRpc.Tests
         {
             switch (hashCode)
             {
-                case 0: return "2";
-                case 1: return "1";
-                case 2: return "0";
-                case 3: return "3";
+                case 0: return "";
+                case 1: return new string((char)1, 1);
+                case 2: return new string((char)2, 1);
+                case 3: return new string((char)3, 1);
                 default: throw new ArgumentOutOfRangeException();
             }
         }

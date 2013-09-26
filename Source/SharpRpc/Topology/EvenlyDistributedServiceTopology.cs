@@ -61,7 +61,7 @@ namespace SharpRpc.Topology
 
         private static int GetStableHashCode(string str)
         {
-            return str.Select((x, i) => (int)x * i).Sum();
+            return str.Select((x, i) => (int)x * (1 << (i & 31))).Sum();
         }
     }
 }
