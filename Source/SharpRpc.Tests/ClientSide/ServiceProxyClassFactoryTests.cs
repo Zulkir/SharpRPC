@@ -372,5 +372,42 @@ namespace SharpRpc.Tests.ClientSide
             Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
             Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
         }
+
+        public interface IServiceWithSimpleGenerics
+        {
+            void DoSomethingSimple<T>(T arg);
+        }
+
+        [Test]
+        [Ignore]
+        public void SimpleGenerics()
+        {
+            DoTestSimpleGenerics(123);
+            DoTestSimpleGenerics("asd");
+        }
+
+        private void DoTestSimpleGenerics<T>(T argValue)
+        {
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+            var argCodec = codecContainer.GetManualCodecFor<T>();
+
+            var sizeOfType = typeCodec.CalculateSize(typeof(int));
+            var sizeOfArg = argCodec.CalculateSize(argValue);
+            var expectedArgsData = new byte[sizeOfType + sizeOfArg];
+            fixed (byte* pData = expectedArgsData)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(int));
+                argCodec.Encode(ref p, argValue);            
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithSimpleGenerics>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+
+            proxy.DoSomethingSimple(argValue);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
     }
 }
