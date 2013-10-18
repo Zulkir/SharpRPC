@@ -37,6 +37,7 @@ namespace SharpRpc.ClientSide
         struct ParameterNecessity
         {
             public MethodParameterDescription Description;
+            public Type ConcreteType;
             public IEmittingCodec Codec;
             public int ArgumentIndex;
         }
@@ -47,7 +48,6 @@ namespace SharpRpc.ClientSide
         private readonly ICodecContainer codecContainer;
         private readonly AssemblyBuilder assemblyBuilder;
         private readonly ModuleBuilder moduleBuilder;
-        private readonly List<DynamicMethod> dynamicMethods;
         private int classNameDisambiguator = 0;
 
         public ServiceProxyClassFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, ICodecContainer codecContainer)
@@ -57,16 +57,12 @@ namespace SharpRpc.ClientSide
             var appDomain = AppDomain.CurrentDomain;
             assemblyBuilder = appDomain.DefineDynamicAssembly(new AssemblyName("SharpRpcServiceProxies"), AssemblyBuilderAccess.Run);
             moduleBuilder = assemblyBuilder.DefineDynamicModule("SharpRpcServiceProxyModule");
-            dynamicMethods = new List<DynamicMethod>();
         }
 
         private static readonly Type[] ConstructorParameterTypes = new[] { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
         private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
-        private static readonly MethodInfo CalculateSizeMethod = typeof(IManualCodec<>).GetMethod("CalculateSize");
-        private static readonly MethodInfo EncodeMethod = typeof(IManualCodec<>).GetMethod("Encode");
-        private static readonly MethodInfo DecodeMethod = typeof(IManualCodec<>).GetMethod("Decode");
 
         public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
@@ -90,6 +86,8 @@ namespace SharpRpc.ClientSide
                 FieldAttributes.Private | FieldAttributes.InitOnly);
             var timeoutSettingsField = typeBuilder.DefineField("timeoutSettings", typeof(TimeoutSettings),
                 FieldAttributes.Private | FieldAttributes.InitOnly);
+            var codecContainerField = typeBuilder.DefineField("codecContainer", typeof(ICodecContainer),
+                FieldAttributes.Private | FieldAttributes.InitOnly);
             var codecsField = typeBuilder.DefineField("codecs", typeof(IManualCodec[]),
                 FieldAttributes.Private | FieldAttributes.InitOnly);
             #endregion
@@ -99,20 +97,37 @@ namespace SharpRpc.ClientSide
             foreach (var methodDesc in serviceDescription.Methods)
             {
                 #region Emit Method
-                var parameterTypes = methodDesc.Parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
-
                 var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
-                    MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    methodDesc.ReturnType, parameterTypes);
+                    MethodAttributes.NewSlot | MethodAttributes.Virtual);
+                
+                Type[] parameterTypes;
+                
+                Type retvalType;
+                if (methodDesc.GenericParameters.Any())
+                {
+                    var genericTypeParameterBuilders = methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray());
+                    parameterTypes = methodDesc.Parameters.Select(x => !x.Type.IsGenericParameter ? x.Type : genericTypeParameterBuilders.Single(y => y.Name == x.Type.Name)).ToArray();
+
+                    retvalType = !methodDesc.ReturnType.IsGenericParameter 
+                        ? methodDesc.ReturnType 
+                        : genericTypeParameterBuilders.Single(y => y.Name == methodDesc.ReturnType.Name);
+                }
+                else
+                {
+                    parameterTypes = methodDesc.Parameters.Select(x => x.Type).ToArray();
+                    retvalType = methodDesc.ReturnType;
+                }
+                var parameterTypesAdjustedForRefs = parameterTypes.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x : x.MakeByRefType()).ToArray();
+                methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
+                methodBuilder.SetReturnType(retvalType);
                 methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
-
-                var il = methodBuilder.GetILGenerator();
-
+                
                 var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
                 {
                     Description = x,
-                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                    Codec = x.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(x.Type),
+                    ConcreteType = parameterTypes[i],
                     ArgumentIndex = i + 1
                 }).ToArray();
 
@@ -125,6 +140,8 @@ namespace SharpRpc.ClientSide
                     .ToArray();
 
                 bool hasRetval = methodDesc.ReturnType != typeof(void);
+
+                var il = methodBuilder.GetILGenerator();
                 var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
 
                 var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
@@ -221,6 +238,9 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit(OpCodes.Ldarg_3);
             cil.Emit(OpCodes.Stfld, timeoutSettingsField);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit_Ldarg(4);
+            cil.Emit(OpCodes.Stfld, codecContainerField);
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit_Ldc_I4(manualCodecTypes.Count);
             cil.Emit(OpCodes.Newarr, typeof(IManualCodec));

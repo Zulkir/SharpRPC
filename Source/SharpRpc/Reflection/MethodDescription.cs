@@ -42,7 +42,7 @@ namespace SharpRpc.Reflection
             this.methodInfo = methodInfo;
             this.returnType = returnType;
             this.name = name;
-            this.genericParameters = null;
+            this.genericParameters = new GenericParameterDescription[0];
             this.parameters = parameters.ToArray();
         }
 
