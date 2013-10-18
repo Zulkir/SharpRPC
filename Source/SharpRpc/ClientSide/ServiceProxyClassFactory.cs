@@ -42,15 +42,6 @@ namespace SharpRpc.ClientSide
             public int ArgumentIndex;
         }
 
-        class ClassFields
-        {
-            public FieldBuilder Processor { get; set; }
-            public FieldBuilder Scope { get; set; }
-            public FieldBuilder TimeoutSettings { get; set; }
-            public FieldBuilder CodecContainer { get; set; }
-            public FieldBuilder PreacquiredCodecs { get; set; }
-        }
-
         private const int MaxInlinableComplexity = 16;
 
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
@@ -84,39 +75,35 @@ namespace SharpRpc.ClientSide
             var serviceDescription = serviceDescriptionBuilder.Build(type);
             path = path ?? serviceDescription.Name;
 
-            var typeBuilder = DeclareType(moduleBuilder, type, ref classNameDisambiguator);
+            var typeBuilder = DeclareType(type);
             var fields = DeclareFields(typeBuilder);
-
             var manualCodecTypes = new List<Type>();
-
             foreach (var methodDesc in serviceDescription.Methods)
-                CreateMethod(typeBuilder, fields, rootType, path, methodDesc, codecContainer, manualCodecTypes);
-
-            CreateConstructor(typeBuilder, fields, manualCodecTypes, serviceDescription, rootType, path);
-
+                CreateMethod(rootType, path, methodDesc, typeBuilder, fields, manualCodecTypes);
+            CreateConstructor(rootType, path, serviceDescription, typeBuilder, fields, manualCodecTypes);
             return typeBuilder.CreateType();
         }
 
-        private static TypeBuilder DeclareType(ModuleBuilder moduleBuilder, Type type, ref int disambiguator)
+        private TypeBuilder DeclareType(Type serviceInterface)
         {
-            return moduleBuilder.DefineType("__rpc_proxy_" + type.FullName + "_" + disambiguator++,
+            return moduleBuilder.DefineType("__rpc_proxy_" + serviceInterface.FullName + "_" + classNameDisambiguator++,
                                             TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
-                                            typeof(object), new[] {type});
+                                            typeof(object), new[] { serviceInterface });
         }
 
-        private static ClassFields DeclareFields(TypeBuilder typeBuilder)
+        private static ServiceProxyFields DeclareFields(TypeBuilder typeBuilder)
         {
-            return new ClassFields
+            return new ServiceProxyFields
             {
                 Processor         = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor), FieldAttributes.Private | FieldAttributes.InitOnly),
                 Scope             = typeBuilder.DefineField("scope",               typeof(string),                       FieldAttributes.Private | FieldAttributes.InitOnly),
                 TimeoutSettings   = typeBuilder.DefineField("timeoutSettings",     typeof(TimeoutSettings),              FieldAttributes.Private | FieldAttributes.InitOnly),
                 CodecContainer    = typeBuilder.DefineField("codecContainer",      typeof(ICodecContainer),              FieldAttributes.Private | FieldAttributes.InitOnly),
-                PreacquiredCodecs = typeBuilder.DefineField("preacquiredCodecs",   typeof(IManualCodec[]),               FieldAttributes.Private | FieldAttributes.InitOnly)
+                ManualCodecs      = typeBuilder.DefineField("manualCodecs",        typeof(IManualCodec[]),               FieldAttributes.Private | FieldAttributes.InitOnly)
             };
         }
 
-        private static void CreateMethod(TypeBuilder typeBuilder, ClassFields fields, Type rootType, string path, MethodDescription methodDesc, ICodecContainer codecContainer, List<Type> manualCodecTypes)
+        private void CreateMethod(Type rootType, string path, MethodDescription methodDesc, TypeBuilder typeBuilder, ServiceProxyFields fields, List<Type> manualCodecTypes)
         {
             var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
@@ -246,7 +233,7 @@ namespace SharpRpc.ClientSide
             il.Emit(OpCodes.Ret);
         }
 
-        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ClassFields fields)
+        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ServiceProxyFields fields)
         {
             var codec = parameterNecessity.Codec;
 
@@ -269,7 +256,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
+                il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -288,7 +275,7 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ClassFields fields)
+        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ServiceProxyFields fields)
         {
             var codec = parameterNecessity.Codec;
 
@@ -311,7 +298,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
+                il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -331,7 +318,7 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, ClassFields fields)
+        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, ServiceProxyFields fields)
         {
             if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
             {
@@ -347,7 +334,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
+                il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -358,7 +345,7 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private void CreateConstructor(TypeBuilder typeBuilder, ClassFields fields, List<Type> manualCodecTypes, ServiceDescription serviceDescription, Type rootType, string path)
+        private void CreateConstructor(Type rootType, string path, ServiceDescription serviceDescription, TypeBuilder typeBuilder, ServiceProxyFields fields, List<Type> manualCodecTypes)
         {
             #region Begin Emit Constructor
             var constructorBuilder = typeBuilder.DefineConstructor(
@@ -383,12 +370,12 @@ namespace SharpRpc.ClientSide
             cil.Emit(OpCodes.Ldarg_0);
             cil.Emit_Ldc_I4(manualCodecTypes.Count);
             cil.Emit(OpCodes.Newarr, typeof(IManualCodec));
-            cil.Emit(OpCodes.Stfld, fields.PreacquiredCodecs);
+            cil.Emit(OpCodes.Stfld, fields.ManualCodecs);
             for (int i = 0; i < manualCodecTypes.Count; i++)
             {
                 var codecType = manualCodecTypes[i];
                 cil.Emit_Ldarg(0);
-                cil.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
+                cil.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 cil.Emit_Ldc_I4(i);
                 cil.Emit_Ldarg(4);
                 cil.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(codecType));

@@ -49,6 +49,7 @@
     <Compile Include="ClientSide\OutgoingMethodCallProcessor.cs" />
     <Compile Include="ClientSide\ProxyKey.cs" />
     <Compile Include="ClientSide\RequestSenderContainer.cs" />
+    <Compile Include="ClientSide\ServiceProxyFields.cs" />
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
     <Compile Include="Codecs\ClassArrayCodec.cs" />
