@@ -42,6 +42,15 @@ namespace SharpRpc.ClientSide
             public int ArgumentIndex;
         }
 
+        class ClassFields
+        {
+            public FieldBuilder Processor { get; set; }
+            public FieldBuilder Scope { get; set; }
+            public FieldBuilder TimeoutSettings { get; set; }
+            public FieldBuilder CodecContainer { get; set; }
+            public FieldBuilder PreacquiredCodecs { get; set; }
+        }
+
         private const int MaxInlinableComplexity = 16;
 
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
@@ -75,228 +84,169 @@ namespace SharpRpc.ClientSide
             var serviceDescription = serviceDescriptionBuilder.Build(type);
             path = path ?? serviceDescription.Name;
 
-            var typeBuilder = moduleBuilder.DefineType("__rpc_proxy_" + type.FullName + "_" + classNameDisambiguator++,
-                TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class, 
-                typeof(object), new[] {type});
-
-            #region Emit Fields
-            var processorField = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor),
-                FieldAttributes.Private | FieldAttributes.InitOnly);
-            var scopeField = typeBuilder.DefineField("scope", typeof(string),
-                FieldAttributes.Private | FieldAttributes.InitOnly);
-            var timeoutSettingsField = typeBuilder.DefineField("timeoutSettings", typeof(TimeoutSettings),
-                FieldAttributes.Private | FieldAttributes.InitOnly);
-            var codecContainerField = typeBuilder.DefineField("codecContainer", typeof(ICodecContainer),
-                FieldAttributes.Private | FieldAttributes.InitOnly);
-            var codecsField = typeBuilder.DefineField("codecs", typeof(IManualCodec[]),
-                FieldAttributes.Private | FieldAttributes.InitOnly);
-            #endregion
+            var typeBuilder = DeclareType(moduleBuilder, type, ref classNameDisambiguator);
+            var fields = DeclareFields(typeBuilder);
 
             var manualCodecTypes = new List<Type>();
 
             foreach (var methodDesc in serviceDescription.Methods)
-            {
-                #region Emit Method
-                var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
-                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
-                    MethodAttributes.NewSlot | MethodAttributes.Virtual);
-                
-                Type[] parameterTypes;
-                
-                Type retvalType;
-                if (methodDesc.GenericParameters.Any())
-                {
-                    var genericTypeParameterBuilders = methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray());
-                    parameterTypes = methodDesc.Parameters.Select(x => !x.Type.IsGenericParameter ? x.Type : genericTypeParameterBuilders.Single(y => y.Name == x.Type.Name)).ToArray();
+                CreateMethod(typeBuilder, fields, rootType, path, methodDesc, codecContainer, manualCodecTypes);
 
-                    retvalType = !methodDesc.ReturnType.IsGenericParameter 
-                        ? methodDesc.ReturnType 
-                        : genericTypeParameterBuilders.Single(y => y.Name == methodDesc.ReturnType.Name);
-                }
-                else
-                {
-                    parameterTypes = methodDesc.Parameters.Select(x => x.Type).ToArray();
-                    retvalType = methodDesc.ReturnType;
-                }
-                var parameterTypesAdjustedForRefs = parameterTypes.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x : x.MakeByRefType()).ToArray();
-                methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
-                methodBuilder.SetReturnType(retvalType);
-                methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
-                
-                var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
-                {
-                    Description = x,
-                    Codec = x.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(x.Type),
-                    ConcreteType = parameterTypes[i],
-                    ArgumentIndex = i + 1
-                }).ToArray();
-
-                var requestParameters = parameters
-                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
-                    .ToArray();
-
-                var responseParameters = parameters
-                    .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
-                    .ToArray();
-
-                bool hasRetval = methodDesc.ReturnType != typeof(void);
-
-                var il = methodBuilder.GetILGenerator();
-                var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
-
-                var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
-
-                if (requestParameters.Any())
-                {
-                    bool hasSizeOnStack = false;
-                    foreach (var parameter in requestParameters)
-                    {
-                        EmitCalculateSize(il, parameter, manualCodecTypes, codecsField);
-                        if (hasSizeOnStack)
-                            il.Emit(OpCodes.Add);
-                        else
-                            hasSizeOnStack = true;
-                    }
-
-                    il.Emit(OpCodes.Newarr, typeof(byte));                      // dataArray = new byte[stack_0]
-                    il.Emit(OpCodes.Stloc, requestDataArrayVar);
-                    var pinnedVar =                                             // var pinned dataPointer = pin(dataArray)
-                        il.Emit_PinArray(typeof(byte), requestDataArrayVar);
-                    il.Emit(OpCodes.Ldloc, pinnedVar);                          // data = dataPointer
-                    il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                    foreach (var parameter in requestParameters)
-                        EmitEncode(il, locals, parameter, manualCodecTypes, codecsField);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldnull);                                // dataArray = null
-                    il.Emit(OpCodes.Stloc, requestDataArrayVar);
-                }
-
-                il.Emit_Ldarg(0);                                           // stack_0 = methodCallProcessor
-                il.Emit(OpCodes.Ldfld, processorField);
-                il.Emit(OpCodes.Ldtoken, rootType);                         // stack_1 = typeof(T)
-                il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-                il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",             // stack_2 = SuperServicePath/ServiceName/MethodName
-                    path, methodDesc.Name));
-                il.Emit_Ldarg(0);                                           // stack_3 = scope
-                il.Emit(OpCodes.Ldfld, scopeField);
-                il.Emit(OpCodes.Ldloc, requestDataArrayVar);                // stack_4 = dataArray
-                il.Emit_Ldarg(0);                                           // stack_5 = timeoutSettings
-                il.Emit(OpCodes.Ldfld, timeoutSettingsField);
-                il.Emit(OpCodes.Callvirt, ProcessMethod);                   // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
-
-                if (responseParameters.Any() || hasRetval)
-                {
-                    var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
-                    il.Emit(OpCodes.Stloc, responseDataArrayVar);           // dataArray = stack_0
-                    il.Emit(OpCodes.Ldloc, responseDataArrayVar);           // remainingBytes = dataArray.Length
-                    il.Emit(OpCodes.Ldlen);
-                    il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                    var pinnedVar =                                         // var pinned dataPointer = pin(dataArray)
-                        il.Emit_PinArray(typeof(byte), responseDataArrayVar);
-                    il.Emit(OpCodes.Ldloc, pinnedVar);                      // data = dataPointer
-                    il.Emit(OpCodes.Stloc, locals.DataPointer);
-
-                    foreach (var parameter in responseParameters)
-                    {
-                        il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);    // arg_i+1 = decode(data, remainingBytes, false)
-                        EmitDecode(il, locals, parameter.Codec, manualCodecTypes, codecsField);
-                        il.Emit_Stind(parameter.Description.Type);
-                    }
-
-                    if (hasRetval)
-                    {
-                        var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
-                        EmitDecode(il, locals, retvalCodec, manualCodecTypes, codecsField);
-                    }
-                }
-                else
-                {
-                    il.Emit(OpCodes.Pop);                               // pop(stack_0)
-                }
-
-                il.Emit(OpCodes.Ret);
-                #endregion
-            }
-
-            #region Begin Emit Constructor
-            var constructorBuilder = typeBuilder.DefineConstructor(
-                MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
-                CallingConventions.Standard, ConstructorParameterTypes);
-            var baseConstructor = typeof(object).GetConstructor(Type.EmptyTypes);
-            var cil = constructorBuilder.GetILGenerator();
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit(OpCodes.Call, baseConstructor);
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit(OpCodes.Ldarg_1);
-            cil.Emit(OpCodes.Stfld, processorField);
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit(OpCodes.Ldarg_2);
-            cil.Emit(OpCodes.Stfld, scopeField);
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit(OpCodes.Ldarg_3);
-            cil.Emit(OpCodes.Stfld, timeoutSettingsField);
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit_Ldarg(4);
-            cil.Emit(OpCodes.Stfld, codecContainerField);
-            cil.Emit(OpCodes.Ldarg_0);
-            cil.Emit_Ldc_I4(manualCodecTypes.Count);
-            cil.Emit(OpCodes.Newarr, typeof(IManualCodec));
-            cil.Emit(OpCodes.Stfld, codecsField);
-            for (int i = 0; i < manualCodecTypes.Count; i++)
-            {
-                var codecType = manualCodecTypes[i];
-                cil.Emit_Ldarg(0);
-                cil.Emit(OpCodes.Ldfld, codecsField);
-                cil.Emit_Ldc_I4(i);
-                cil.Emit_Ldarg(4);
-                cil.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(codecType));
-                cil.Emit(OpCodes.Stelem_Ref);
-            }
-            #endregion
-
-            foreach (var subserviceDesc in serviceDescription.Subservices)
-            {
-                #region Emit Subservice Property
-                var proxyClass = CreateProxyClass(rootType, subserviceDesc.Service.Type, path + "/" + subserviceDesc.Name);
-
-                var fieldBuilder = typeBuilder.DefineField("_" + subserviceDesc.Name, proxyClass, 
-                    FieldAttributes.Private | FieldAttributes.InitOnly);
-
-                cil.Emit_Ldarg(0);
-                cil.Emit_Ldarg(1);
-                cil.Emit_Ldarg(2);
-                cil.Emit_Ldarg(3);
-                cil.Emit_Ldarg(4);
-                cil.Emit(OpCodes.Newobj, proxyClass.GetConstructor(ConstructorParameterTypes));
-                cil.Emit(OpCodes.Stfld, fieldBuilder);
-
-                var methodBuilder = typeBuilder.DefineMethod("get_" + subserviceDesc.Name,
-                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
-                    MethodAttributes.SpecialName | MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    subserviceDesc.Service.Type, Type.EmptyTypes);
-                methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
-                var il = methodBuilder.GetILGenerator();
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldfld, fieldBuilder);
-                il.Emit(OpCodes.Ret);
-
-                var propertyBuilder = typeBuilder.DefineProperty(subserviceDesc.Name, 
-                    PropertyAttributes.None, subserviceDesc.Service.Type, Type.EmptyTypes);
-                propertyBuilder.SetGetMethod(methodBuilder);
-                #endregion
-            }
-
-            #region End Emit Constructor
-            cil.Emit(OpCodes.Ret);
-            #endregion
+            CreateConstructor(typeBuilder, fields, manualCodecTypes, serviceDescription, rootType, path);
 
             return typeBuilder.CreateType();
         }
 
-        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, FieldBuilder codecsField)
+        private static TypeBuilder DeclareType(ModuleBuilder moduleBuilder, Type type, ref int disambiguator)
+        {
+            return moduleBuilder.DefineType("__rpc_proxy_" + type.FullName + "_" + disambiguator++,
+                                            TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+                                            typeof(object), new[] {type});
+        }
+
+        private static ClassFields DeclareFields(TypeBuilder typeBuilder)
+        {
+            return new ClassFields
+            {
+                Processor         = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor), FieldAttributes.Private | FieldAttributes.InitOnly),
+                Scope             = typeBuilder.DefineField("scope",               typeof(string),                       FieldAttributes.Private | FieldAttributes.InitOnly),
+                TimeoutSettings   = typeBuilder.DefineField("timeoutSettings",     typeof(TimeoutSettings),              FieldAttributes.Private | FieldAttributes.InitOnly),
+                CodecContainer    = typeBuilder.DefineField("codecContainer",      typeof(ICodecContainer),              FieldAttributes.Private | FieldAttributes.InitOnly),
+                PreacquiredCodecs = typeBuilder.DefineField("preacquiredCodecs",   typeof(IManualCodec[]),               FieldAttributes.Private | FieldAttributes.InitOnly)
+            };
+        }
+
+        private static void CreateMethod(TypeBuilder typeBuilder, ClassFields fields, Type rootType, string path, MethodDescription methodDesc, ICodecContainer codecContainer, List<Type> manualCodecTypes)
+        {
+            var methodBuilder = typeBuilder.DefineMethod(methodDesc.Name,
+                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
+                    MethodAttributes.NewSlot | MethodAttributes.Virtual);
+
+            var genericTypeParameterBuilders = methodDesc.GenericParameters.Any()
+                ? methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray())
+                : new GenericTypeParameterBuilder[0];
+            var parameterTypes = methodDesc.Parameters.Select(x => !x.Type.IsGenericParameter ? x.Type : genericTypeParameterBuilders.Single(y => y.Name == x.Type.Name)).ToArray();
+
+            var retvalType = !methodDesc.ReturnType.IsGenericParameter
+                ? methodDesc.ReturnType
+                : genericTypeParameterBuilders.Single(y => y.Name == methodDesc.ReturnType.Name);
+            var parameterTypesAdjustedForRefs = parameterTypes.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x : x.MakeByRefType()).ToArray();
+
+            methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
+            methodBuilder.SetReturnType(retvalType);
+            methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
+
+            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
+            {
+                Description = x,
+                Codec = x.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(x.Type),
+                ConcreteType = parameterTypes[i],
+                ArgumentIndex = i + 1
+            }).ToArray();
+
+            var requestParameters = parameters
+                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                .ToArray();
+
+            var responseParameters = parameters
+                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                .ToArray();
+
+            bool hasRetval = methodDesc.ReturnType != typeof(void);
+
+            var il = methodBuilder.GetILGenerator();
+            var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
+
+            var typeCodec = codecContainer.GetEmittingCodecFor(typeof(Type));
+            var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
+            if (requestParameters.Any())
+            {
+                bool hasSizeOnStack = false;
+                foreach (var typeParameter in genericTypeParameterBuilders)
+                {
+                    var typeParameterLoc = typeParameter;
+                    typeCodec.EmitCalculateSize(il, lil =>
+                    {
+                        lil.Emit(OpCodes.Ldtoken, typeParameterLoc);
+                        lil.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+                    });
+                    if (hasSizeOnStack)
+                        il.Emit(OpCodes.Add);
+                    else
+                        hasSizeOnStack = true;
+                }
+                foreach (var parameter in requestParameters)
+                {
+                    EmitCalculateSize(il, parameter, manualCodecTypes, fields);
+                    if (hasSizeOnStack)
+                        il.Emit(OpCodes.Add);
+                    else
+                        hasSizeOnStack = true;
+                }
+
+                il.Emit(OpCodes.Newarr, typeof(byte));                      // dataArray = new byte[stack_0]
+                il.Emit(OpCodes.Stloc, requestDataArrayVar);
+                var pinnedVar =                                             // var pinned dataPointer = pin(dataArray)
+                    il.Emit_PinArray(typeof(byte), requestDataArrayVar);
+                il.Emit(OpCodes.Ldloc, pinnedVar);                          // data = dataPointer
+                il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                foreach (var parameter in requestParameters)
+                    EmitEncode(il, locals, parameter, manualCodecTypes, fields);
+            }
+            else
+            {
+                il.Emit(OpCodes.Ldnull);                                // dataArray = null
+                il.Emit(OpCodes.Stloc, requestDataArrayVar);
+            }
+
+            il.Emit_Ldarg(0);                                           // stack_0 = methodCallProcessor
+            il.Emit(OpCodes.Ldfld, fields.Processor);
+            il.Emit(OpCodes.Ldtoken, rootType);                         // stack_1 = typeof(T)
+            il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+            il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}",             // stack_2 = SuperServicePath/ServiceName/MethodName
+                path, methodDesc.Name));
+            il.Emit_Ldarg(0);                                           // stack_3 = scope
+            il.Emit(OpCodes.Ldfld, fields.Scope);
+            il.Emit(OpCodes.Ldloc, requestDataArrayVar);                // stack_4 = dataArray
+            il.Emit_Ldarg(0);                                           // stack_5 = timeoutSettings
+            il.Emit(OpCodes.Ldfld, fields.TimeoutSettings);
+            il.Emit(OpCodes.Callvirt, ProcessMethod);                   // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+
+            if (responseParameters.Any() || hasRetval)
+            {
+                var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
+                il.Emit(OpCodes.Stloc, responseDataArrayVar);           // dataArray = stack_0
+                il.Emit(OpCodes.Ldloc, responseDataArrayVar);           // remainingBytes = dataArray.Length
+                il.Emit(OpCodes.Ldlen);
+                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
+                var pinnedVar =                                         // var pinned dataPointer = pin(dataArray)
+                    il.Emit_PinArray(typeof(byte), responseDataArrayVar);
+                il.Emit(OpCodes.Ldloc, pinnedVar);                      // data = dataPointer
+                il.Emit(OpCodes.Stloc, locals.DataPointer);
+
+                foreach (var parameter in responseParameters)
+                {
+                    il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);    // arg_i+1 = decode(data, remainingBytes, false)
+                    EmitDecode(il, locals, parameter.Codec, manualCodecTypes, fields);
+                    il.Emit_Stind(parameter.Description.Type);
+                }
+
+                if (hasRetval)
+                {
+                    var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                    EmitDecode(il, locals, retvalCodec, manualCodecTypes, fields);
+                }
+            }
+            else
+            {
+                il.Emit(OpCodes.Pop);                               // pop(stack_0)
+            }
+
+            il.Emit(OpCodes.Ret);
+        }
+
+        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ClassFields fields)
         {
             var codec = parameterNecessity.Codec;
 
@@ -319,7 +269,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -338,7 +288,7 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, FieldBuilder codecsField)
+        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ClassFields fields)
         {
             var codec = parameterNecessity.Codec;
 
@@ -361,7 +311,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -381,7 +331,7 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, FieldBuilder codecsField)
+        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, ClassFields fields)
         {
             if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
             {
@@ -397,7 +347,7 @@ namespace SharpRpc.ClientSide
                 }
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, codecsField);
+                il.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
@@ -406,6 +356,81 @@ namespace SharpRpc.ClientSide
                 il.Emit_Ldc_I4(0);
                 il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Decode"));
             }
+        }
+
+        private void CreateConstructor(TypeBuilder typeBuilder, ClassFields fields, List<Type> manualCodecTypes, ServiceDescription serviceDescription, Type rootType, string path)
+        {
+            #region Begin Emit Constructor
+            var constructorBuilder = typeBuilder.DefineConstructor(
+                MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+                CallingConventions.Standard, ConstructorParameterTypes);
+            var baseConstructor = typeof(object).GetConstructor(Type.EmptyTypes);
+            var cil = constructorBuilder.GetILGenerator();
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit(OpCodes.Call, baseConstructor);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit(OpCodes.Ldarg_1);
+            cil.Emit(OpCodes.Stfld, fields.Processor);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit(OpCodes.Ldarg_2);
+            cil.Emit(OpCodes.Stfld, fields.Scope);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit(OpCodes.Ldarg_3);
+            cil.Emit(OpCodes.Stfld, fields.TimeoutSettings);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit_Ldarg(4);
+            cil.Emit(OpCodes.Stfld, fields.CodecContainer);
+            cil.Emit(OpCodes.Ldarg_0);
+            cil.Emit_Ldc_I4(manualCodecTypes.Count);
+            cil.Emit(OpCodes.Newarr, typeof(IManualCodec));
+            cil.Emit(OpCodes.Stfld, fields.PreacquiredCodecs);
+            for (int i = 0; i < manualCodecTypes.Count; i++)
+            {
+                var codecType = manualCodecTypes[i];
+                cil.Emit_Ldarg(0);
+                cil.Emit(OpCodes.Ldfld, fields.PreacquiredCodecs);
+                cil.Emit_Ldc_I4(i);
+                cil.Emit_Ldarg(4);
+                cil.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(codecType));
+                cil.Emit(OpCodes.Stelem_Ref);
+            }
+            #endregion
+
+            foreach (var subserviceDesc in serviceDescription.Subservices)
+            {
+                #region Emit Subservice Property
+                var proxyClass = CreateProxyClass(rootType, subserviceDesc.Service.Type, path + "/" + subserviceDesc.Name);
+
+                var fieldBuilder = typeBuilder.DefineField("_" + subserviceDesc.Name, proxyClass,
+                    FieldAttributes.Private | FieldAttributes.InitOnly);
+
+                cil.Emit_Ldarg(0);
+                cil.Emit_Ldarg(1);
+                cil.Emit_Ldarg(2);
+                cil.Emit_Ldarg(3);
+                cil.Emit_Ldarg(4);
+                cil.Emit(OpCodes.Newobj, proxyClass.GetConstructor(ConstructorParameterTypes));
+                cil.Emit(OpCodes.Stfld, fieldBuilder);
+
+                var methodBuilder = typeBuilder.DefineMethod("get_" + subserviceDesc.Name,
+                    MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
+                    MethodAttributes.SpecialName | MethodAttributes.NewSlot | MethodAttributes.Virtual,
+                    subserviceDesc.Service.Type, Type.EmptyTypes);
+                methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
+                var il = methodBuilder.GetILGenerator();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, fieldBuilder);
+                il.Emit(OpCodes.Ret);
+
+                var propertyBuilder = typeBuilder.DefineProperty(subserviceDesc.Name,
+                    PropertyAttributes.None, subserviceDesc.Service.Type, Type.EmptyTypes);
+                propertyBuilder.SetGetMethod(methodBuilder);
+                #endregion
+            }
+
+            #region End Emit Constructor
+            cil.Emit(OpCodes.Ret);
+            #endregion
         }
     }
 }
