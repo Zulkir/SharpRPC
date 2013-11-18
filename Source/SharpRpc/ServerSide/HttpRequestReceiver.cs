@@ -23,10 +23,8 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -39,16 +37,13 @@ namespace SharpRpc.ServerSide
     {
         private readonly IIncomingRequestProcessor requestProcessor;
         private readonly ILogger logger;
-        private readonly ConcurrentQueue<HttpListenerContext> requestQueue;
         private HttpListener listener;
         private Thread listenerThread;
-        private Thread[] workerThreads;
 
         public HttpRequestReceiver(IIncomingRequestProcessor requestProcessor, ILogger logger)
         {
             this.requestProcessor = requestProcessor;
             this.logger = logger;
-            requestQueue = new ConcurrentQueue<HttpListenerContext>();
         }
 
         private void DoListen()
@@ -61,7 +56,7 @@ namespace SharpRpc.ServerSide
                     try
                     {
                         var context = listener.GetContext();
-                        requestQueue.Enqueue(context);
+                        ThreadPool.QueueUserWorkItem(x => DoWork((HttpListenerContext)x), context);
                     }
                     catch (Exception ex)
                     {
@@ -74,66 +69,47 @@ namespace SharpRpc.ServerSide
             }
             catch (Exception ex)
             {
-                logger.Fatal("Listener thread died", ex);
+                logger.Fatal("Listener thread was killed by an exception", ex);
             }
+            logger.Info("Listener has finished working");
         }
 
-        private void DoWork()
+        private void DoWork(HttpListenerContext context)
         {
             try
             {
-                HttpListenerContext context;
-                bool hasRequest = requestQueue.TryDequeue(out context);
-                while (hasRequest || listener.IsListening)
+                context.Response.StatusCode = 200;
+                Request request;
+                if (TryDecodeRequest(context.Request, out request))
                 {
-                    while (hasRequest)
-                    {
-                        context.Response.StatusCode = 200;
-                        try
-                        {
-                            Request request;
-                            if (TryDecodeRequest(context.Request, out request))
-                            {
-                                var response = requestProcessor.Process(request);
-                                context.Response.Headers["status"] = ((int) response.Status).ToString(CultureInfo.InvariantCulture);
-                                context.Response.Headers["data-length"] = response.Data.Length.ToString(CultureInfo.InvariantCulture);
-                                context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
-                            }
-                            else
-                            {
-                                logger.Error(string.Format("Failed to decode request '{0}'", context.Request.Url));
-                                context.Response.Headers["status"] = ((int) ResponseStatus.BadRequest).ToString(CultureInfo.InvariantCulture);
-                                context.Response.Headers["data-length"] = "0";
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.NetworkingException("Processing a request failed unexpectedly", ex);
-                            context.Response.Headers["status"] = ((int) ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
-                            context.Response.Headers["data-length"] = "0";
-                        }
-                        finally
-                        {
-                            try
-                            {
-                                context.Response.Close();
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.NetworkingException("Closing a response stream failed", ex);
-                            }
-                        }
-
-                        hasRequest = requestQueue.TryDequeue(out context);
-                    }
-
-                    Thread.Sleep(1);
-                    hasRequest = requestQueue.TryDequeue(out context);
+                    var response = requestProcessor.Process(request);
+                    context.Response.Headers["status"] = ((int)response.Status).ToString(CultureInfo.InvariantCulture);
+                    context.Response.Headers["data-length"] = response.Data.Length.ToString(CultureInfo.InvariantCulture);
+                    context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
+                }
+                else
+                {
+                    logger.Error(string.Format("Failed to decode request '{0}'", context.Request.Url));
+                    context.Response.Headers["status"] = ((int)ResponseStatus.BadRequest).ToString(CultureInfo.InvariantCulture);
+                    context.Response.Headers["data-length"] = "0";
                 }
             }
             catch (Exception ex)
             {
-                logger.Fatal("Worker thread died", ex);   
+                logger.NetworkingException("Processing a request failed unexpectedly", ex);
+                context.Response.Headers["status"] = ((int)ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
+                context.Response.Headers["data-length"] = "0";
+            }
+            finally
+            {
+                try
+                {
+                    context.Response.Close();
+                }
+                catch (Exception ex)
+                {
+                    logger.NetworkingException("Closing a response stream failed", ex);
+                }
             }
         }
 
@@ -186,10 +162,6 @@ namespace SharpRpc.ServerSide
             listener.Prefixes.Add("http://*:" + port + "/");
             listenerThread = new Thread(DoListen);
             listenerThread.Start();
-
-            workerThreads = Enumerable.Range(0, threads).Select(i => new Thread(DoWork)).ToArray();
-            foreach (var workerThread in workerThreads)
-                workerThread.Start();
         }
 
         public void Stop()
@@ -198,9 +170,6 @@ namespace SharpRpc.ServerSide
             listenerThread.Join();
             listener.Close();
             listener = null;
-
-            foreach (var workerThread in workerThreads)
-                workerThread.Join();
         }
     }
 }
