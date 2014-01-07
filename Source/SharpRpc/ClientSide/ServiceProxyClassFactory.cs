@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,14 +34,6 @@ namespace SharpRpc.ClientSide
 {
     public class ServiceProxyClassFactory : IServiceProxyClassFactory
     {
-        struct ParameterNecessity
-        {
-            public MethodParameterDescription Description;
-            public Type ConcreteType;
-            public IEmittingCodec Codec;
-            public int ArgumentIndex;
-        }
-
         private const int MaxInlinableComplexity = 16;
 
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
@@ -112,6 +104,7 @@ namespace SharpRpc.ClientSide
             var genericTypeParameterBuilders = methodDesc.GenericParameters.Any()
                 ? methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray())
                 : new GenericTypeParameterBuilder[0];
+            var genericTypeParameters = genericTypeParameterBuilders.Select(x => new ServiceProxyMethodGenericTypeParameterNecessity(codecContainer, x)).ToArray();
             var parameterTypes = methodDesc.Parameters.Select(x => !x.Type.IsGenericParameter ? x.Type : genericTypeParameterBuilders.Single(y => y.Name == x.Type.Name)).ToArray();
 
             var retvalType = !methodDesc.ReturnType.IsGenericParameter
@@ -123,13 +116,7 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetReturnType(retvalType);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
-            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
-            {
-                Description = x,
-                Codec = x.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(x.Type),
-                ConcreteType = parameterTypes[i],
-                ArgumentIndex = i + 1
-            }).ToArray();
+            var parameters = methodDesc.Parameters.Select((x, i) => new ServiceProxyMethodParameterNecessity(codecContainer, x, parameterTypes[i])).ToArray();
 
             var requestParameters = parameters
                 .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
@@ -146,29 +133,18 @@ namespace SharpRpc.ClientSide
 
             var typeCodec = codecContainer.GetEmittingCodecFor(typeof(Type));
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
-            if (requestParameters.Any())
+            if (requestParameters.Any() || genericTypeParameters.Any())
             {
-                bool hasSizeOnStack = false;
-                foreach (var typeParameter in genericTypeParameterBuilders)
+                bool haveSizeOnStack = false;
+                foreach (var typeParameter in genericTypeParameters)
                 {
-                    var typeParameterLoc = typeParameter;
-                    typeCodec.EmitCalculateSize(il, lil =>
-                    {
-                        lil.Emit(OpCodes.Ldtoken, typeParameterLoc);
-                        lil.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-                    });
-                    if (hasSizeOnStack)
-                        il.Emit(OpCodes.Add);
-                    else
-                        hasSizeOnStack = true;
+                    typeCodec.EmitCalculateSize(il, typeParameter.EmitLoad);
+                    EmitAddIf(il, ref haveSizeOnStack);
                 }
                 foreach (var parameter in requestParameters)
                 {
-                    EmitCalculateSize(il, parameter, manualCodecTypes, fields);
-                    if (hasSizeOnStack)
-                        il.Emit(OpCodes.Add);
-                    else
-                        hasSizeOnStack = true;
+                    EmitCalculateSize(il, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
+                    EmitAddIf(il, ref haveSizeOnStack);
                 }
 
                 il.Emit(OpCodes.Newarr, typeof(byte));                      // dataArray = new byte[stack_0]
@@ -178,8 +154,10 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldloc, pinnedVar);                          // data = dataPointer
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
 
+                foreach (var typeParameter in genericTypeParameters)
+                    typeCodec.EmitEncode(il, locals, typeParameter.EmitLoad);
                 foreach (var parameter in requestParameters)
-                    EmitEncode(il, locals, parameter, manualCodecTypes, fields);
+                    EmitEncode(il, locals, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
             }
             else
             {
@@ -214,15 +192,15 @@ namespace SharpRpc.ClientSide
 
                 foreach (var parameter in responseParameters)
                 {
-                    il.Emit(OpCodes.Ldarg, parameter.ArgumentIndex);    // arg_i+1 = decode(data, remainingBytes, false)
-                    EmitDecode(il, locals, parameter.Codec, manualCodecTypes, fields);
-                    il.Emit_Stind(parameter.Description.Type);
+                    il.Emit(OpCodes.Ldarg, parameter.Description.Index + 1);// arg_i+1 = decode(data, remainingBytes, false)
+                    EmitDecode(il, locals, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType);
+                    il.Emit_Stind(parameter.ConcreteType);
                 }
 
                 if (hasRetval)
                 {
                     var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
-                    EmitDecode(il, locals, retvalCodec, manualCodecTypes, fields);
+                    EmitDecode(il, locals, manualCodecTypes, fields, retvalCodec, retvalType);
                 }
             }
             else
@@ -233,106 +211,107 @@ namespace SharpRpc.ClientSide
             il.Emit(OpCodes.Ret);
         }
 
-        private static void EmitCalculateSize(ILGenerator il, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ServiceProxyFields fields)
+        private static void EmitAddIf(ILGenerator il, ref bool haveSizeOnStack)
         {
-            var codec = parameterNecessity.Codec;
+            if (haveSizeOnStack)
+                il.Emit(OpCodes.Add);
+            else
+                haveSizeOnStack = true;
+        }
 
-            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
+        private static void EmitCalculateSize(ILGenerator il, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
+        {
+            if (concreteType.IsGenericParameter)
             {
-                switch (parameterNecessity.Description.Way)
-                {
-                    case MethodParameterWay.Val: codec.EmitCalculateSize(il, parameterNecessity.ArgumentIndex); break;
-                    case MethodParameterWay.Ref: codec.EmitCalculateSizeIndirect(il, parameterNecessity.ArgumentIndex, codec.Type); break;
-                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
-                }
+                il.Emit_Ldarg(0);
+                il.Emit(OpCodes.Ldfld, fields.CodecContainer);
+                il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(concreteType));
+                emitLoad(il);
+                var methodInfo = typeof(IManualCodec<>).GetMethod("CalculateSize");
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
+                var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
+                il.Emit(OpCodes.Callvirt, genericMethodInfo);
+            }
+            else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
+            {
+                emittingCodec.EmitCalculateSize(il, emitLoad);
             }
             else
             {
-                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == concreteType);
                 if (indexOfCodec == -1)
                 {
                     indexOfCodec = manualCodecTypes.Count;
-                    manualCodecTypes.Add(codec.Type);
+                    manualCodecTypes.Add(concreteType);
                 }
-                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
-                switch (parameterNecessity.Description.Way)
-                {
-                    case MethodParameterWay.Val:
-                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
-                        break;
-                    case MethodParameterWay.Ref:
-                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
-                        il.Emit(OpCodes.Ldobj, codec.Type);
-                        break;
-                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
-                }
+                emitLoad(il);
                 il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("CalculateSize"));
             }
         }
 
-        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, ParameterNecessity parameterNecessity, List<Type> manualCodecTypes, ServiceProxyFields fields)
+        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
         {
-            var codec = parameterNecessity.Codec;
-
-            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
+            if (concreteType.IsGenericParameter)
             {
-                switch (parameterNecessity.Description.Way)
-                {
-                    case MethodParameterWay.Val: codec.EmitEncode(il, locals, parameterNecessity.ArgumentIndex); break;
-                    case MethodParameterWay.Ref: codec.EmitEncodeIndirect(il, locals, parameterNecessity.ArgumentIndex, codec.Type); break;
-                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
-                }
+                il.Emit_Ldarg(0);
+                il.Emit(OpCodes.Ldfld, fields.CodecContainer);
+                il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(concreteType));
+                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                emitLoad(il);
+                var methodInfo = typeof(IManualCodec<>).GetMethod("Encode");
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
+                var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
+                il.Emit(OpCodes.Callvirt, genericMethodInfo);
+            }
+            else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
+            {
+                emittingCodec.EmitEncode(il, locals, emitLoad);
             }
             else
             {
-                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == concreteType);
                 if (indexOfCodec == -1)
                 {
                     indexOfCodec = manualCodecTypes.Count;
-                    manualCodecTypes.Add(codec.Type);
+                    manualCodecTypes.Add(concreteType);
                 }
-                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
                 il.Emit(OpCodes.Ldloca, locals.DataPointer);
-                switch (parameterNecessity.Description.Way)
-                {
-                    case MethodParameterWay.Val:
-                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
-                        break;
-                    case MethodParameterWay.Ref:
-                        il.Emit_Ldarg(parameterNecessity.ArgumentIndex);
-                        il.Emit(OpCodes.Ldobj, codec.Type);
-                        break;
-                    default: throw new ArgumentOutOfRangeException("way", string.Format("Unexcepted parameter way '{0}'", parameterNecessity.Description.Way));
-                }
+                emitLoad(il);
                 il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Encode"));
             }
         }
 
-        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, IEmittingCodec codec, List<Type> manualCodecTypes, ServiceProxyFields fields)
+        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType)
         {
-            if (codec.CanBeInlined && codec.EncodingComplexity <= MaxInlinableComplexity)
+            if (concreteType.IsGenericParameter)
             {
-                codec.EmitDecode(il, locals, false);
+                // todo
+            }
+            else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
+            {
+                emittingCodec.EmitDecode(il, locals, false);
             }
             else
             {
-                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == codec.Type);
+                int indexOfCodec = manualCodecTypes.IndexOfFirst(x => x == concreteType);
                 if (indexOfCodec == -1)
                 {
                     indexOfCodec = manualCodecTypes.Count;
-                    manualCodecTypes.Add(codec.Type);
+                    manualCodecTypes.Add(concreteType);
                 }
-                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(codec.Type);
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);

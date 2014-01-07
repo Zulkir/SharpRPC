@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -373,13 +373,45 @@ namespace SharpRpc.Tests.ClientSide
             Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
         }
 
+        public interface IServiceWithEmptyGenerics
+        {
+            void DoTypedNothing<T>();
+        }
+
+        [Test]
+        public void EmptyGenerics()
+        {
+            DoTestEmptyGenerics<int>();
+            DoTestEmptyGenerics<string>();
+        }
+
         public interface IServiceWithSimpleGenerics
         {
             void DoSomethingSimple<T>(T arg);
         }
 
+        private void DoTestEmptyGenerics<T>()
+        {
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+
+            var sizeOfType = typeCodec.CalculateSize(typeof(T));
+            var expectedArgsData = new byte[sizeOfType];
+            fixed (byte* pData = expectedArgsData)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(T));
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithEmptyGenerics>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+
+            proxy.DoTypedNothing<T>();
+
+            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
+
         [Test]
-        [Ignore]
         public void SimpleGenerics()
         {
             DoTestSimpleGenerics(123);
@@ -391,13 +423,13 @@ namespace SharpRpc.Tests.ClientSide
             var typeCodec = codecContainer.GetManualCodecFor<Type>();
             var argCodec = codecContainer.GetManualCodecFor<T>();
 
-            var sizeOfType = typeCodec.CalculateSize(typeof(int));
+            var sizeOfType = typeCodec.CalculateSize(typeof(T));
             var sizeOfArg = argCodec.CalculateSize(argValue);
             var expectedArgsData = new byte[sizeOfType + sizeOfArg];
             fixed (byte* pData = expectedArgsData)
             {
                 var p = pData;
-                typeCodec.Encode(ref p, typeof(int));
+                typeCodec.Encode(ref p, typeof(T));
                 argCodec.Encode(ref p, argValue);            
             }
 
@@ -406,7 +438,7 @@ namespace SharpRpc.Tests.ClientSide
 
             proxy.DoSomethingSimple(argValue);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
         }
     }

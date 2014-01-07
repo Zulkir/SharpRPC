@@ -52,6 +52,8 @@
     <Compile Include="ClientSide\ServiceProxyFields.cs" />
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
+    <Compile Include="ClientSide\ServiceProxyMethodGenericTypeParameterNecessity.cs" />
+    <Compile Include="ClientSide\ServiceProxyMethodParameterNecessity.cs" />
     <Compile Include="Codecs\ClassArrayCodec.cs" />
     <Compile Include="Codecs\CodecContainer.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />

@@ -23,26 +23,30 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Reflection.Emit;
+using SharpRpc.Codecs;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.ClientSide
 {
-    public class MethodParameterDescription
+    public class ServiceProxyMethodParameterNecessity
     {
-        public int Index { get; private set; }
-        public Type Type { get; private set; }
-        public string Name { get; private set; }
-        public MethodParameterWay Way { get; private set; }
+        public IEmittingCodec Codec { get; private set; }
+        public Action<ILGenerator> EmitLoad { get; private set; }
+        public MethodParameterDescription Description { get; private set; }
+        public Type ConcreteType { get; private set; }
 
-        public MethodParameterDescription(int index, Type type, string name, MethodParameterWay way = MethodParameterWay.Val)
+        public ServiceProxyMethodParameterNecessity(ICodecContainer codecContainer, MethodParameterDescription description, Type concreteType)
         {
-            Index = index;
-            if (type == null)
-                throw new ArgumentNullException("type");
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Method parameter name cannot be null, empty, or consist of whitespace characters");
-            Type = type;
-            Name = name;
-            Way = way;
+            Codec = description.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(description.Type);
+            int argIndex = description.Index + 1;
+            if (description.Way == MethodParameterWay.Val)
+                EmitLoad = lil => lil.Emit_Ldarg(argIndex);
+            else
+                EmitLoad = lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, concreteType); };
+
+            Description = description;
+            ConcreteType = concreteType;
         }
     }
 }

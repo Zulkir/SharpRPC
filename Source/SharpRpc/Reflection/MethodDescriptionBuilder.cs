@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -42,13 +42,13 @@ namespace SharpRpc.Reflection
             return new MethodDescription(methodInfo, methodInfo.ReturnType, methodInfo.Name, parameterDescs);
         }
 
-        private static MethodParameterDescription BuildParameterDescription(ParameterInfo parameterInfo)
+        private static MethodParameterDescription BuildParameterDescription(ParameterInfo parameterInfo, int index)
         {
             var way = GetWay(parameterInfo);
             var parameterType = way == MethodParameterWay.Val 
                 ? parameterInfo.ParameterType
                 : parameterInfo.ParameterType.GetElementType();
-            return new MethodParameterDescription(parameterType, parameterInfo.Name, way);
+            return new MethodParameterDescription(index, parameterType, parameterInfo.Name, way);
         }
 
         private static MethodParameterWay GetWay(ParameterInfo parameterInfo)

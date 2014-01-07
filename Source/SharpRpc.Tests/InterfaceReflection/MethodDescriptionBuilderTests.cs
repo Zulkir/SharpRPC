@@ -1,6 +1,6 @@
 ﻿#region License
 /*
-Copyright (c) 2013 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
+Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -73,6 +73,8 @@ namespace SharpRpc.Tests.InterfaceReflection
         {
             var desc = builder.Build(type.GetMethod("ProcessBasicTypesAndStructs"));
             Assert.That(desc.Parameters.Count, Is.EqualTo(4));
+            for (int i = 0; i < desc.Parameters.Count; i++)
+                Assert.That(desc.Parameters[i].Index, Is.EqualTo(i));
             Assert.That(desc.Parameters[0].Type, Is.EqualTo(typeof(int)));
             Assert.That(desc.Parameters[1].Type, Is.EqualTo(typeof(bool)));
             Assert.That(desc.Parameters[2].Type, Is.EqualTo(typeof(char)));
