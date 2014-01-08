@@ -23,6 +23,8 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 using NSubstitute;
 using NUnit.Framework;
@@ -543,6 +545,38 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(c, Is.EqualTo(expectedC));
             Assert.That(d, Is.EqualTo(expectedD));
             Assert.That(retval, Is.EqualTo(expectedRetval));
+        }
+
+        public interface IServiceWithSimpleGenericConstraint
+        {
+            void DoNothing<T>() where T : struct;
+        }
+
+        [Test]
+        public void SimpleGenericConstraint()
+        {
+            var proxy = factory.CreateProxyClass<IServiceWithSimpleGenericConstraint>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            proxy.DoNothing<int>();
+        }
+
+        public interface IServiceWithComplexGenericConstraints
+        {
+            void DoNothing<T>() where T : class, IEnumerable<T>;
+        }
+
+        public class ClassMeetingConstraints : IEnumerable<ClassMeetingConstraints>
+        {
+            public IEnumerator<ClassMeetingConstraints> GetEnumerator() { throw new NotImplementedException(); }
+            IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
+        }
+
+        [Test]
+        public void ComplexGenericConstraints()
+        {
+            var proxy = factory.CreateProxyClass<IServiceWithComplexGenericConstraints>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            proxy.DoNothing<ClassMeetingConstraints>();
         }
     }
 }
