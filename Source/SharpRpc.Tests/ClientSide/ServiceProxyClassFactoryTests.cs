@@ -466,21 +466,82 @@ namespace SharpRpc.Tests.ClientSide
             }
 
             var retvalCodec = codecContainer.GetManualCodecFor<T>();
-            var retvalData = new byte[retvalCodec.CalculateSize(expectedRetval)];
-            fixed (byte* pData = retvalData)
+            var responseData = new byte[retvalCodec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = responseData)
             {
                 var p = pData;
                 retvalCodec.Encode(ref p, expectedRetval);
             }
 
             var proxy = factory.CreateProxyClass<IServiceWithGenericRetval>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(retvalData);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
 
             var retval = proxy.GetSomething<T>();
 
             var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
 
+            Assert.That(retval, Is.EqualTo(expectedRetval));
+        }
+
+        public interface IServiceWithMixedGenerics
+        {
+            TFirst DoSomethingMixed<TFirst, TSecond>(int a, TFirst b, ref TSecond c, out TSecond d);
+        }
+
+        [Test]
+        public void MixedGenerics()
+        {
+            DoTestMixedGenerics(123, 234, "asd", "sdf", "dfg", 345);
+            DoTestMixedGenerics(123, "asd", 234, 345, 456, "sdf");
+        }
+
+        private void DoTestMixedGenerics<TFirst, TSecond>(int a, TFirst b, TSecond c, TSecond expectedC, TSecond expectedD, TFirst expectedRetval)
+        {
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+            var intCodec = codecContainer.GetManualCodecFor<int>();
+            var firstCodec = codecContainer.GetManualCodecFor<TFirst>();
+            var secondCodec = codecContainer.GetManualCodecFor<TSecond>();
+
+            int sizeOfTFirst = typeCodec.CalculateSize(typeof(TFirst));
+            int sizeOfTSecond = typeCodec.CalculateSize(typeof(TSecond));
+            int sizeOfA = intCodec.CalculateSize(a);
+            int sizeOfB = firstCodec.CalculateSize(b);
+            int sizeOfC = secondCodec.CalculateSize(c);
+            var expectedArgsData = new byte[sizeOfTFirst + sizeOfTSecond + sizeOfA + sizeOfB + sizeOfC];
+            fixed (byte* pData = expectedArgsData)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(TFirst));
+                typeCodec.Encode(ref p, typeof(TSecond));
+                intCodec.Encode(ref p, a);
+                firstCodec.Encode(ref p, b);
+                secondCodec.Encode(ref p, c);
+            }
+
+            int sizeOfReturningC = secondCodec.CalculateSize(expectedC);
+            int sizeOfReturningD = secondCodec.CalculateSize(expectedD);
+            int sizeOfRetval = firstCodec.CalculateSize(expectedRetval);
+            var responseData = new byte[sizeOfReturningC + sizeOfReturningD + sizeOfRetval];
+            fixed (byte* pData = responseData)
+            {
+                var p = pData;
+                secondCodec.Encode(ref p, expectedC);
+                secondCodec.Encode(ref p, expectedD);
+                firstCodec.Encode(ref p, expectedRetval);
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithMixedGenerics>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
+
+            TSecond d;
+            var retval = proxy.DoSomethingMixed(a, b, ref c, out d);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+
+            Assert.That(c, Is.EqualTo(expectedC));
+            Assert.That(d, Is.EqualTo(expectedD));
             Assert.That(retval, Is.EqualTo(expectedRetval));
         }
     }
