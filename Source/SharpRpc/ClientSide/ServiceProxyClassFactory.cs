@@ -199,7 +199,7 @@ namespace SharpRpc.ClientSide
 
                 if (hasRetval)
                 {
-                    var retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
+                    var retvalCodec = retvalType.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(retvalType);
                     EmitDecode(il, locals, manualCodecTypes, fields, retvalCodec, retvalType);
                 }
             }
@@ -297,7 +297,16 @@ namespace SharpRpc.ClientSide
         {
             if (concreteType.IsGenericParameter)
             {
-                // todo
+                il.Emit_Ldarg(0);
+                il.Emit(OpCodes.Ldfld, fields.CodecContainer);
+                il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(concreteType));
+                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
+                il.Emit_Ldc_I4(0);
+                var methodInfo = typeof(IManualCodec<>).GetMethod("Decode");
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
+                var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
+                il.Emit(OpCodes.Callvirt, genericMethodInfo);
             }
             else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
             {
@@ -311,11 +320,11 @@ namespace SharpRpc.ClientSide
                     indexOfCodec = manualCodecTypes.Count;
                     manualCodecTypes.Add(concreteType);
                 }
-                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.ManualCodecs);
                 il.Emit_Ldc_I4(indexOfCodec);
                 il.Emit(OpCodes.Ldelem_Ref);
+                var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
                 il.Emit(OpCodes.Ldloca, locals.DataPointer);
                 il.Emit(OpCodes.Ldloca, locals.RemainingBytes);

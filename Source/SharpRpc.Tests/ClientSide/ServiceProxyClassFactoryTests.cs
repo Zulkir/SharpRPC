@@ -385,11 +385,6 @@ namespace SharpRpc.Tests.ClientSide
             DoTestEmptyGenerics<string>();
         }
 
-        public interface IServiceWithSimpleGenerics
-        {
-            void DoSomethingSimple<T>(T arg);
-        }
-
         private void DoTestEmptyGenerics<T>()
         {
             var typeCodec = codecContainer.GetManualCodecFor<Type>();
@@ -409,6 +404,11 @@ namespace SharpRpc.Tests.ClientSide
 
             var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
+
+        public interface IServiceWithSimpleGenerics
+        {
+            void DoSomethingSimple<T>(T arg);
         }
 
         [Test]
@@ -440,6 +440,48 @@ namespace SharpRpc.Tests.ClientSide
 
             var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
+
+        public interface IServiceWithGenericRetval
+        {
+            T GetSomething<T>();
+        }
+
+        [Test]
+        public void GenericRetval()
+        {
+            DoTestGenericRetval(123);
+            DoTestGenericRetval("asd");
+        }
+
+        private void DoTestGenericRetval<T>(T expectedRetval)
+        {
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+
+            var expectedArgsData = new byte[typeCodec.CalculateSize(typeof(T))];
+            fixed (byte* pData = expectedArgsData)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(T));
+            }
+
+            var retvalCodec = codecContainer.GetManualCodecFor<T>();
+            var retvalData = new byte[retvalCodec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = retvalData)
+            {
+                var p = pData;
+                retvalCodec.Encode(ref p, expectedRetval);
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithGenericRetval>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(retvalData);
+
+            var retval = proxy.GetSomething<T>();
+
+            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+
+            Assert.That(retval, Is.EqualTo(expectedRetval));
         }
     }
 }
