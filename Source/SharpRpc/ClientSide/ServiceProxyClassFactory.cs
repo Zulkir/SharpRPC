@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using System.Linq;
@@ -78,7 +79,8 @@ namespace SharpRpc.ClientSide
 
         private TypeBuilder DeclareType(Type serviceInterface)
         {
-            return moduleBuilder.DefineType("__rpc_proxy_" + serviceInterface.FullName + "_" + classNameDisambiguator++,
+            Interlocked.Increment(ref classNameDisambiguator);
+            return moduleBuilder.DefineType("__rpc_proxy_" + serviceInterface.FullName + "_" + classNameDisambiguator,
                                             TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
                                             typeof(object), new[] { serviceInterface });
         }
