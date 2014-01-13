@@ -79,8 +79,8 @@ namespace SharpRpc.ClientSide
 
         private TypeBuilder DeclareType(Type serviceInterface)
         {
-            Interlocked.Increment(ref classNameDisambiguator);
-            return moduleBuilder.DefineType("__rpc_proxy_" + serviceInterface.FullName + "_" + classNameDisambiguator,
+            int disambiguator = Interlocked.Increment(ref classNameDisambiguator);
+            return moduleBuilder.DefineType("__rpc_proxy_" + serviceInterface.FullName + "_" + disambiguator,
                                             TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
                                             typeof(object), new[] { serviceInterface });
         }
