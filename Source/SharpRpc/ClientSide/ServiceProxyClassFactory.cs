@@ -107,18 +107,16 @@ namespace SharpRpc.ClientSide
                 ? methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray())
                 : new GenericTypeParameterBuilder[0];
             var genericTypeParameters = genericTypeParameterBuilders.Select(x => new ServiceProxyMethodGenericTypeParameterNecessity(codecContainer, x)).ToArray();
-            var parameterTypes = methodDesc.Parameters.Select(x => !x.Type.IsGenericParameter ? x.Type : genericTypeParameterBuilders.Single(y => y.Name == x.Type.Name)).ToArray();
+            var parameters = methodDesc.Parameters.Select((x, i) => new ServiceProxyMethodParameterNecessity(codecContainer, x, genericTypeParameterBuilders)).ToArray();
 
             var retvalType = !methodDesc.ReturnType.IsGenericParameter
                 ? methodDesc.ReturnType
                 : genericTypeParameterBuilders.Single(y => y.Name == methodDesc.ReturnType.Name);
-            var parameterTypesAdjustedForRefs = parameterTypes.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x : x.MakeByRefType()).ToArray();
+            var parameterTypesAdjustedForRefs = parameters.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x.ConcreteType : x.ConcreteType.MakeByRefType()).ToArray();
 
             methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
             methodBuilder.SetReturnType(retvalType);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
-
-            var parameters = methodDesc.Parameters.Select((x, i) => new ServiceProxyMethodParameterNecessity(codecContainer, x, parameterTypes[i])).ToArray();
 
             var requestParameters = parameters
                 .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
@@ -223,7 +221,7 @@ namespace SharpRpc.ClientSide
 
         private static void EmitCalculateSize(ILGenerator il, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
         {
-            if (concreteType.IsGenericParameter)
+            if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.CodecContainer);
@@ -259,7 +257,7 @@ namespace SharpRpc.ClientSide
 
         private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
         {
-            if (concreteType.IsGenericParameter)
+            if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.CodecContainer);
@@ -297,7 +295,7 @@ namespace SharpRpc.ClientSide
 
         private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType)
         {
-            if (concreteType.IsGenericParameter)
+            if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.CodecContainer);

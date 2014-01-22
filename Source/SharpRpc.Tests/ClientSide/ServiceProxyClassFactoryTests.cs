@@ -578,5 +578,43 @@ namespace SharpRpc.Tests.ClientSide
             methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
             proxy.DoNothing<ClassMeetingConstraints>();
         }
+
+        public interface IServiceWithNestedGenerics
+        {
+            void DoSomething<TKey, TValue>(Dictionary<TKey, TValue> dict);
+        }
+
+        [Test]
+        public void NestedGenerics()
+        {
+            DoTestNestedGenerics(new Dictionary<int, string>{ { 1, "asd" }, { 2, "qwe" } });
+            DoTestNestedGenerics(new Dictionary<string, int>{ { "asd", 1 }, { "qwe", 2 } });
+        }
+
+        private void DoTestNestedGenerics<TKey, TValue>(Dictionary<TKey, TValue> argValue)
+        {
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+            var argCodec = codecContainer.GetManualCodecFor<Dictionary<TKey, TValue>>();
+
+            var sizeOfKeyType = typeCodec.CalculateSize(typeof(TKey));
+            var sizeOfValueType = typeCodec.CalculateSize(typeof(TValue));
+            var sizeOfArg = argCodec.CalculateSize(argValue);
+            var expectedArgsData = new byte[sizeOfKeyType + sizeOfValueType + sizeOfArg];
+            fixed (byte* pData = expectedArgsData)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(TKey));
+                typeCodec.Encode(ref p, typeof(TValue));
+                argCodec.Encode(ref p, argValue);
+            }
+
+            var proxy = factory.CreateProxyClass<IServiceWithNestedGenerics>()(methodCallProcessor, null, null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+
+            proxy.DoSomething(argValue);
+
+            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+        }
     }
 }

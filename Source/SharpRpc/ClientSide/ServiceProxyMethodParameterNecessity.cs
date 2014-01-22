@@ -26,6 +26,7 @@ using System;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
+using System.Linq;
 
 namespace SharpRpc.ClientSide
 {
@@ -36,17 +37,25 @@ namespace SharpRpc.ClientSide
         public MethodParameterDescription Description { get; private set; }
         public Type ConcreteType { get; private set; }
 
-        public ServiceProxyMethodParameterNecessity(ICodecContainer codecContainer, MethodParameterDescription description, Type concreteType)
+        public ServiceProxyMethodParameterNecessity(ICodecContainer codecContainer, MethodParameterDescription description, GenericTypeParameterBuilder[] genericTypeBuilders)
         {
-            Codec = description.Type.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(description.Type);
+            Codec = description.Type.ContainsGenericParameters ? null : codecContainer.GetEmittingCodecFor(description.Type);
+            Description = description;
+            ConcreteType = SubstituteGenericTypes(description.Type, genericTypeBuilders);
             int argIndex = description.Index + 1;
             if (description.Way == MethodParameterWay.Val)
                 EmitLoad = lil => lil.Emit_Ldarg(argIndex);
             else
-                EmitLoad = lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, concreteType); };
+                EmitLoad = lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, ConcreteType); };
+        }
 
-            Description = description;
-            ConcreteType = concreteType;
+        private static Type SubstituteGenericTypes(Type type, GenericTypeParameterBuilder[] genericTypeBuilders)
+        {
+            if (type.IsGenericParameter)
+                return genericTypeBuilders.Single(x => x.Name == type.Name);
+            if (type.IsGenericType)
+                return type.GetGenericTypeDefinition().MakeGenericType(type.GetGenericArguments().Select(x => SubstituteGenericTypes(x, genericTypeBuilders)).ToArray());
+            return type;
         }
     }
 }
