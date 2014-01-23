@@ -32,8 +32,10 @@ using System.Linq;
 
 namespace SharpRpc.ServerSide
 {
-    public class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
+    public unsafe class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
     {
+        private delegate byte[] RawHandler(ICodecContainer codecContainer, object implementation, byte* data, int remainingLength);
+
         struct ParameterNecessity
         {
             public MethodParameterDescription Description;
@@ -41,7 +43,7 @@ namespace SharpRpc.ServerSide
             public LocalBuilder LocalVariable;
         }
 
-        private static readonly Type[] ParameterTypes = new[] {typeof(object), typeof (byte[])};
+        private static readonly Type[] ParameterTypes = new[] {typeof(ICodecContainer), typeof(object), typeof (byte*), typeof(int)};
 
         private readonly ICodecContainer codecContainer;
 
@@ -52,6 +54,20 @@ namespace SharpRpc.ServerSide
 
         public ServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
         {
+            var rawHandler = CreateRawHandler(serviceDescription, servicePath);
+            return (i, d) => HandleSimple(i, d, codecContainer, rawHandler);
+        }
+
+        private static byte[] HandleSimple(object serviceImplementation, byte[] data, ICodecContainer codecContainer, RawHandler rawHandler)
+        {
+            fixed (byte* pData = data)
+            {
+                return rawHandler(codecContainer, serviceImplementation, pData, data.Length);
+            }
+        }
+
+        private RawHandler CreateRawHandler(ServiceDescription serviceDescription, ServicePath servicePath)
+        {
             var serviceInterface = serviceDescription.Type;
 
             var dynamicMethod = new DynamicMethod(
@@ -59,8 +75,8 @@ namespace SharpRpc.ServerSide
                 typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var locals = new LocalVariableCollection(il, true);
-            
-            il.Emit(OpCodes.Ldarg_0);                                           // stack_0 = (TServiceImplementation) arg_0
+
+            il.Emit(OpCodes.Ldarg_1);                                           // stack_0 = (TServiceImplementation) arg_1
             il.Emit(OpCodes.Castclass, serviceInterface);
 
             var serviceDesc = serviceDescription;
@@ -81,11 +97,11 @@ namespace SharpRpc.ServerSide
 
             bool hasRetval = methodDesc.ReturnType != typeof(void);
             var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
-                {
-                    Description = x,
-                    Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                    LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null
-                })
+            {
+                Description = x,
+                Codec = codecContainer.GetEmittingCodecFor(x.Type),
+                LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null
+            })
                 .ToArray();
 
             var requestParameters = parameters
@@ -98,12 +114,10 @@ namespace SharpRpc.ServerSide
 
             if (requestParameters.Any())
             {
-                il.Emit(OpCodes.Ldarg_1);                                   // remainingBytes = arg_1.Length
-                il.Emit(OpCodes.Ldlen);
-                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-                var pinnedVar = il.Emit_PinArray(typeof(byte), 1);         // var pinned dataPointer = pin(arg_1)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                         // data = dataPointer
+                il.Emit_Ldarg(2);                                           // data = arg_2
                 il.Emit(OpCodes.Stloc, locals.DataPointer);
+                il.Emit_Ldarg(3);                                           // remainingBytes = arg_3
+                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
             }
 
             foreach (var parameter in parameters)
@@ -132,7 +146,7 @@ namespace SharpRpc.ServerSide
             {
                 IEmittingCodec retvalCodec = null;
                 LocalBuilder retvalVar = null;
-                
+
                 if (hasRetval)
                 {
                     retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
@@ -174,7 +188,7 @@ namespace SharpRpc.ServerSide
             }
 
             il.Emit(OpCodes.Ret);
-            return (ServiceMethodHandler)dynamicMethod.CreateDelegate(typeof(ServiceMethodHandler));
+            return (RawHandler)dynamicMethod.CreateDelegate(typeof(RawHandler));
         }
     }
 }
