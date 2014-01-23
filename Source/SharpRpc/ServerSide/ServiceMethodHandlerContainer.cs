@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System.Collections.Concurrent;
 using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
@@ -38,9 +39,9 @@ namespace SharpRpc.ServerSide
             handlers = new ConcurrentDictionary<ServicePath, ServiceMethodHandler>();
         }
 
-        public ServiceMethodHandler GetMethodHandler(ServiceImplementationInfo serviceImplementationInfo, ServicePath servicePath)
+        public ServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
         {
-            return handlers.GetOrAdd(servicePath, p => factory.CreateMethodHandler(serviceImplementationInfo, p));
+            return handlers.GetOrAdd(servicePath, p => factory.CreateMethodHandler(serviceDescription, p));
         }
     }
 }

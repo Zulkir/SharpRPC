@@ -54,7 +54,7 @@ namespace SharpRpc.ServerSide
 
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
-                var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo, request.Path);
+                var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo.Description, request.Path);
 
                 var responseData = methodHandler(implementationInfo.Implementation, request.Data);
 

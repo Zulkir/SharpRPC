@@ -23,11 +23,12 @@ THE SOFTWARE.
 #endregion
 
 using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodHandlerFactory
     {
-        ServiceMethodHandler CreateMethodHandler(ServiceImplementationInfo serviceImplementationInfo, ServicePath servicePath); 
+        ServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath); 
     }
 }

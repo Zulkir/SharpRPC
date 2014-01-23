@@ -23,11 +23,12 @@ THE SOFTWARE.
 #endregion
 
 using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodHandlerContainer
     {
-        ServiceMethodHandler GetMethodHandler(ServiceImplementationInfo serviceImplementationInfo, ServicePath servicePath);
+        ServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath);
     }
 }

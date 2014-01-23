@@ -39,7 +39,6 @@ namespace SharpRpc.ServerSide
             public MethodParameterDescription Description;
             public IEmittingCodec Codec;
             public LocalBuilder LocalVariable;
-            public int ArgumentIndex;
         }
 
         private static readonly Type[] ParameterTypes = new[] {typeof(object), typeof (byte[])};
@@ -51,9 +50,9 @@ namespace SharpRpc.ServerSide
             this.codecContainer = codecContainer;
         }
 
-        public ServiceMethodHandler CreateMethodHandler(ServiceImplementationInfo serviceImplementationInfo, ServicePath servicePath)
+        public ServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
         {
-            var serviceInterface = serviceImplementationInfo.Description.Type;
+            var serviceInterface = serviceDescription.Type;
 
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
@@ -64,7 +63,7 @@ namespace SharpRpc.ServerSide
             il.Emit(OpCodes.Ldarg_0);                                           // stack_0 = (TServiceImplementation) arg_0
             il.Emit(OpCodes.Castclass, serviceInterface);
 
-            var serviceDesc = serviceImplementationInfo.Description;
+            var serviceDesc = serviceDescription;
             for (int i = 1; i < servicePath.Length - 1; i++)
             {
                 var propertyInfo = serviceDesc.Type.GetProperty(servicePath[i]);
@@ -85,8 +84,7 @@ namespace SharpRpc.ServerSide
                 {
                     Description = x,
                     Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                    LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null,
-                    ArgumentIndex = i
+                    LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null
                 })
                 .ToArray();
 

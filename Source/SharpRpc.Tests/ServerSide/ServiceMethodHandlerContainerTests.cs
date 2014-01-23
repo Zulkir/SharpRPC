@@ -25,6 +25,7 @@ THE SOFTWARE.
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 using SharpRpc.ServerSide;
 
 namespace SharpRpc.Tests.ServerSide
@@ -42,16 +43,21 @@ namespace SharpRpc.Tests.ServerSide
             container = new ServiceMethodHandlerContainer(factory);
         }
 
+        public interface ITrivialService
+        {
+             
+        }
+
         [Test]
         public void Trivial()
         {
-            var implementationInfo = new ServiceImplementationInfo();
+            var serviceDescription = new ServiceDescriptionBuilder(new MethodDescriptionBuilder()).Build(typeof(ITrivialService));
             var path = new ServicePath("MyService", "MyMethod");
             var handler = (ServiceMethodHandler)((i, d) => new byte[0]);
-            factory.CreateMethodHandler(implementationInfo, path).Returns(handler);
+            factory.CreateMethodHandler(serviceDescription, path).Returns(handler);
 
-            var handler1 = container.GetMethodHandler(implementationInfo, path);
-            var handler2 = container.GetMethodHandler(implementationInfo, path);
+            var handler1 = container.GetMethodHandler(serviceDescription, path);
+            var handler2 = container.GetMethodHandler(serviceDescription, path);
 
             Assert.That(handler1, Is.EqualTo(handler2));
         }

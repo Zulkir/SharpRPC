@@ -69,7 +69,7 @@ namespace SharpRpc.Tests.ServerSide
         private ICodecContainer codecContainer;
         private ServiceMethodHandlerFactory factory;
         private IGlobalService service;
-        private ServiceImplementationInfo globalServiceImplementationInfo;
+        private ServiceDescription globalServiceDescription;
 
         [SetUp]
         public void Setup()
@@ -78,15 +78,13 @@ namespace SharpRpc.Tests.ServerSide
             factory = new ServiceMethodHandlerFactory(codecContainer);
             service = Substitute.For<IGlobalService>();
             var serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
-            var globalServiceDescription =  serviceDescriptionBuilder.Build(typeof(IGlobalService));
-            globalServiceImplementationInfo = 
-                new ServiceImplementationInfo(globalServiceDescription, service);
+            globalServiceDescription = serviceDescriptionBuilder.Build(typeof(IGlobalService));
         }
 
         [Test]
         public void Trivial()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "Trivial"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "Trivial"));
             var result = handler(service, new byte[0]);
             Assert.That(result.Length, Is.EqualTo(0));
             Assert.That(service.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
@@ -97,7 +95,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             var middleService = Substitute.For<IMiddleService>();
             service.Middle.Returns(middleService);
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "Middle", "Trivial"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "Middle", "Trivial"));
             handler(service, new byte[0]);
             Assert.That(middleService.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
         }
@@ -109,7 +107,7 @@ namespace SharpRpc.Tests.ServerSide
             var middleService = Substitute.For<IMiddleService>();
             middleService.Local.Returns(localService);
             service.Middle.Returns(middleService);
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "Middle", "Local", "Trivial"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "Middle", "Local", "Trivial"));
             handler(service, new byte[0]);
             Assert.That(localService.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
         }
@@ -117,7 +115,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void Arguments()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "MethodWithArgs"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "MethodWithArgs"));
 
             var data = new byte[12];
             fixed (byte* pData = data)
@@ -138,7 +136,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void Retval()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "MethodWithRetval"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "MethodWithRetval"));
 
             var expectedData = new byte[8];
             fixed (byte* pData = expectedData)
@@ -155,7 +153,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void Ref()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "ModifyByRef"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "ModifyByRef"));
 
             var data = new byte[8];
             fixed (byte* pData = data)
@@ -179,7 +177,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void Out()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "GetSomethingOut"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "GetSomethingOut"));
 
             var expectedData = new byte[4];
             fixed (byte* pData = expectedData)
@@ -197,7 +195,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void MixedParameterTypes()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "MixedParameterTypes"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "MixedParameterTypes"));
 
             var data = new byte[8];
             fixed (byte* pData = data)
@@ -230,7 +228,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void ReferenceInRef()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "ReferenceInRef"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "ReferenceInRef"));
 
             var data = new byte[4];
 
@@ -255,7 +253,7 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void Inheritance()
         {
-            var handler = factory.CreateMethodHandler(globalServiceImplementationInfo, new ServicePath("MyService", "DoBaseStuff"));
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "DoBaseStuff"));
             handler(service, new byte[0]);
         }
     }
