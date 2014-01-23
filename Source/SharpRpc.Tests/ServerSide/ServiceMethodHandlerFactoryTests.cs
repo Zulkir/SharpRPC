@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -51,6 +52,7 @@ namespace SharpRpc.Tests.ServerSide
             void GetSomethingOut(out int o);
             double MixedParameterTypes(int a, ref bool b, out ushort c);
             void ReferenceInRef(ref string s);
+            void EmptyGeneric<T>();
         }
 
         public interface IMiddleService
@@ -255,6 +257,33 @@ namespace SharpRpc.Tests.ServerSide
         {
             var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "DoBaseStuff"));
             handler(service, new byte[0]);
+        }
+
+        [Test]
+        public void EmptyGeneric()
+        {
+            DoTestEmptyGeneric<int>();
+            DoTestEmptyGeneric<string>();
+        }
+
+        private void DoTestEmptyGeneric<T>()
+        {
+            var handler = factory.CreateMethodHandler(globalServiceDescription, new ServicePath("MyService", "EmptyGeneric"));
+
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+
+            var data = new byte[typeCodec.CalculateSize(typeof(T))];
+            fixed (byte* pData = data)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(T));
+            }
+
+            handler(service, data);
+            var serviceCall = service.ReceivedCalls().Last();
+            var arguments = serviceCall.GetArgumentSpecifications();
+            Assert.That(serviceCall.GetMethodInfo().Name, Is.EqualTo("EmptyGeneric"));
+            // todo check arguments
         }
     }
 }
