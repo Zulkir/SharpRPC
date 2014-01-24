@@ -283,9 +283,7 @@ namespace SharpRpc.Tests.ServerSide
 
             handler.Handle(service, data);
             var serviceCall = service.ReceivedCalls().Last();
-            var arguments = serviceCall.GetArgumentSpecifications();
-            Assert.That(serviceCall.GetMethodInfo().Name, Is.EqualTo("EmptyGeneric"));
-            // todo check arguments
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("EmptyGeneric").MakeGenericMethod(new[] { typeof(T) })));
         }
     }
 }
