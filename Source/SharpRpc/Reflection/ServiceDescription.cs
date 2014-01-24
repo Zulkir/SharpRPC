@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SharpRpc.ServerSide;
 
 namespace SharpRpc.Reflection
 {
@@ -67,6 +68,14 @@ namespace SharpRpc.Reflection
             return false;
         }
 
+        public SubserviceDescription GetSubservice(string subserviceName)
+        {
+            SubserviceDescription description;
+            if (!TryGetSubservice(subserviceName, out description))
+                throw new InvalidPathException();
+            return description;
+        }
+
         public bool TryGetMethod(string methodName, out MethodDescription description)
         {
             for (int i = 0; i < methods.Length; i++)
@@ -79,6 +88,14 @@ namespace SharpRpc.Reflection
             }
             description = null;
             return false;
+        }
+
+        public MethodDescription GetMethod(string methodName)
+        {
+            MethodDescription description;
+            if (!TryGetMethod(methodName, out description))
+                throw new InvalidPathException();
+            return description;
         }
     }
 }

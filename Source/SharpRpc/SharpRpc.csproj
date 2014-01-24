@@ -62,6 +62,12 @@
     <Compile Include="Codecs\TypeCodec.cs" />
     <Compile Include="Reflection\GenericParameterDescription.cs" />
     <Compile Include="RpcClientExtensions.cs" />
+    <Compile Include="ServerSide\GenericServiceMethodHandler.cs" />
+    <Compile Include="ServerSide\IServiceMethodHandler.cs" />
+    <Compile Include="ServerSide\IServiceMethodHandlerFactory.cs" />
+    <Compile Include="ServerSide\PlainServiceMethodHandler.cs" />
+    <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
+    <Compile Include="ServerSide\TypesKey.cs" />
     <Compile Include="ServiceNotReadyException.cs" />
     <Compile Include="ServiceTimeoutException.cs" />
     <Compile Include="TimeoutSettings.cs" />
@@ -115,9 +121,9 @@
     <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="ServerSide\InvalidImplementationException.cs" />
     <Compile Include="ServerSide\IRequestReceiverContainer.cs" />
-    <Compile Include="ServerSide\IServiceMethodHandlerFactory.cs" />
+    <Compile Include="ServerSide\IServiceMethodDelegateFactory.cs" />
     <Compile Include="ServerSide\RequestReceiverContainer.cs" />
-    <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
+    <Compile Include="ServerSide\ServiceMethodDelegateFactory.cs" />
     <Compile Include="Topology\SingleHostServiceTopology.cs" />
     <Compile Include="Logs\ConsoleLogger.cs" />
     <Compile Include="Topology\TopologyExtensions.cs" />

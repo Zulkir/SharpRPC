@@ -22,26 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Concurrent;
-using SharpRpc.Interaction;
-using SharpRpc.Reflection;
-
 namespace SharpRpc.ServerSide
 {
-    public class ServiceMethodHandlerContainer : IServiceMethodHandlerContainer 
+    public interface IServiceMethodHandler
     {
-        private readonly IServiceMethodHandlerFactory factory;
-        private readonly ConcurrentDictionary<ServicePath, IServiceMethodHandler> handlers; 
-
-        public ServiceMethodHandlerContainer(IServiceMethodHandlerFactory factory)
-        {
-            this.factory = factory;
-            handlers = new ConcurrentDictionary<ServicePath, IServiceMethodHandler>();
-        }
-
-        public IServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
-        {
-            return handlers.GetOrAdd(servicePath, p => factory.CreateMethodHandler(serviceDescription, p));
-        }
+        byte[] Handle(object serviceImplementation, byte[] data);
     }
 }

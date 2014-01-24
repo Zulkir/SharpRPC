@@ -53,7 +53,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             var serviceDescription = new ServiceDescriptionBuilder(new MethodDescriptionBuilder()).Build(typeof(ITrivialService));
             var path = new ServicePath("MyService", "MyMethod");
-            var handler = (ServiceMethodHandler)((i, d) => new byte[0]);
+            var handler = Substitute.For<IServiceMethodHandler>();
             factory.CreateMethodHandler(serviceDescription, path).Returns(handler);
 
             var handler1 = container.GetMethodHandler(serviceDescription, path);

@@ -22,37 +22,30 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
-using System.Linq;
 
 namespace SharpRpc.ServerSide
 {
-    public class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
+    public unsafe class PlainServiceMethodHandler : IServiceMethodHandler
     {
         private readonly ICodecContainer codecContainer;
-        private readonly IServiceMethodDelegateFactory delegateFactory;
+        private readonly ServiceMethodDelegate methodDelegate;
 
-        public ServiceMethodHandlerFactory(ICodecContainer codecContainer, IServiceMethodDelegateFactory delegateFactory)
+        public PlainServiceMethodHandler(ICodecContainer codecContainer, IServiceMethodDelegateFactory delegateFactory, ServiceDescription serviceDescription, ServicePath servicePath)
         {
             this.codecContainer = codecContainer;
-            this.delegateFactory = delegateFactory;
+            methodDelegate = delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, Type.EmptyTypes);
         }
 
-        public IServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
+        public byte[] Handle(object serviceImplementation, byte[] data)
         {
-            var methodDescription = GetMethodDescription(serviceDescription, servicePath);
-            if (methodDescription.GenericParameters.Any())
-                return new GenericServiceMethodHandler(codecContainer, delegateFactory, serviceDescription, servicePath, methodDescription.GenericParameters.Count);
-            return new PlainServiceMethodHandler(codecContainer, delegateFactory, serviceDescription, servicePath);
-        }
-
-        private static MethodDescription GetMethodDescription(ServiceDescription serviceDescription, ServicePath servicePath)
-        {
-            for (int i = 1; i < servicePath.Length - 1; i++)
-                serviceDescription = serviceDescription.GetSubservice(servicePath[i]).Service;
-            return serviceDescription.GetMethod(servicePath.MethodName);
+            fixed (byte* pData = data)
+            {
+                return methodDelegate(codecContainer, serviceImplementation, pData, data.Length);
+            }
         }
     }
 }

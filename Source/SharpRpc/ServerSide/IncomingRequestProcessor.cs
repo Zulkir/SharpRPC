@@ -56,7 +56,7 @@ namespace SharpRpc.ServerSide
 
                 var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo.Description, request.Path);
 
-                var responseData = methodHandler(implementationInfo.Implementation, request.Data);
+                var responseData = methodHandler.Handle(implementationInfo.Implementation, request.Data);
 
                 var executionTime = DateTime.Now - startTime;
                 logger.ProcessedRequestSuccessfully(request, executionTime);

@@ -29,6 +29,6 @@ namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodHandlerContainer
     {
-        ServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath);
+        IServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath);
     }
 }

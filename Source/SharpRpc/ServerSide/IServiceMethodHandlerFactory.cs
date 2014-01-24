@@ -29,6 +29,6 @@ namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodHandlerFactory
     {
-        ServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath); 
+        IServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath);
     }
 }

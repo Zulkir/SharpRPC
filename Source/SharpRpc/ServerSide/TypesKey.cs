@@ -22,26 +22,53 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Concurrent;
-using SharpRpc.Interaction;
-using SharpRpc.Reflection;
+using System;
+using System.Linq;
 
 namespace SharpRpc.ServerSide
 {
-    public class ServiceMethodHandlerContainer : IServiceMethodHandlerContainer 
+    public struct TypesKey : IEquatable<TypesKey>
     {
-        private readonly IServiceMethodHandlerFactory factory;
-        private readonly ConcurrentDictionary<ServicePath, IServiceMethodHandler> handlers; 
+        public readonly Type[] Types;
 
-        public ServiceMethodHandlerContainer(IServiceMethodHandlerFactory factory)
+        public TypesKey(Type[] types) : this()
         {
-            this.factory = factory;
-            handlers = new ConcurrentDictionary<ServicePath, IServiceMethodHandler>();
+            Types = types ?? Type.EmptyTypes;
         }
 
-        public IServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
+        public bool Equals(TypesKey other)
         {
-            return handlers.GetOrAdd(servicePath, p => factory.CreateMethodHandler(serviceDescription, p));
+            return this == other;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is TypesKey && this == (TypesKey)obj;
+        }
+
+        public override int GetHashCode()
+        {
+            return Types.Sum(x => x.GetHashCode());
+        }
+
+        public override string ToString()
+        {
+            return "[" + string.Join(", ", Types.Select(x => x.Name)) + "]";
+        }
+
+        public static bool operator ==(TypesKey k1, TypesKey k2)
+        {
+            if (k1.Types.Length != k2.Types.Length)
+                return false;
+            for (int i = 0; i < k1.Types.Length; i++)
+                if (k1.Types[i] != k2.Types[i])
+                    return false;
+            return true;
+        }
+
+        public static bool operator !=(TypesKey k1, TypesKey k2)
+        {
+            return !(k1 == k2);
         }
     }
 }

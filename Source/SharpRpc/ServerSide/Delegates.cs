@@ -22,7 +22,9 @@ THE SOFTWARE.
 */
 #endregion
 
+using SharpRpc.Codecs;
+
 namespace SharpRpc.ServerSide
 {
-    public delegate byte[] ServiceMethodHandler(object serviceImplementation, byte[] data);
+    public unsafe delegate byte[] ServiceMethodDelegate(ICodecContainer codecContainer, object implementation, byte* data, int remainingLength);
 }
