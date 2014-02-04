@@ -68,7 +68,7 @@
     <Compile Include="ServerSide\ServiceImplementationFactoryTests.cs" />
     <Compile Include="ServiceEndPointTests.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerContainerTests.cs" />
-    <Compile Include="ServerSide\ServiceMethodHandlerFactoryTests.cs" />
+    <Compile Include="ServerSide\ServiceMethodDelegateFactoryTests.cs" />
     <Compile Include="InterfaceReflection\ServiceDescriptionBuilderTests.cs" />
     <Compile Include="InterfaceReflection\MethodDescriptionBuilderTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
