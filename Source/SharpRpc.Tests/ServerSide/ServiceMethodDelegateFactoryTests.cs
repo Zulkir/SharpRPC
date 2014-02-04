@@ -327,7 +327,8 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void GenericRetval()
         {
-            
+            GenericRetval(123);
+            GenericRetval("asd");
         }
 
         private void GenericRetval<T>(T expectedRetval)
@@ -343,10 +344,12 @@ namespace SharpRpc.Tests.ServerSide
                 retvalCodec.Encode(ref p, expectedRetval);
             }
 
+            service.GenericRetval<T>().ReturnsForAnyArgs(expectedRetval);
+
             var result = methodDelegate(codecContainer, service, (byte*)0, 0);
 
             var serviceCall = service.ReceivedCalls().Last();
-            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericParameters").MakeGenericMethod(new[] { typeof(T) })));
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericRetval").MakeGenericMethod(new[] { typeof(T) })));
             Assert.That(result, Is.EqualTo(expectedData));
         }
     }

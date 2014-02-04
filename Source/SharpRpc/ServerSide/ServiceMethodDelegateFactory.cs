@@ -126,8 +126,9 @@ namespace SharpRpc.ServerSide
 
                 if (hasRetval)
                 {
-                    retvalCodec = codecContainer.GetEmittingCodecFor(methodDesc.ReturnType);
-                    retvalVar = il.DeclareLocal(methodDesc.ReturnType);             // var ret = stack_0
+                    var retvalType = methodDesc.ReturnType.IsGenericParameter ? genericArgumentMap[methodDesc.ReturnType.Name] : methodDesc.ReturnType;
+                    retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
+                    retvalVar = il.DeclareLocal(retvalType);             // var ret = stack_0
                     il.Emit(OpCodes.Stloc, retvalVar);
                     retvalCodec.EmitCalculateSize(il, retvalVar);                   // stack_0 = calculateSize(ret)
                 }
