@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
@@ -72,14 +73,10 @@ namespace SharpRpc.ServerSide
             if (!serviceDesc.TryGetMethod(methodName, out methodDesc))
                 throw new InvalidPathException();
 
+            var genericArgumentMap = methodDesc.GenericParameters.Zip(genericArguments, (p, a) => new KeyValuePair<string, Type>(p.Name, a)).ToDictionary(x => x.Key, x => x.Value);
+
             bool hasRetval = methodDesc.ReturnType != typeof(void);
-            var parameters = methodDesc.Parameters.Select((x, i) => new ParameterNecessity
-            {
-                Description = x,
-                Codec = codecContainer.GetEmittingCodecFor(x.Type),
-                LocalVariable = x.Way != MethodParameterWay.Val ? il.DeclareLocal(x.Type) : null
-            })
-                .ToArray();
+            var parameters = methodDesc.Parameters.Select((x, i) => CreateParameterNecessity(methodDesc, i, codecContainer, genericArgumentMap, il)).ToArray();
 
             var requestParameters = parameters
                     .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
@@ -169,6 +166,18 @@ namespace SharpRpc.ServerSide
 
             il.Emit(OpCodes.Ret);
             return (ServiceMethodDelegate)dynamicMethod.CreateDelegate(typeof(ServiceMethodDelegate));
+        }
+
+        private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, ILGenerator il)
+        {
+            var parameterDesc = methodDesc.Parameters[parameterIndex];
+            var resolvedType = parameterDesc.Type.IsGenericParameter ? genericArgumentMap[parameterDesc.Type.Name] : parameterDesc.Type;
+            return new ParameterNecessity
+            {
+                Description = parameterDesc,
+                Codec = codecContainer.GetEmittingCodecFor(resolvedType),
+                LocalVariable = parameterDesc.Way != MethodParameterWay.Val ? il.DeclareLocal(parameterDesc.Type) : null
+            };
         }
     }
 }

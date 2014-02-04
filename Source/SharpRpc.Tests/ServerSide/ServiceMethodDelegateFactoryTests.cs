@@ -53,6 +53,7 @@ namespace SharpRpc.Tests.ServerSide
             double MixedParameterTypes(int a, ref bool b, out ushort c);
             void ReferenceInRef(ref string s);
             void EmptyGeneric<T>();
+            void GenericParameters<T>(T arg);
         }
 
         public interface IMiddleService
@@ -302,6 +303,39 @@ namespace SharpRpc.Tests.ServerSide
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("EmptyGeneric").MakeGenericMethod(new[] { typeof(T) })));
+        }
+
+        [Test]
+        public void GenericParameters()
+        {
+            DoTestGenericParameters(123);
+            DoTestGenericParameters("asd");
+        }
+
+        private void DoTestGenericParameters<T>(T arg)
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "GenericParameters"), new[] { typeof(T) });
+
+            var typeCodec = codecContainer.GetManualCodecFor<Type>();
+            var argCodec = codecContainer.GetManualCodecFor<T>();
+
+            var typeSize = typeCodec.CalculateSize(typeof(T));
+            var data = new byte[typeSize + argCodec.CalculateSize(arg)];
+            fixed (byte* pData = data)
+            {
+                var p = pData;
+                typeCodec.Encode(ref p, typeof(T));
+                argCodec.Encode(ref p, arg);
+            }
+
+            fixed (byte* pData = data)
+            {
+                methodDelegate(codecContainer, service, pData + typeSize, data.Length - typeSize);
+            }
+
+            var serviceCall = service.ReceivedCalls().Last();
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericParameters").MakeGenericMethod(new[] { typeof(T) })));
+            Assert.That(serviceCall.GetArguments()[0], Is.EqualTo(arg));
         }
     }
 }
