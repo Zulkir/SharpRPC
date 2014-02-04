@@ -54,6 +54,7 @@ namespace SharpRpc.Tests.ServerSide
             void ReferenceInRef(ref string s);
             void EmptyGeneric<T>();
             void GenericParameters<T>(T arg);
+            T GenericRetval<T>();
         }
 
         public interface IMiddleService
@@ -287,19 +288,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "EmptyGeneric"), new[] { typeof(T) });
 
-            var typeCodec = codecContainer.GetManualCodecFor<Type>();
-
-            var data = new byte[typeCodec.CalculateSize(typeof(T))];
-            fixed (byte* pData = data)
-            {
-                var p = pData;
-                typeCodec.Encode(ref p, typeof(T));
-            }
-
-            fixed (byte* pData = data)
-            {
-                methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            methodDelegate(codecContainer, service, (byte*)0, 0);
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("EmptyGeneric").MakeGenericMethod(new[] { typeof(T) })));
@@ -316,26 +305,49 @@ namespace SharpRpc.Tests.ServerSide
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "GenericParameters"), new[] { typeof(T) });
 
-            var typeCodec = codecContainer.GetManualCodecFor<Type>();
             var argCodec = codecContainer.GetManualCodecFor<T>();
 
-            var typeSize = typeCodec.CalculateSize(typeof(T));
-            var data = new byte[typeSize + argCodec.CalculateSize(arg)];
+            var data = new byte[argCodec.CalculateSize(arg)];
             fixed (byte* pData = data)
             {
                 var p = pData;
-                typeCodec.Encode(ref p, typeof(T));
                 argCodec.Encode(ref p, arg);
             }
 
             fixed (byte* pData = data)
             {
-                methodDelegate(codecContainer, service, pData + typeSize, data.Length - typeSize);
+                methodDelegate(codecContainer, service, pData, data.Length);
             }
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericParameters").MakeGenericMethod(new[] { typeof(T) })));
             Assert.That(serviceCall.GetArguments()[0], Is.EqualTo(arg));
+        }
+
+        [Test]
+        public void GenericRetval()
+        {
+            
+        }
+
+        private void GenericRetval<T>(T expectedRetval)
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "GenericRetval"), new[] { typeof(T) });
+
+            var retvalCodec = codecContainer.GetManualCodecFor<T>();
+
+            var expectedData = new byte[retvalCodec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = expectedData)
+            {
+                var p = pData;
+                retvalCodec.Encode(ref p, expectedRetval);
+            }
+
+            var result = methodDelegate(codecContainer, service, (byte*)0, 0);
+
+            var serviceCall = service.ReceivedCalls().Last();
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericParameters").MakeGenericMethod(new[] { typeof(T) })));
+            Assert.That(result, Is.EqualTo(expectedData));
         }
     }
 }
