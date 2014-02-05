@@ -107,11 +107,10 @@ namespace SharpRpc.ClientSide
                 ? methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray())
                 : new GenericTypeParameterBuilder[0];
             var genericTypeParameters = genericTypeParameterBuilders.Select(x => new ServiceProxyMethodGenericTypeParameterNecessity(codecContainer, x)).ToArray();
-            var parameters = methodDesc.Parameters.Select((x, i) => new ServiceProxyMethodParameterNecessity(codecContainer, x, genericTypeParameterBuilders)).ToArray();
+            var genericArgumentMap = genericTypeParameterBuilders.ToDictionary(x => x.Name, x => (Type)x);
+            var parameters = methodDesc.Parameters.Select((x, i) => new ServiceProxyMethodParameterNecessity(codecContainer, x, genericArgumentMap)).ToArray();
 
-            var retvalType = !methodDesc.ReturnType.IsGenericParameter
-                ? methodDesc.ReturnType
-                : genericTypeParameterBuilders.Single(y => y.Name == methodDesc.ReturnType.Name);
+            var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
             var parameterTypesAdjustedForRefs = parameters.Select((x, i) => methodDesc.Parameters[i].Way == MethodParameterWay.Val ? x.ConcreteType : x.ConcreteType.MakeByRefType()).ToArray();
 
             methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
@@ -199,7 +198,7 @@ namespace SharpRpc.ClientSide
 
                 if (hasRetval)
                 {
-                    var retvalCodec = retvalType.IsGenericParameter ? null : codecContainer.GetEmittingCodecFor(retvalType);
+                    var retvalCodec = methodDesc.ReturnType == retvalType ? codecContainer.GetEmittingCodecFor(retvalType) : null;
                     EmitDecode(il, locals, manualCodecTypes, fields, retvalCodec, retvalType);
                 }
             }

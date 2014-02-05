@@ -47,5 +47,16 @@ namespace SharpRpc.Reflection
             return type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Where(x => x.GetCustomAttributes(typeof(DataMemberAttribute), true).Any());
         }
+
+        public static Type DeepSubstituteGenerics(this Type type, IReadOnlyDictionary<string, Type> genericArgumentMap)
+        {
+            if (type.IsGenericParameter)
+                return genericArgumentMap[type.Name];
+            if (type.IsGenericType)
+                return type.GetGenericTypeDefinition().MakeGenericType(type.GetGenericArguments().Select(x => DeepSubstituteGenerics(x, genericArgumentMap)).ToArray());
+            if (type.IsArray)
+                return DeepSubstituteGenerics(type.GetElementType(), genericArgumentMap).MakeArrayType();
+            return type;
+        }
     }
 }

@@ -126,7 +126,7 @@ namespace SharpRpc.ServerSide
 
                 if (hasRetval)
                 {
-                    var retvalType = methodDesc.ReturnType.IsGenericParameter ? genericArgumentMap[methodDesc.ReturnType.Name] : methodDesc.ReturnType;
+                    var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
                     retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
                     retvalVar = il.DeclareLocal(retvalType);             // var ret = stack_0
                     il.Emit(OpCodes.Stloc, retvalVar);
@@ -172,12 +172,12 @@ namespace SharpRpc.ServerSide
         private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, ILGenerator il)
         {
             var parameterDesc = methodDesc.Parameters[parameterIndex];
-            var resolvedType = parameterDesc.Type.IsGenericParameter ? genericArgumentMap[parameterDesc.Type.Name] : parameterDesc.Type;
+            var resolvedType = parameterDesc.Type.DeepSubstituteGenerics(genericArgumentMap);
             return new ParameterNecessity
             {
                 Description = parameterDesc,
                 Codec = codecContainer.GetEmittingCodecFor(resolvedType),
-                LocalVariable = parameterDesc.Way != MethodParameterWay.Val ? il.DeclareLocal(parameterDesc.Type) : null
+                LocalVariable = parameterDesc.Way != MethodParameterWay.Val ? il.DeclareLocal(resolvedType) : null
             };
         }
     }

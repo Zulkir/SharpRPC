@@ -581,40 +581,48 @@ namespace SharpRpc.Tests.ClientSide
 
         public interface IServiceWithNestedGenerics
         {
-            void DoSomething<TKey, TValue>(Dictionary<TKey, TValue> dict);
+            Dictionary<TKey, TValue> DoSomething<TKey, TValue>(TKey[] keys); 
         }
 
         [Test]
         public void NestedGenerics()
         {
-            DoTestNestedGenerics(new Dictionary<int, string>{ { 1, "asd" }, { 2, "qwe" } });
-            DoTestNestedGenerics(new Dictionary<string, int>{ { "asd", 1 }, { "qwe", 2 } });
+            var intKeys = new[] { 123, 234, 345 };
+            DoTestNestedGenerics(intKeys, intKeys.ToDictionary(x => x, x => x.ToString()));
+            var stringKeys = new[] { "123", "234", "345" };
+            DoTestNestedGenerics(stringKeys, stringKeys.ToDictionary(x => x, int.Parse));
         }
 
-        private void DoTestNestedGenerics<TKey, TValue>(Dictionary<TKey, TValue> argValue)
+        private void DoTestNestedGenerics<TKey, TValue>(TKey[] arg, Dictionary<TKey, TValue> expectedRetval)
         {
             var typeCodec = codecContainer.GetManualCodecFor<Type>();
-            var argCodec = codecContainer.GetManualCodecFor<Dictionary<TKey, TValue>>();
+            var argCodec = codecContainer.GetManualCodecFor<TKey[]>();
+            var retvalCodec = codecContainer.GetManualCodecFor<Dictionary<TKey, TValue>>();
 
-            var sizeOfKeyType = typeCodec.CalculateSize(typeof(TKey));
-            var sizeOfValueType = typeCodec.CalculateSize(typeof(TValue));
-            var sizeOfArg = argCodec.CalculateSize(argValue);
-            var expectedArgsData = new byte[sizeOfKeyType + sizeOfValueType + sizeOfArg];
+            var expectedArgsData = new byte[typeCodec.CalculateSize(typeof(TKey)) + typeCodec.CalculateSize(typeof(TValue)) + argCodec.CalculateSize(arg)];
             fixed (byte* pData = expectedArgsData)
             {
                 var p = pData;
                 typeCodec.Encode(ref p, typeof(TKey));
                 typeCodec.Encode(ref p, typeof(TValue));
-                argCodec.Encode(ref p, argValue);
+                argCodec.Encode(ref p, arg);
+            }
+
+            var responseData = new byte[retvalCodec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = responseData)
+            {
+                var p = pData;
+                retvalCodec.Encode(ref p, expectedRetval);
             }
 
             var proxy = factory.CreateProxyClass<IServiceWithNestedGenerics>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
 
-            proxy.DoSomething(argValue);
+            var retval = proxy.DoSomething<TKey, TValue>(arg);
 
             var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
+            Assert.That(retval, Is.EquivalentTo(expectedRetval));
         }
     }
 }

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -55,6 +56,8 @@ namespace SharpRpc.Tests.ServerSide
             void EmptyGeneric<T>();
             void GenericParameters<T>(T arg);
             T GenericRetval<T>();
+            Dictionary<TKey, TValue> NestedGenerics<TKey, TValue>(TKey[] keys); 
+            T1 MixedGenerics<T1, T2, T3>(int a, T1 b, ref T2 c, out T3 d);
         }
 
         public interface IMiddleService
@@ -327,11 +330,11 @@ namespace SharpRpc.Tests.ServerSide
         [Test]
         public void GenericRetval()
         {
-            GenericRetval(123);
-            GenericRetval("asd");
+            DoTestGenericRetval(123);
+            DoTestGenericRetval("asd");
         }
 
-        private void GenericRetval<T>(T expectedRetval)
+        private void DoTestGenericRetval<T>(T expectedRetval)
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "GenericRetval"), new[] { typeof(T) });
 
@@ -350,7 +353,116 @@ namespace SharpRpc.Tests.ServerSide
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericRetval").MakeGenericMethod(new[] { typeof(T) })));
-            Assert.That(result, Is.EqualTo(expectedData));
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void NestedGenerics()
+        {
+            var intKeys = new[] {123, 234, 345};
+            DoTestNestedGenerics(intKeys, intKeys.ToDictionary(x => x, x => x.ToString()));
+            var stringKeys = new[] { "123", "234", "345" };
+            DoTestNestedGenerics(stringKeys, stringKeys.ToDictionary(x => x, int.Parse));
+        }
+
+        private void DoTestNestedGenerics<TKey, TValue>(TKey[] arg, Dictionary<TKey, TValue> expectedRetval)
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "NestedGenerics"), new[] { typeof(TKey), typeof(TValue) });
+
+            var argCodec = codecContainer.GetManualCodecFor<TKey[]>();
+            var resultCodec = codecContainer.GetManualCodecFor<Dictionary<TKey, TValue>>();
+
+            var data = new byte[argCodec.CalculateSize(arg)];
+            fixed (byte* pData = data)
+            {
+                var p = pData;
+                argCodec.Encode(ref p, arg);
+            }
+
+            var expectedData = new byte[resultCodec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = expectedData)
+            {
+                var p = pData;
+                resultCodec.Encode(ref p, expectedRetval);
+            }
+
+            service.NestedGenerics<TKey, TValue>(arg).ReturnsForAnyArgs(expectedRetval);
+
+            byte[] result;
+            fixed (byte* pData = data)
+            {
+                result = methodDelegate(codecContainer, service, pData, data.Length);
+            }
+
+            var serviceCall = service.ReceivedCalls().Last();
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("NestedGenerics").MakeGenericMethod(new[] { typeof(TKey), typeof(TValue) })));
+            Assert.That(serviceCall.GetArguments()[0], Is.EquivalentTo(arg));
+            Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void MixedGenerics()
+        {
+            DoTestMixedGenerics(123, 234, 345, "asd", "qwe", 456.789);
+            DoTestMixedGenerics(123, "asd", "qwe", 234.0, 345.0, 467);
+        }
+
+        private void DoTestMixedGenerics<T1, T2, T3>(int argA, T1 expectedRetval, T1 argB, T2 argC, T2 expectedC, T3 expectedD)
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "MixedGenerics"), new[] { typeof(T1), typeof(T2), typeof(T3) });
+
+            var intCodec = codecContainer.GetManualCodecFor<int>();
+            var t1Codec = codecContainer.GetManualCodecFor<T1>();
+            var t2Codec = codecContainer.GetManualCodecFor<T2>();
+            var t3Codec = codecContainer.GetManualCodecFor<T3>();
+
+            var data = new byte[intCodec.CalculateSize(argA) + t1Codec.CalculateSize(argB) + t2Codec.CalculateSize(argC)];
+            fixed (byte* pData = data)
+            {
+                var p = pData;
+                intCodec.Encode(ref p, argA);
+                t1Codec.Encode(ref p, argB);
+                t2Codec.Encode(ref p, argC);
+            }
+
+            var expectedData = new byte[t2Codec.CalculateSize(expectedC) + t3Codec.CalculateSize(expectedD) + t1Codec.CalculateSize(expectedRetval)];
+            fixed (byte* pData = expectedData)
+            {
+                var p = pData;
+                t2Codec.Encode(ref p, expectedC);
+                t3Codec.Encode(ref p, expectedD);
+                t1Codec.Encode(ref p, expectedRetval);
+            }
+
+            T2 dummyC = default(T2);
+            T3 dummyD;
+            int realA = default(int);
+            T1 realB = default(T1);
+            T2 realC = default(T2);
+            service.MixedGenerics(0, default(T1), ref dummyC, out dummyD).ReturnsForAnyArgs(x =>
+            {
+                realA = (int)x[0];
+                realB = (T1)x[1];
+                realC = (T2)x[2];
+                x[2] = expectedC;
+                x[3] = expectedD;
+                return expectedRetval;
+            });
+
+            byte[] result;
+            fixed (byte* pData = data)
+            {
+                result = methodDelegate(codecContainer, service, pData, data.Length);
+            }
+
+            var serviceCall = service.ReceivedCalls().Last();
+            Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("MixedGenerics").MakeGenericMethod(new[] { typeof(T1), typeof(T2), typeof(T3) })));
+
+            Assert.That(realA, Is.EqualTo(argA));
+            Assert.That(realB, Is.EqualTo(argB));
+            Assert.That(realC, Is.EqualTo(argC));
+
+            Assert.That(result, Is.EquivalentTo(expectedData));
         }
     }
 }
