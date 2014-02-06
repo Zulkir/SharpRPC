@@ -22,13 +22,15 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Threading.Tasks;
 using SharpRpc.Interaction;
 
 namespace SharpRpc.ClientSide
 {
     public interface IRequestSender
     {
-        string Protocol { get; }
-        Response Send(string host, int port, Request request, int? timeoutMilliseconds);
+        //string Protocol { get; }
+        //Response Send(string host, int port, Request request, int? timeoutMilliseconds);
+        Task<Response> SendAsync(string host, int port, Request request, int? timeoutMilliseconds);
     }
 }

@@ -61,7 +61,7 @@ namespace SharpRpc.Interaction
                 path = null;
                 return false;
             }
-            var elements = text.Split(Separators);
+            var elements = text.Split(Separators, StringSplitOptions.RemoveEmptyEntries);
             if (elements.Length < 2)
             {
                 path = null;

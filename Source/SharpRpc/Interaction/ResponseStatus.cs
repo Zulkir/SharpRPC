@@ -26,7 +26,6 @@ namespace SharpRpc.Interaction
 {
     public enum ResponseStatus
     {
-        Unknown = 0,
         Ok = 200,
         NotReady = 202,
         BadRequest = 400,

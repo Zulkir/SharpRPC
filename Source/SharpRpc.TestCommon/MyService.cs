@@ -39,5 +39,10 @@ namespace SharpRpc.TestCommon
                 throw new Exception("Hello!!!");
             return string.Format("Hello, {0}!", name);
         }
+
+        public void Throw()
+        {
+            throw new DivideByZeroException("Because we can!");
+        }
     }
 }

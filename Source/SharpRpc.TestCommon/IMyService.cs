@@ -28,5 +28,6 @@ namespace SharpRpc.TestCommon
     {
         int Add(int a, int b);
         string Greet(string name);
+        void Throw();
     }
 }

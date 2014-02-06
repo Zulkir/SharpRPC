@@ -23,62 +23,49 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.IO;
-using System.Net;
+using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Threading.Tasks;
 using SharpRpc.Interaction;
-using System.Linq;
 
 namespace SharpRpc.ClientSide
 {
     public class HttpRequestSender : IRequestSender
     {
-        public string Protocol { get { return "http"; } }
+        private readonly ConcurrentDictionary<int, Lazy<HttpClient>> httpClients;
 
-        public Response Send(string host, int port, Request request, int? timeoutMilliseconds)
+        public HttpRequestSender()
         {
-            if (string.IsNullOrWhiteSpace(host))
-                throw new ArgumentException("Host name cannot be null, emtry, or whitespace");
+            httpClients = new ConcurrentDictionary<int, Lazy<HttpClient>>();
+        }
 
-            var httpWebRequest = WebRequest.CreateHttp(string.Format("http://{0}:{1}/{2}", host, port, request.Path));
+        private const int NoTimeout = -1;
 
-            httpWebRequest.Method = "POST";
-            httpWebRequest.ContentType = "application/octet-stream";
-            if (!string.IsNullOrEmpty(request.ServiceScope))
-                httpWebRequest.Headers["scope"] = request.ServiceScope;
+        public async Task<Response> SendAsync(string host, int port, Request request, int? timeoutMilliseconds)
+        {
+            var uri = string.Format("http://{0}:{1}/{2}?scope={3}", host, port, request.Path, request.ServiceScope);
+            var content = new ByteArrayContent(request.Data ?? new byte[0]);
+            //content.Headers.Add("scope", request.ServiceScope);
 
-            var requestData = request.Data ?? new byte[0];
-            using (var stream = httpWebRequest.GetRequestStream())
-                stream.Write(requestData, 0, requestData.Length);
-            httpWebRequest.Timeout = timeoutMilliseconds.HasValue ? timeoutMilliseconds.Value : -1;
+            var httpClient = httpClients.GetOrAdd(timeoutMilliseconds ?? NoTimeout, CreateLazyHttpClient).Value;
 
-            Response response;
-            using (var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
-            {
-                int dataLength;
-                if (!httpWebResponse.Headers.AllKeys.Contains("data-length") || !int.TryParse(httpWebResponse.Headers["data-length"], out dataLength))
-                    dataLength = 0;
+            var httpResponseMessage = await httpClient.PostAsync(uri, content);
+            var responseData = await httpResponseMessage.Content.ReadAsByteArrayAsync();
 
-                var responseData = new byte[dataLength];
-                using (var stream = httpWebResponse.GetResponseStream())
-                {
-                    if (stream != null)
-                    {
-                        int offset = 0;
-                        while (offset < dataLength)
-                        {
-                            int read = stream.Read(responseData, offset, responseData.Length - offset);
-                            if (read == 0)
-                                throw new InvalidDataException("Unexpected end of response stream");
-                            offset += read;
-                        }   
-                    }
-                }
-                int status;
-                if (!httpWebResponse.Headers.AllKeys.Contains("status") || !int.TryParse(httpWebResponse.Headers["status"], out status))
-                    status = (int)ResponseStatus.Unknown;
-                response = new Response((ResponseStatus)status, responseData);
-            }
-            return response;
+            return new Response((ResponseStatus)httpResponseMessage.StatusCode, responseData);
+        }
+
+        private static Lazy<HttpClient> CreateLazyHttpClient(int timeoutMilliseconds)
+        {
+            return new Lazy<HttpClient>(() => CreateHttpClient(timeoutMilliseconds));
+        } 
+
+        private static HttpClient CreateHttpClient(int timeoutMilliseconds)
+        {
+            var client = new HttpClient();
+            if (timeoutMilliseconds != NoTimeout)
+                client.Timeout = TimeSpan.FromMilliseconds(timeoutMilliseconds);
+            return client;
         }
     }
 }

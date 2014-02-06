@@ -61,6 +61,18 @@ namespace SharpRpc.TestClient
                         Console.WriteLine(sum);
                     }
                     break;
+                    case "throw":
+                    {
+                        try
+                        {
+                            myService.Throw();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex);
+                        }
+                    }
+                    break;
                     default:
                     {
                         Console.WriteLine("Unkown command");    

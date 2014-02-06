@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -47,6 +47,20 @@ namespace SharpRpc.ClientSide
 
         public byte[] Process(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings)
         {
+            try
+            {
+                return ProcessAsync(serviceInterface, pathSeparatedBySlashes, serviceScope, data, timeoutSettings).Result;
+            }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerExceptions.Count == 1)
+                    throw ex.InnerExceptions[0];
+                throw;
+            }
+        }
+
+        public async Task<byte[]> ProcessAsync(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings)
+        {
             ServicePath path;
             if (!ServicePath.TryParse(pathSeparatedBySlashes, out path))
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid service path", pathSeparatedBySlashes));
@@ -68,8 +82,8 @@ namespace SharpRpc.ClientSide
                 Response response;
                 try
                 {
-                    int? networkTimeout = hasNetworkTimeout ? timeoutSettings.MaxMilliseconds - (DateTime.Now - startTime).Milliseconds : (int?) null;
-                    response = sender.Send(endPoint.Host, endPoint.Port, request, networkTimeout);
+                    int? networkTimeout = hasNetworkTimeout ? timeoutSettings.MaxMilliseconds - (DateTime.Now - startTime).Milliseconds : (int?)null;
+                    response = await sender.SendAsync(endPoint.Host, endPoint.Port, request, networkTimeout);
                 }
                 catch (TimeoutException ex)
                 {
@@ -86,7 +100,7 @@ namespace SharpRpc.ClientSide
                         return response.Data;
                     case ResponseStatus.NotReady:
                         if (remainingTriesMinusOne >= 0)
-                            Thread.Sleep(timeoutSettings.NotReadyRetryMilliseconds);
+                            await Task.Delay(timeoutSettings.NotReadyRetryMilliseconds);
                         break;
                     case ResponseStatus.BadRequest:
                         throw new ServiceTopologyException(string.Format("'{0}' seems to be a bad request for {1}",
@@ -107,7 +121,8 @@ namespace SharpRpc.ClientSide
                         throw new Exception(string.Format("'{0}' request caused {1} to encounter an internal server error",
                             pathSeparatedBySlashes, endPoint));
                     default:
-                        throw new ArgumentOutOfRangeException("response.Status");
+                        throw new Exception(string.Format("'{0}' request caused {1} to return an undefined status '{2}'",
+                            pathSeparatedBySlashes, endPoint, (int)response.Status));
                 }
             }
 

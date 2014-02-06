@@ -22,15 +22,38 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Threading.Tasks;
+using System.IO;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.Utility
 {
-    public interface IOutgoingMethodCallProcessor
+    public static class StreamExtensions
     {
-        byte[] Process(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings);
-        Task<byte[]> ProcessAsync(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings);
+         public static byte[] ReadToEnd(this Stream stream)
+         {
+             var buffer = new byte[16 * 1024];
+             using (var memoryStream = new MemoryStream())
+             {
+                 int bytesRead;
+                 while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                 {
+                     memoryStream.Write(buffer, 0, bytesRead);
+                 }
+                 return memoryStream.ToArray();
+             }
+         }
 
+         public static byte[] ReadToEnd(this Stream stream, long bytesToRead)
+         {
+             var data = new byte[bytesToRead];
+             int offset = 0;
+             while (offset < data.Length)
+             {
+                 int read = stream.Read(data, offset, data.Length - offset);
+                 if (read == 0)
+                     throw new InvalidDataException("Unexpected end of response stream");
+                 offset += read;
+             }
+             return data;
+         }
     }
 }

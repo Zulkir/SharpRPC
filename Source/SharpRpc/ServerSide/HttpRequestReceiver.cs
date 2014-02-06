@@ -23,13 +23,11 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Globalization;
-using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
 using System.Threading;
 using SharpRpc.Interaction;
 using SharpRpc.Logs;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ServerSide
 {
@@ -51,6 +49,7 @@ namespace SharpRpc.ServerSide
             try
             {
                 listener.Start();
+                logger.Info("Listener has started");
                 while (listener.IsListening)
                 {
                     try
@@ -78,27 +77,23 @@ namespace SharpRpc.ServerSide
         {
             try
             {
-                context.Response.StatusCode = 200;
                 Request request;
                 if (TryDecodeRequest(context.Request, out request))
                 {
                     var response = requestProcessor.Process(request);
-                    context.Response.Headers["status"] = ((int)response.Status).ToString(CultureInfo.InvariantCulture);
-                    context.Response.Headers["data-length"] = response.Data.Length.ToString(CultureInfo.InvariantCulture);
+                    context.Response.StatusCode = (int)response.Status;
                     context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
                 }
                 else
                 {
                     logger.Error(string.Format("Failed to decode request '{0}'", context.Request.Url));
-                    context.Response.Headers["status"] = ((int)ResponseStatus.BadRequest).ToString(CultureInfo.InvariantCulture);
-                    context.Response.Headers["data-length"] = "0";
+                    context.Response.StatusCode = (int)ResponseStatus.BadRequest;
                 }
             }
             catch (Exception ex)
             {
                 logger.NetworkingException("Processing a request failed unexpectedly", ex);
-                context.Response.Headers["status"] = ((int)ResponseStatus.InternalServerError).ToString(CultureInfo.InvariantCulture);
-                context.Response.Headers["data-length"] = "0";
+                context.Response.StatusCode = (int)ResponseStatus.InternalServerError;
             }
             finally
             {
@@ -113,44 +108,23 @@ namespace SharpRpc.ServerSide
             }
         }
 
-
-        private static readonly Regex UrlEx = new Regex(@"^http://[\w\.\-]+:\d+/(.+)$");
         private static bool TryDecodeRequest(HttpListenerRequest httpWebRequest, out Request request)
         {
-            var urlMatch = UrlEx.Match(httpWebRequest.Url.ToString());
-            if (!urlMatch.Success)
+            using (var inputStream = httpWebRequest.InputStream)
             {
-                request = null;
-                return false;
-            }
-
-            ServicePath servicePath;
-            if (!ServicePath.TryParse(urlMatch.Groups[1].Value, out servicePath))
-            {
-                request = null;
-                return false;
-            }
-
-            var scope = httpWebRequest.Headers["scope"];
-            if (string.IsNullOrWhiteSpace(scope))
-                scope = null;
-
-            var data = new byte[httpWebRequest.ContentLength64];
-            using (var stream = httpWebRequest.InputStream)
-            {
-                int offset = 0;
-                while (offset < data.Length)
+                ServicePath servicePath;
+                if (!ServicePath.TryParse(httpWebRequest.Url.LocalPath, out servicePath))
                 {
-                    int read = stream.Read(data, offset, data.Length - offset);
-                    if (read == 0)
-                        throw new InvalidDataException("Unexpected end of response stream");
-                    offset += read;
+                    request = null;
+                    return false;
                 }
-                
-            }
 
-            request = new Request(servicePath, scope, data);
-            return true;
+                var scope = httpWebRequest.QueryString["scope"];
+                var data = inputStream.ReadToEnd(httpWebRequest.ContentLength64);
+
+                request = new Request(servicePath, scope, data);
+                return true;
+            }
         }
 
         public void Start(int port, int threads)
