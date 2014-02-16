@@ -51,8 +51,10 @@ namespace SharpRpc.Codecs
         static readonly MethodInfo GetOffsetToStringData = typeof(RuntimeHelpers).GetMethod("get_OffsetToStringData");
         static readonly ConstructorInfo NewString = typeof(string).GetConstructor(new[] { typeof(char*), typeof(int), typeof(int) });
 
-        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
+            var il = context.IL;
+
             var endOfSubmethodLabel = il.DefineLabel();
 
             if (canBeNull)
@@ -79,119 +81,119 @@ namespace SharpRpc.Codecs
             il.MarkLabel(endOfSubmethodLabel);                // label endOfSubmethodLabel
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
+            var il = context.IL;
+
             var strIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
             if (canBeNull)
             {
-                emitLoad(il);                                            // if (val) goto strIsNotNullLabel
+                emitLoad(il);                                                           // if (val) goto strIsNotNullLabel
                 il.Emit(OpCodes.Brtrue, strIsNotNullLabel);
 
                 // String is null branch
-                il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(int*) data = -1
+                il.Emit(OpCodes.Ldloc, context.DataPointerVar);                         // *(int*) data = -1
                 il.Emit_Ldc_I4(-1);
                 il.Emit(OpCodes.Stind_I4);
-                il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));// data += sizeof(int)
-                il.Emit(OpCodes.Br, endOfSubmethodLabel);                // goto endOfEncodeLabel
+                il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));           // data += sizeof(int)
+                il.Emit(OpCodes.Br, endOfSubmethodLabel);                               // goto endOfEncodeLabel
 
                 // String is not null branch
-                il.MarkLabel(strIsNotNullLabel);                         // label strIsNotNullLabel
+                il.MarkLabel(strIsNotNullLabel);                                        // label strIsNotNullLabel
             }
 
-            var stringValueVar = locals.GetOrAdd("stringValue",         // var stringValue = FormatToString(value)
-                g => g.DeclareLocal(typeof(string)));
+            var stringValueVar = context.GetSharedVariable<string>("stringValue");      // var stringValue = FormatToString(value)
             EmitLoadAsString(il, emitLoad);
             il.Emit(OpCodes.Stloc, stringValueVar);
 
-            var tempIntegerVar = locals.GetOrAdd("tempInteger",         // var tempInteger = stringValue.Length << 1
-                g => g.DeclareLocal(typeof(int)));
+            var tempIntegerVar = context.GetSharedVariable<int>("tempInteger");         // var tempInteger = stringValue.Length << 1
             il.Emit(OpCodes.Ldloc, stringValueVar);
             il.Emit(OpCodes.Call, GetLength);
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Shl);
             il.Emit(OpCodes.Stloc, tempIntegerVar);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // *(int*)data = tempInteger
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                             // *(int*)data = tempInteger
             il.Emit(OpCodes.Ldloc, tempIntegerVar);
             il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
-            var pinnedString = il.DeclareLocal(typeof(string), true);   // var pinned pinnedString = stringValue
+            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));               // data += sizeof(int)
+            var pinnedString = il.DeclareLocal(typeof(string), true);                   // var pinned pinnedString = stringValue
             il.Emit(OpCodes.Ldloc, stringValueVar);
             il.Emit(OpCodes.Stloc, pinnedString);
-            il.Emit(OpCodes.Ldloc, pinnedString);                       // stack_0 = (byte*)pinnedString
+            il.Emit(OpCodes.Ldloc, pinnedString);                                       // stack_0 = (byte*)pinnedString
             il.Emit(OpCodes.Conv_I);
-            il.Emit(OpCodes.Call, GetOffsetToStringData);               // stack_0 = stack_0 + 
-            il.Emit(OpCodes.Add);                                       //     RuntimeHelpers.OffsetToStringData
-            var charPointer = locals.GetOrAdd("charPointer",            // charPointer = stack_0
-                g => g.DeclareLocal(typeof(char*)));
+            il.Emit(OpCodes.Call, GetOffsetToStringData);                               // stack_0 = stack_0 + 
+            il.Emit(OpCodes.Add);                                                       //     RuntimeHelpers.OffsetToStringData
+            var charPointer = context.GetSharedVariable(typeof(char*), "charPointer");  // charPointer = stack_0
             il.Emit(OpCodes.Stloc, charPointer);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // cpblk(data, charPointer, tempInteger)
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                             // cpblk(data, charPointer, tempInteger)
             il.Emit(OpCodes.Ldloc, charPointer);
             il.Emit(OpCodes.Ldloc, tempIntegerVar);
             il.Emit(OpCodes.Cpblk);
-            il.Emit(OpCodes.Ldnull);                                    // pinnedString = null
+            il.Emit(OpCodes.Ldnull);                                                    // pinnedString = null
             il.Emit(OpCodes.Stloc, pinnedString);
-            il.Emit_IncreasePointer(locals.DataPointer, tempIntegerVar);// data += tempInteger
-            il.MarkLabel(endOfSubmethodLabel);                          // label endOfSubmethodLabel
+            il.Emit_IncreasePointer(context.DataPointerVar, tempIntegerVar);            // data += tempInteger
+            il.MarkLabel(endOfSubmethodLabel);                                          // label endOfSubmethodLabel
         }
 
-        public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        public void EmitDecode(IEmittingContext context, bool doNotCheckBounds)
         {
+            var il = context.IL;
+
             var endOfSubmethodLabel = il.DefineLabel();
 
             if (!doNotCheckBounds)
             {
                 var canReadSizeLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);          // if (remainingBytes >= sizeof(int))
-                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadSizeLabel
+                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeof(int))
+                il.Emit_Ldc_I4(sizeof(int));                                //     goto canReadSizeLabel
                 il.Emit(OpCodes.Bge, canReadSizeLabel);
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
-                il.MarkLabel(canReadSizeLabel);                         // label canReadSizeLabel
+                il.Emit_ThrowUnexpectedEndException();                      // throw new InvalidDataException("...")
+                il.MarkLabel(canReadSizeLabel);                             // label canReadSizeLabel
             }
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // stack_0 = *(int*) data
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // stack_0 = *(int*) data
             il.Emit(OpCodes.Ldind_I4);
-            var tempInteger = locals.GetOrAdd("tempInteger",            // var tempInteger = stack_0
-                g => g.DeclareLocal(typeof(int)));
+            var tempInteger = context.GetSharedVariable<int>("tempInteger");// var tempInteger = stack_0
             il.Emit(OpCodes.Stloc, tempInteger);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
-            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));// remainingBytes -= sizeof(int)
+            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
+            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeof(int));// remainingBytes -= sizeof(int)
 
             if (canBeNull)
             {
                 var strIsNotNullLabel = il.DefineLabel();
 
-                il.Emit(OpCodes.Ldloc, tempInteger);                    // if (tempInteger != -1)
-                il.Emit_Ldc_I4(-1);                                     //     goto strIsNotNullLabel
+                il.Emit(OpCodes.Ldloc, tempInteger);                        // if (tempInteger != -1)
+                il.Emit_Ldc_I4(-1);                                         //     goto strIsNotNullLabel
                 il.Emit(OpCodes.Bne_Un, strIsNotNullLabel);
 
                 // String is null branch
-                il.Emit(OpCodes.Ldnull);                                // stack_0 = null
-                il.Emit(OpCodes.Br, endOfSubmethodLabel);               // goto endOfSubmethodLabel
+                il.Emit(OpCodes.Ldnull);                                    // stack_0 = null
+                il.Emit(OpCodes.Br, endOfSubmethodLabel);                   // goto endOfSubmethodLabel
 
                 // String is not null branch
-                il.MarkLabel(strIsNotNullLabel);                        // label strIsNotNullLabel
+                il.MarkLabel(strIsNotNullLabel);                            // label strIsNotNullLabel
             }
             
             if (!doNotCheckBounds)
             {
                 var canReadDataLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);          // if (remainingBytes >= tempInteger)
-                il.Emit(OpCodes.Ldloc, tempInteger);                    //     goto canReadDataLabel
+                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= tempInteger)
+                il.Emit(OpCodes.Ldloc, tempInteger);                        //     goto canReadDataLabel
                 il.Emit(OpCodes.Bge, canReadDataLabel);
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
-                il.MarkLabel(canReadDataLabel);                         // label canReadDataLabel
+                il.Emit_ThrowUnexpectedEndException();                      // throw new InvalidDataException("...")
+                il.MarkLabel(canReadDataLabel);                             // label canReadDataLabel
             }
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // stack_0 = data
-            il.Emit_Ldc_I4(0);                                          // stack_1 = 0
-            il.Emit(OpCodes.Ldloc, tempInteger);                        // stack_2 = tempInteger >> 1
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // stack_0 = data
+            il.Emit_Ldc_I4(0);                                              // stack_1 = 0
+            il.Emit(OpCodes.Ldloc, tempInteger);                            // stack_2 = tempInteger >> 1
             il.Emit_Ldc_I4(1);
             il.Emit(OpCodes.Shr);
-            il.Emit(OpCodes.Newobj, NewString);                         // stack_0 = new string(stack_0, stack_1, stack_2)
-            EmitParseFromString(il);                                    // stack_0 = Parse(stack_0)
-            il.Emit_IncreasePointer(locals.DataPointer, tempInteger);   // data += tempInteger
-            il.Emit_DecreaseInteger(locals.RemainingBytes, tempInteger);// remainingBytes -= tempInteger
-            il.MarkLabel(endOfSubmethodLabel);                          // label endOfSubmethodLabel
+            il.Emit(OpCodes.Newobj, NewString);                             // stack_0 = new string(stack_0, stack_1, stack_2)
+            EmitParseFromString(il);                                        // stack_0 = Parse(stack_0)
+            il.Emit_IncreasePointer(context.DataPointerVar, tempInteger);   // data += tempInteger
+            il.Emit_DecreaseInteger(context.RemainingBytesVar, tempInteger);// remainingBytes -= tempInteger
+            il.MarkLabel(endOfSubmethodLabel);                              // label endOfSubmethodLabel
         }
     }
 }

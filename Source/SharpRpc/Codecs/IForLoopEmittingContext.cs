@@ -23,28 +23,11 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
 
 namespace SharpRpc.Codecs
 {
-    public abstract class ReferenceArrayCodecBase : CollectionCodecBase
+    public interface IForLoopEmittingContext : IDisposable
     {
-        protected ReferenceArrayCodecBase(Type elementType, ICodecContainer codecContainer) 
-            : base(elementType.MakeArrayType(), elementType, codecContainer)
-        {
-        }
-
-        protected override void EmitCreateCollection(ILGenerator il, LocalBuilder lengthVar)
-        {
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit(OpCodes.Newarr, ElementType);
-        }
-
-        protected override void EmitLoadCount(ILGenerator il, Action<ILGenerator> emitLoad)
-        {
-            emitLoad(il);
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Conv_I4);
-        }
+        void LoadIndex();
     }
 }

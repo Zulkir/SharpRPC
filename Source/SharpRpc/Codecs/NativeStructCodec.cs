@@ -47,34 +47,37 @@ namespace SharpRpc.Codecs
 
         // todo: special op-codes for basic types
 
-        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
+            var il = context.IL;
             il.Emit_Ldc_I4(sizeInBytes);
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);              // *(T*) data = val
+            var il = context.IL;
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(T*) data = val
             emitLoad(il);
             il.Emit(OpCodes.Stobj, type);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeInBytes);// data += sizeInBytes
+            il.Emit_IncreasePointer(context.DataPointerVar, sizeInBytes);   // data += sizeInBytes
         }
 
-        public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        public void EmitDecode(IEmittingContext context, bool doNotCheckBounds)
         {
+            var il = context.IL;
             if (!doNotCheckBounds)
             {
                 var everythingsAllrightLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, locals.RemainingBytes);           // if (remainingBytes >= sizeInBytes)
-                il.Emit_Ldc_I4(sizeInBytes);                             //     goto everythingsAllrightLabel
+                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeInBytes)
+                il.Emit_Ldc_I4(sizeInBytes);                                //     goto everythingsAllrightLabel
                 il.Emit(OpCodes.Bge, everythingsAllrightLabel);
-                il.Emit_ThrowUnexpectedEndException();                   // throw new InvalidDataException("...")
-                il.MarkLabel(everythingsAllrightLabel);                  // label everythingsAllrightLabel
+                il.Emit_ThrowUnexpectedEndException();                      // throw new InvalidDataException("...")
+                il.MarkLabel(everythingsAllrightLabel);                     // label everythingsAllrightLabel
             }
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);                  // stack_0 = *(T*) data
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                  // stack_0 = *(T*) data
             il.Emit(OpCodes.Ldobj, type);
-            il.Emit_IncreasePointer(locals.DataPointer, sizeInBytes);    // data += sizeInBytes
-            il.Emit_DecreaseInteger(locals.RemainingBytes, sizeInBytes); // remainingBytes -= sizeInBytes
+            il.Emit_IncreasePointer(context.DataPointerVar, sizeInBytes);    // data += sizeInBytes
+            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeInBytes); // remainingBytes -= sizeInBytes
         }
     }
 }

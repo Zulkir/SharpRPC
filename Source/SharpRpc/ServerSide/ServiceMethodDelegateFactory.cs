@@ -52,7 +52,7 @@ namespace SharpRpc.ServerSide
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
                 typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var locals = new LocalVariableCollection(il, true);
+            var emittingContext = new EmittingContext(il, true);
 
             il.Emit(OpCodes.Ldarg_1);                                           // stack_0 = (TServiceImplementation) arg_1
             il.Emit(OpCodes.Castclass, serviceInterface);
@@ -89,9 +89,9 @@ namespace SharpRpc.ServerSide
             if (requestParameters.Any())
             {
                 il.Emit_Ldarg(2);                                           // data = arg_2
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
+                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
                 il.Emit_Ldarg(3);                                           // remainingBytes = arg_3
-                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
+                il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
             }
 
             foreach (var parameter in parameters)
@@ -99,10 +99,10 @@ namespace SharpRpc.ServerSide
                 switch (parameter.Description.Way)
                 {
                     case MethodParameterWay.Val:
-                        parameter.Codec.EmitDecode(il, locals, false);      // stack_i = decode(data, remainingBytes, false)
+                        parameter.Codec.EmitDecode(emittingContext, false); // stack_i = decode(data, remainingBytes, false)
                         break;
                     case MethodParameterWay.Ref:
-                        parameter.Codec.EmitDecode(il, locals, false);      // param_i = decode(data, remainingBytes, false)
+                        parameter.Codec.EmitDecode(emittingContext, false); // param_i = decode(data, remainingBytes, false)
                         il.Emit(OpCodes.Stloc, parameter.LocalVariable);
                         il.Emit(OpCodes.Ldloca, parameter.LocalVariable);   // stack_i = *param_i
                         break;
@@ -128,40 +128,40 @@ namespace SharpRpc.ServerSide
                 {
                     var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
                     retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
-                    retvalVar = il.DeclareLocal(retvalType);             // var ret = stack_0
+                    retvalVar = il.DeclareLocal(retvalType);                                        // var ret = stack_0
                     il.Emit(OpCodes.Stloc, retvalVar);
-                    retvalCodec.EmitCalculateSize(il, retvalVar);                   // stack_0 = calculateSize(ret)
+                    retvalCodec.EmitCalculateSize(emittingContext, retvalVar);                      // stack_0 = calculateSize(ret)
                 }
 
                 bool hasSizeOnStack = hasRetval;
                 foreach (var parameter in responseParameters)
                 {
-                    parameter.Codec.EmitCalculateSize(il, parameter.LocalVariable); // stack_0 += calculateSize(param_i)
+                    parameter.Codec.EmitCalculateSize(emittingContext, parameter.LocalVariable);    // stack_0 += calculateSize(param_i)
                     if (hasSizeOnStack)
                         il.Emit(OpCodes.Add);
                     else
                         hasSizeOnStack = true;
                 }
 
-                var dataArrayVar = il.DeclareLocal(typeof(byte[]));                 // var dataArray = new byte[size of retval]
+                var dataArrayVar = il.DeclareLocal(typeof(byte[]));                         // var dataArray = new byte[size of retval]
                 il.Emit(OpCodes.Newarr, typeof(byte));
                 il.Emit(OpCodes.Stloc, dataArrayVar);
 
-                var pinnedVar = il.Emit_PinArray(typeof(byte), dataArrayVar);       // var pinned dataPointer = pin(dataArrayVar)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
+                var pinnedVar = il.Emit_PinArray(typeof(byte), dataArrayVar);               // var pinned dataPointer = pin(dataArrayVar)
+                il.Emit(OpCodes.Ldloc, pinnedVar);                                          // data = dataPointer
+                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
 
                 foreach (var parameter in responseParameters)
-                    parameter.Codec.EmitEncode(il, locals, parameter.LocalVariable);// encode(data, param_i)
+                    parameter.Codec.EmitEncode(emittingContext, parameter.LocalVariable);   // encode(data, param_i)
 
                 if (hasRetval)
-                    retvalCodec.EmitEncode(il, locals, retvalVar);                  // encode(data, ret)
+                    retvalCodec.EmitEncode(emittingContext, retvalVar);                     // encode(data, ret)
 
-                il.Emit(OpCodes.Ldloc, dataArrayVar);                               // stack_0 = dataArray
+                il.Emit(OpCodes.Ldloc, dataArrayVar);                                       // stack_0 = dataArray
             }
             else
             {
-                il.Emit(OpCodes.Ldc_I4, 0);                                         // stack_0 = new byte[0]
+                il.Emit(OpCodes.Ldc_I4, 0);                                                 // stack_0 = new byte[0]
                 il.Emit(OpCodes.Newarr, typeof(byte));
             }
 

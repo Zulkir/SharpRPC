@@ -63,7 +63,8 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + type.FullName,
                                                   typeof(int), new[] { type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            emittingCodec.EmitCalculateSize(il, 0);
+            var context = new EmittingContext(il, false);
+            emittingCodec.EmitCalculateSize(context, 0);
             il.Emit(OpCodes.Ret);
 
             return dynamicMethod;
@@ -74,13 +75,13 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_encode_manual_" + type.FullName,
                                                   typeof(void), new[] { typeof(byte*).MakeByRefType(), type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var locals = new LocalVariableCollection(il, false);
+            var context = new EmittingContext(il, false);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, locals.DataPointer);
-            emittingCodec.EmitEncode(il, locals, 1);
+            il.Emit(OpCodes.Stloc, context.DataPointerVar);
+            emittingCodec.EmitEncode(context, 1);
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
             il.Emit(OpCodes.Stind_I);
             il.Emit(OpCodes.Ret);
             return dynamicMethod;
@@ -91,19 +92,19 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_decode_manual_" + type.FullName + (doNoCheckBounds ? "_dncb_" : ""),
                                                   type, new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var locals = new LocalVariableCollection(il, true);
+            var context = new EmittingContext(il, true);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, locals.DataPointer);
+            il.Emit(OpCodes.Stloc, context.DataPointerVar);
             il.Emit(OpCodes.Ldarg_1);
             il.Emit(OpCodes.Ldind_I4);
-            il.Emit(OpCodes.Stloc, locals.RemainingBytes);
-            emittingCodec.EmitDecode(il, locals, doNoCheckBounds);
+            il.Emit(OpCodes.Stloc, context.RemainingBytesVar);
+            emittingCodec.EmitDecode(context, doNoCheckBounds);
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, locals.DataPointer);
+            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
             il.Emit(OpCodes.Stind_I);
             il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldloc, locals.RemainingBytes);
+            il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);
             il.Emit(OpCodes.Stind_I4);
             il.Emit(OpCodes.Ret);
             return dynamicMethod;

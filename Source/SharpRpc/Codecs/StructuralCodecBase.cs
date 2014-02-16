@@ -84,8 +84,10 @@ namespace SharpRpc.Codecs
 
         private bool CanBeNull { get { return !type.IsValueType; } }
 
-        public void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
+            var il = context.IL;
+
             var contractIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
@@ -107,33 +109,35 @@ namespace SharpRpc.Codecs
                     GetMemberType(memberInfo.Member));
                 EmitLoadMember(il, emitLoad, memberInfo.Member);
                 il.Emit(OpCodes.Stloc, memberVar);
-                memberInfo.Codec.EmitCalculateSize(il, memberVar);          
+                memberInfo.Codec.EmitCalculateSize(context, memberVar);          
                 il.Emit(OpCodes.Add);
             }
             il.MarkLabel(endOfSubmethodLabel);                                  // label endOfSubmethodLabel
         }
 
-        public void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
         {
+            var il = context.IL;
+
             var valueIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
             if (CanBeNull)
             {
-                emitLoad(il);                                               // if (value)
-                il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);               //     goto valueIsNotNullLabel
+                emitLoad(il);                                                   // if (value)
+                il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);                   //     goto valueIsNotNullLabel
 
-                il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // *(int*) data = 0
+                il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(int*) data = 0
                 il.Emit_Ldc_I4(0);
                 il.Emit(OpCodes.Stind_I4);
-                il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
-                il.Emit(OpCodes.Br, endOfSubmethodLabel);                   // goto endOfSubmethodLabel
+                il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
+                il.Emit(OpCodes.Br, endOfSubmethodLabel);                       // goto endOfSubmethodLabel
 
-                il.MarkLabel(valueIsNotNullLabel);                          // goto valueIsNotNullLabel
-                il.Emit(OpCodes.Ldloc, locals.DataPointer);                 // *(int*) data = 1
+                il.MarkLabel(valueIsNotNullLabel);                              // goto valueIsNotNullLabel
+                il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(int*) data = 1
                 il.Emit_Ldc_I4(1);
                 il.Emit(OpCodes.Stind_I4);
-                il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));   // data += sizeof(int)
+                il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
             }
             
             foreach (var memberInfo in memberInfos)                         // foreach (member)
@@ -142,7 +146,7 @@ namespace SharpRpc.Codecs
                     GetMemberType(memberInfo.Member));
                 EmitLoadMember(il, emitLoad, memberInfo.Member);
                 il.Emit(OpCodes.Stloc, memberVar);
-                memberInfo.Codec.EmitEncode(il, locals, memberVar);
+                memberInfo.Codec.EmitEncode(context, memberVar);
             }
             il.MarkLabel(endOfSubmethodLabel);                              // label endOfSubmethodLabel
         }
@@ -150,8 +154,10 @@ namespace SharpRpc.Codecs
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo GetUninitializedObject = typeof(FormatterServices).GetMethod("GetUninitializedObject");
 
-        public void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds)
+        public void EmitDecode(IEmittingContext context, bool doNotCheckBounds)
         {
+            var il = context.IL;
+
             var resultIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
@@ -160,7 +166,7 @@ namespace SharpRpc.Codecs
                 if (!doNotCheckBounds)
                 {
                     var canReadFlagLabel = il.DefineLabel();
-                    il.Emit(OpCodes.Ldloc, locals.RemainingBytes);              // if (remainingBytes >= sizeof(int))
+                    il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeof(int))
                     il.Emit_Ldc_I4(sizeof(int));                                //     goto canReadFlagLabel
                     il.Emit(OpCodes.Bge, canReadFlagLabel);
                     il.Emit_ThrowUnexpectedEndException();                      // throw new InvalidDataException("...")
@@ -169,11 +175,11 @@ namespace SharpRpc.Codecs
 
                 var flagVar = il.DeclareLocal(typeof(int));
 
-                il.Emit(OpCodes.Ldloc, locals.DataPointer);                     // flag = *(int*) data
+                il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // flag = *(int*) data
                 il.Emit(OpCodes.Ldind_I4);
                 il.Emit(OpCodes.Stloc, flagVar);
-                il.Emit_IncreasePointer(locals.DataPointer, sizeof(int));       // data += sizeof(int)
-                il.Emit_DecreaseInteger(locals.RemainingBytes, sizeof(int));    // remainingBytes -= sizeof(int)
+                il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
+                il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeof(int));// remainingBytes -= sizeof(int)
 
                 il.Emit(OpCodes.Ldloc, flagVar);                                // if (flag)
                 il.Emit(OpCodes.Brtrue, resultIsNotNullLabel);                  //     goto resultIsNotNullLabel
@@ -203,7 +209,7 @@ namespace SharpRpc.Codecs
             foreach (var memberInfo in memberInfos)                             // foreach (member)
             {
                 il.Emit(CanBeNull ? OpCodes.Ldloc : OpCodes.Ldloca, thisVar);   //     stack_0.member = decode()
-                memberInfo.Codec.EmitDecode(il, locals, doNotCheckBounds);
+                memberInfo.Codec.EmitDecode(context, doNotCheckBounds);
                 EmitSetMember(il, memberInfo.Member);
             }
 

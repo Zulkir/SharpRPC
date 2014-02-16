@@ -52,11 +52,10 @@ namespace SharpRpc.Tests.Codecs
             const int size = 123123;
 
             var emittingCodec = Substitute.For<IEmittingCodec>();
-            emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null, null))
-                .Do(x =>
+            emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null, null)).Do(x =>
                 {
-                    var il = x.Arg<ILGenerator>();
-                    il.Emit_Ldc_I4(size);
+                    var context = x.Arg<IEmittingContext>();
+                    context.IL.Emit_Ldc_I4(size);
                 });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
            
@@ -70,15 +69,15 @@ namespace SharpRpc.Tests.Codecs
             const int expectedPointerDistance = 234;
 
             var emittingCodec = Substitute.For<IEmittingCodec>();
-            emittingCodec.WhenForAnyArgs(x => x.EmitEncode(null, null, 0))
+            emittingCodec.WhenForAnyArgs(x => x.EmitEncode(null, 0))
                 .Do(x =>
                     {
-                        var il = x.Arg<ILGenerator>();
-                        var locals = x.Arg<LocalVariableCollection>();
-                        il.Emit(OpCodes.Ldloc, locals.DataPointer);
+                        var context = x.Arg<IEmittingContext>();
+                        var il = context.IL;
+                        il.Emit(OpCodes.Ldloc, context.DataPointerVar);
                         il.Emit_Ldc_I4(expectedValue);
                         il.Emit(OpCodes.Stind_I4);
-                        il.Emit_IncreasePointer(locals.DataPointer, expectedPointerDistance);
+                        il.Emit_IncreasePointer(context.DataPointerVar, expectedPointerDistance);
                     });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
 
@@ -117,15 +116,14 @@ namespace SharpRpc.Tests.Codecs
             const int expetedRemainingBytesDistance = 345;
 
             var emittingCodec = Substitute.For<IEmittingCodec>();
-            emittingCodec.When(x => x.EmitDecode(Arg.Any<ILGenerator>(), Arg.Any<ILocalVariableCollection>(), fast))
-                .Do(x =>
+            emittingCodec.When(x => x.EmitDecode(Arg.Any<IEmittingContext>(), fast)).Do(x =>
                 {
-                    var il = x.Arg<ILGenerator>();
-                    var locals = x.Arg<LocalVariableCollection>();
+                    var context = x.Arg<EmittingContext>();
+                    var il = context.IL;
                     il.Emit_Ldc_I4(expectedValue);
                     il.Emit(OpCodes.Newobj, MyClass.Constructor);
-                    il.Emit_IncreasePointer(locals.DataPointer, expectedPointerDistance);
-                    il.Emit_DecreaseInteger(locals.RemainingBytes, expetedRemainingBytesDistance);
+                    il.Emit_IncreasePointer(context.DataPointerVar, expectedPointerDistance);
+                    il.Emit_DecreaseInteger(context.RemainingBytesVar, expetedRemainingBytesDistance);
                 });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
 

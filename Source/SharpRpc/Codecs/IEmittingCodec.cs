@@ -31,8 +31,8 @@ namespace SharpRpc.Codecs
     {
         bool CanBeInlined { get; }
         int EncodingComplexity { get; }
-        void EmitCalculateSize(ILGenerator il, Action<ILGenerator> emitLoad);
-        void EmitEncode(ILGenerator il, ILocalVariableCollection locals, Action<ILGenerator> emitLoad);
-        void EmitDecode(ILGenerator il, ILocalVariableCollection locals, bool doNotCheckBounds);
+        void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad);
+        void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad);
+        void EmitDecode(IEmittingContext context, bool doNotCheckBounds);
     }
 }

@@ -128,7 +128,7 @@ namespace SharpRpc.ClientSide
             bool hasRetval = methodDesc.ReturnType != typeof(void);
 
             var il = methodBuilder.GetILGenerator();
-            var locals = new LocalVariableCollection(il, responseParameters.Any() || hasRetval);
+            var emittingContext = new EmittingContext(il, responseParameters.Any() || hasRetval);
 
             var typeCodec = codecContainer.GetEmittingCodecFor(typeof(Type));
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));        // byte[] dataArray
@@ -137,12 +137,12 @@ namespace SharpRpc.ClientSide
                 bool haveSizeOnStack = false;
                 foreach (var typeParameter in genericTypeParameters)
                 {
-                    typeCodec.EmitCalculateSize(il, typeParameter.EmitLoad);
+                    typeCodec.EmitCalculateSize(emittingContext, typeParameter.EmitLoad);
                     EmitAddIf(il, ref haveSizeOnStack);
                 }
                 foreach (var parameter in requestParameters)
                 {
-                    EmitCalculateSize(il, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
+                    EmitCalculateSize(emittingContext, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
                     EmitAddIf(il, ref haveSizeOnStack);
                 }
 
@@ -151,12 +151,12 @@ namespace SharpRpc.ClientSide
                 var pinnedVar =                                             // var pinned dataPointer = pin(dataArray)
                     il.Emit_PinArray(typeof(byte), requestDataArrayVar);
                 il.Emit(OpCodes.Ldloc, pinnedVar);                          // data = dataPointer
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
+                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
 
                 foreach (var typeParameter in genericTypeParameters)
-                    typeCodec.EmitEncode(il, locals, typeParameter.EmitLoad);
+                    typeCodec.EmitEncode(emittingContext, typeParameter.EmitLoad);
                 foreach (var parameter in requestParameters)
-                    EmitEncode(il, locals, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
+                    EmitEncode(emittingContext, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType, parameter.EmitLoad);
             }
             else
             {
@@ -183,23 +183,23 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Stloc, responseDataArrayVar);           // dataArray = stack_0
                 il.Emit(OpCodes.Ldloc, responseDataArrayVar);           // remainingBytes = dataArray.Length
                 il.Emit(OpCodes.Ldlen);
-                il.Emit(OpCodes.Stloc, locals.RemainingBytes);
+                il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
                 var pinnedVar =                                         // var pinned dataPointer = pin(dataArray)
                     il.Emit_PinArray(typeof(byte), responseDataArrayVar);
                 il.Emit(OpCodes.Ldloc, pinnedVar);                      // data = dataPointer
-                il.Emit(OpCodes.Stloc, locals.DataPointer);
+                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
 
                 foreach (var parameter in responseParameters)
                 {
                     il.Emit(OpCodes.Ldarg, parameter.Description.Index + 1);// arg_i+1 = decode(data, remainingBytes, false)
-                    EmitDecode(il, locals, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType);
+                    EmitDecode(emittingContext, manualCodecTypes, fields, parameter.Codec, parameter.ConcreteType);
                     il.Emit_Stind(parameter.ConcreteType);
                 }
 
                 if (hasRetval)
                 {
                     var retvalCodec = methodDesc.ReturnType == retvalType ? codecContainer.GetEmittingCodecFor(retvalType) : null;
-                    EmitDecode(il, locals, manualCodecTypes, fields, retvalCodec, retvalType);
+                    EmitDecode(emittingContext, manualCodecTypes, fields, retvalCodec, retvalType);
                 }
             }
             else
@@ -218,8 +218,9 @@ namespace SharpRpc.ClientSide
                 haveSizeOnStack = true;
         }
 
-        private static void EmitCalculateSize(ILGenerator il, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
+        private static void EmitCalculateSize(IEmittingContext emittingContext, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
         {
+            var il = emittingContext.IL;
             if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
@@ -233,7 +234,7 @@ namespace SharpRpc.ClientSide
             }
             else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
             {
-                emittingCodec.EmitCalculateSize(il, emitLoad);
+                emittingCodec.EmitCalculateSize(emittingContext, emitLoad);
             }
             else
             {
@@ -254,14 +255,15 @@ namespace SharpRpc.ClientSide
             }
         }
 
-        private static void EmitEncode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
+        private static void EmitEncode(IEmittingContext emittingContext, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType, Action<ILGenerator> emitLoad)
         {
+            var il = emittingContext.IL;
             if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.CodecContainer);
                 il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(concreteType));
-                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
                 emitLoad(il);
                 var methodInfo = typeof(IManualCodec<>).GetMethod("Encode");
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
@@ -270,7 +272,7 @@ namespace SharpRpc.ClientSide
             }
             else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
             {
-                emittingCodec.EmitEncode(il, locals, emitLoad);
+                emittingCodec.EmitEncode(emittingContext, emitLoad);
             }
             else
             {
@@ -286,21 +288,22 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldelem_Ref);
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
-                il.Emit(OpCodes.Ldloca, locals.DataPointer);
+                il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
                 emitLoad(il);
                 il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Encode"));
             }
         }
 
-        private static void EmitDecode(ILGenerator il, ILocalVariableCollection locals, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType)
+        private static void EmitDecode(IEmittingContext emittingContext, List<Type> manualCodecTypes, ServiceProxyFields fields, IEmittingCodec emittingCodec, Type concreteType)
         {
+            var il = emittingContext.IL;
             if (concreteType.ContainsGenericParameters)
             {
                 il.Emit_Ldarg(0);
                 il.Emit(OpCodes.Ldfld, fields.CodecContainer);
                 il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(concreteType));
-                il.Emit(OpCodes.Ldloca, locals.DataPointer);
-                il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
+                il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
+                il.Emit(OpCodes.Ldloca, emittingContext.RemainingBytesVar);
                 il.Emit_Ldc_I4(0);
                 var methodInfo = typeof(IManualCodec<>).GetMethod("Decode");
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
@@ -309,7 +312,7 @@ namespace SharpRpc.ClientSide
             }
             else if (emittingCodec.CanBeInlined && emittingCodec.EncodingComplexity <= MaxInlinableComplexity)
             {
-                emittingCodec.EmitDecode(il, locals, false);
+                emittingCodec.EmitDecode(emittingContext, false);
             }
             else
             {
@@ -325,8 +328,8 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Ldelem_Ref);
                 var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(concreteType);
                 il.Emit(OpCodes.Isinst, concreteCodecType);
-                il.Emit(OpCodes.Ldloca, locals.DataPointer);
-                il.Emit(OpCodes.Ldloca, locals.RemainingBytes);
+                il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
+                il.Emit(OpCodes.Ldloca, emittingContext.RemainingBytesVar);
                 il.Emit_Ldc_I4(0);
                 il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Decode"));
             }

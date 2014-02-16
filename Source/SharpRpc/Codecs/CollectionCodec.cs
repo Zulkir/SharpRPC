@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -36,9 +35,6 @@ namespace SharpRpc.Codecs
 
         private readonly MethodInfo getCountMethod;
         private readonly MethodInfo addMethod;
-        private readonly MethodInfo getEnumeratorMethod;
-        private readonly MethodInfo moveNextMethod;
-        private readonly MethodInfo getCurrentMethod;
 
         public CollectionCodec(Type type, Type elementType, ICodecContainer codecContainer)
             : base(type, elementType, codecContainer)
@@ -46,9 +42,6 @@ namespace SharpRpc.Codecs
             collectionConstructor = type.GetConstructor(Type.EmptyTypes);
             getCountMethod = typeof(ICollection<>).MakeGenericType(elementType).GetMethod("get_Count");
             addMethod = typeof(ICollection<>).MakeGenericType(elementType).GetMethod("Add");
-            getEnumeratorMethod = typeof(IEnumerable<>).MakeGenericType(elementType).GetMethod("GetEnumerator");
-            moveNextMethod = typeof(IEnumerator).GetMethod("MoveNext");
-            getCurrentMethod = typeof(IEnumerator<>).MakeGenericType(elementType).GetMethod("get_Current");
         }
 
         protected override void EmitCreateCollection(ILGenerator il, LocalBuilder lengthVar)
@@ -62,36 +55,11 @@ namespace SharpRpc.Codecs
             il.Emit(OpCodes.Callvirt, getCountMethod);
         }
 
-        protected override void EmitEnumerateCollection(ILGenerator il, Action<ILGenerator> emitLoad, EnumerateLoopBody emitLoopBody)
+        protected override void EmitDecodeAndStore(IEmittingContext context, LocalBuilder collectionVar, Action emitLoadIndex, bool doNotCheckBounds)
         {
-            var loopStartLabel = il.DefineLabel();
-            var loopConditionLabel = il.DefineLabel();
-
-            var enumeratorVar = il.DeclareLocal(              // IEnumerator<T> enumerator
-                typeof(IEnumerator<>).MakeGenericType(ElementType));
-
-            emitLoad(il);                                     // enumerator = value.GetEnumerator()
-            il.Emit(OpCodes.Callvirt, getEnumeratorMethod);
-            il.Emit(OpCodes.Stloc, enumeratorVar);
-            il.Emit(OpCodes.Br, loopConditionLabel);          // goto loopConditionLabel
-
-            il.MarkLabel(loopStartLabel);                     // label loopStartLabel
-            emitLoopBody(() =>
-            {
-                il.Emit(OpCodes.Ldloc, enumeratorVar);
-                il.Emit(OpCodes.Callvirt, getCurrentMethod);
-            });
-
-            il.MarkLabel(loopConditionLabel);                 // label loopConditionLabel
-            il.Emit(OpCodes.Ldloc, enumeratorVar);            // if (i < (int)value.Length)
-            il.Emit(OpCodes.Callvirt, moveNextMethod);        //     goto loopStartLabel
-            il.Emit(OpCodes.Brtrue, loopStartLabel);
-        }
-
-        protected override void EmitDecodeAndStore(ILGenerator il, ILocalVariableCollection locals, LocalBuilder collectionVar, LocalBuilder iVar, bool doNotCheckBounds)
-        {
+            var il = context.IL;
             il.Emit(OpCodes.Ldloc, collectionVar);
-            ElementCodec.EmitDecode(il, locals, doNotCheckBounds);
+            ElementCodec.EmitDecode(context, doNotCheckBounds);
             il.Emit(OpCodes.Callvirt, addMethod);
         }
     }
