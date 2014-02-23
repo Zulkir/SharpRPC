@@ -33,6 +33,7 @@ namespace SharpRpc
         public Func<IRpcClientComponentContainer, ICodecContainer> CodecContainer { get; set; }
         public Func<IRpcClientComponentContainer, IRequestSenderContainer> RequestSenderContainer { get; set; }
         public Func<IRpcClientComponentContainer, IOutgoingMethodCallProcessor> OutgoingMethodCallProcessor { get; set; }
+        public Func<IRpcClientComponentContainer, IServiceProxyMethodIoCodecFactory> ServiceProxyMethodIoCodecFactory { get; set; } 
         public Func<IRpcClientComponentContainer, IServiceProxyClassFactory> ServiceProxyClassFactory { get; set; }
         public Func<IRpcClientComponentContainer, IServiceProxyContainer> ServiceProxyContainer { get; set; }
     }

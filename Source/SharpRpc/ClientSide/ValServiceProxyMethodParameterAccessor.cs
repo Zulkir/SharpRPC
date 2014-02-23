@@ -23,32 +23,33 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
+using System.Reflection.Emit;
+using SharpRpc.Codecs;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.ClientSide
 {
-    public class MethodParameterDescription
+    public class ValServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
     {
-        public int Index { get; private set; }
-        public Type Type { get; private set; }
-        public string Name { get; private set; }
-        public MethodParameterWay Way { get; private set; }
+        private readonly int argIndex;
 
-        public MethodParameterDescription(int index, Type type, string name, MethodParameterWay way = MethodParameterWay.Val)
+        public ValServiceProxyMethodParameterAccessor(int argIndex)
         {
-            Index = index;
-            if (type == null)
-                throw new ArgumentNullException("type");
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Method parameter name cannot be null, empty, or consist of whitespace characters");
-            Type = type;
-            Name = name;
-            Way = way;
+            this.argIndex = argIndex;
         }
 
-        public MethodParameterDescription DeepSubstituteGenerics(IReadOnlyDictionary<string, Type> genericArguments)
+        public void EmitLoad(ILGenerator il)
         {
-            return new MethodParameterDescription(Index, Type.DeepSubstituteGenerics(genericArguments), Name, Way);
+            il.Emit_Ldarg(argIndex);
+        }
+
+        public void EmitBeginStore(ILGenerator il)
+        {
+            throw new InvalidOperationException("Trying to emit Store for a Val parameter");
+        }
+
+        public void EmitEndStore(ILGenerator il)
+        {
+            throw new InvalidOperationException("Trying to emit Store for a Val parameter");
         }
     }
 }

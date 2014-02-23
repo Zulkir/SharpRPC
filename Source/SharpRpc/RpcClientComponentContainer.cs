@@ -33,11 +33,11 @@ namespace SharpRpc
         private readonly IRpcClient client;
         private readonly RpcClientComponentOverrides overrides;
 
-        private IMethodDescriptionBuilder methodDescriptionBuilder;
         private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private ICodecContainer codecContainer;
         private IRequestSenderContainer requestSenderContainer;
         private IOutgoingMethodCallProcessor outgoingMethodCallProcessor;
+        private IServiceProxyMethodIoCodecFactory serviceProxyMethodIoCodecFactory;
         private IServiceProxyClassFactory serviceProxyClassFactory;
         private IServiceProxyContainer serviceProxyContainer;
 
@@ -78,12 +78,20 @@ namespace SharpRpc
                                                        : new OutgoingMethodCallProcessor(client.Topology, GetRequestSenderContainer(), GetCodecContainer()));
         }
 
+        public IServiceProxyMethodIoCodecFactory GetServiceProxyMethodIoCodecFactory()
+        {
+            return serviceProxyMethodIoCodecFactory ?? (serviceProxyMethodIoCodecFactory = 
+                                                        overrides.ServiceProxyMethodIoCodecFactory != null
+                                                            ? overrides.ServiceProxyMethodIoCodecFactory(this)
+                                                            : new ServiceProxyMethodIoCodecFactory(GetCodecContainer()));
+        }
+
         public IServiceProxyClassFactory GetServiceProxyClassFactory()
         {
             return serviceProxyClassFactory ?? (serviceProxyClassFactory =
                                                 overrides.ServiceProxyClassFactory != null
                                                     ? overrides.ServiceProxyClassFactory(this)
-                                                    : new ServiceProxyClassFactory(GetServiceDescriptionBuilder(), GetCodecContainer()));
+                                                    : new ServiceProxyClassFactory(GetServiceDescriptionBuilder(), GetCodecContainer(), GetServiceProxyMethodIoCodecFactory()));
         }
 
         public IServiceProxyContainer GetIServiceProxyContainer()

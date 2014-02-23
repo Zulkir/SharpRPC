@@ -22,30 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Reflection;
 using System.Reflection.Emit;
-using SharpRpc.Codecs;
 
 namespace SharpRpc.ClientSide
 {
-    public class ServiceProxyMethodGenericTypeParameterNecessity
+    public interface IServiceProxyMethodParameterAccessor
     {
-        private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
-
-        public GenericTypeParameterBuilder TypeParameterBuilder { get; private set; }
-        public IEmittingCodec Codec { get; private set; }
-        public Action<ILGenerator> EmitLoad { get; private set; }
-
-        public ServiceProxyMethodGenericTypeParameterNecessity(ICodecContainer codecContainer, GenericTypeParameterBuilder typeParameterBuilder)
-        {
-            TypeParameterBuilder = typeParameterBuilder;
-            Codec = codecContainer.GetEmittingCodecFor(typeof(Type));
-            EmitLoad = lil =>
-                {
-                    lil.Emit(OpCodes.Ldtoken, typeParameterBuilder);
-                    lil.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-                };
-        }
+        void EmitLoad(ILGenerator il);
+        void EmitBeginStore(ILGenerator il);
+        void EmitEndStore(ILGenerator il);
     }
 }

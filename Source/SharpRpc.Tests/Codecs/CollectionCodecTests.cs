@@ -28,7 +28,6 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using NUnit.Framework;
 using SharpRpc.Codecs;
-using SharpRpc.Reflection;
 
 namespace SharpRpc.Tests.Codecs
 {
@@ -139,13 +138,6 @@ namespace SharpRpc.Tests.Codecs
         public interface IMyService
         {
             Dictionary<int, string> GetDictionary();
-        }
-
-        [Test]
-        public void Experimental()
-        {
-            var proxyFactory = new SharpRpc.ClientSide.ServiceProxyClassFactory(new ServiceDescriptionBuilder(new MethodDescriptionBuilder()), codecContainer);
-            var proxy = proxyFactory.CreateProxyClass<IMyService>();
         }
     }
 }

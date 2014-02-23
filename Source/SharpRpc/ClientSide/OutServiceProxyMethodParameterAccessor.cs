@@ -23,30 +23,35 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
-using SharpRpc.Reflection;
 
 namespace SharpRpc.ClientSide
 {
-    public class ServiceProxyMethodParameterNecessity
+    public class OutServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
     {
-        public IEmittingCodec Codec { get; private set; }
-        public Action<ILGenerator> EmitLoad { get; private set; }
-        public MethodParameterDescription Description { get; private set; }
-        public Type ConcreteType { get; private set; }
+        private readonly int argIndex;
+        private readonly Type type;
 
-        public ServiceProxyMethodParameterNecessity(ICodecContainer codecContainer, MethodParameterDescription description, IReadOnlyDictionary<string, Type> genericArgumentMap)
+        public OutServiceProxyMethodParameterAccessor(int argIndex, Type type)
         {
-            Codec = description.Type.ContainsGenericParameters ? null : codecContainer.GetEmittingCodecFor(description.Type);
-            Description = description;
-            ConcreteType = description.Type.DeepSubstituteGenerics(genericArgumentMap);
-            int argIndex = description.Index + 1;
-            if (description.Way == MethodParameterWay.Val)
-                EmitLoad = lil => lil.Emit_Ldarg(argIndex);
-            else
-                EmitLoad = lil => { lil.Emit_Ldarg(argIndex); lil.Emit(OpCodes.Ldobj, ConcreteType); };
+            this.argIndex = argIndex;
+            this.type = type;
+        }
+
+        public void EmitLoad(ILGenerator il)
+        {
+            throw new InvalidOperationException("Trying to emit Load for an Out parameter");
+        }
+
+        public void EmitBeginStore(ILGenerator il)
+        {
+            il.Emit_Ldarg(argIndex);
+        }
+
+        public void EmitEndStore(ILGenerator il)
+        {
+            il.Emit_Stind(type);
         }
     }
 }

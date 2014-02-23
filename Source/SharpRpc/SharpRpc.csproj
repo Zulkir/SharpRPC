@@ -43,18 +43,33 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClientSide\GenericServiceProxyMethodIoCodec.cs" />
     <Compile Include="ClientSide\IOutgoingMethodCallProcessor.cs" />
     <Compile Include="ClientSide\IRequestSenderContainer.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodGenericTypeParameterCodec.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodIoCodec.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodIoCodecFactory.cs" />
+    <Compile Include="ClientSide\IServiceProxyClassBuildingContext.cs" />
     <Compile Include="ClientSide\IServiceProxyContainer.cs" />
     <Compile Include="ClientSide\IServiceProxyClassFactory.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodParameterCodec.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodParameterAccessor.cs" />
+    <Compile Include="ClientSide\IServiceProxyMethodRetvalCodec.cs" />
+    <Compile Include="ClientSide\ManualServiceProxyMethodIoCodec.cs" />
     <Compile Include="ClientSide\OutgoingMethodCallProcessor.cs" />
+    <Compile Include="ClientSide\OutServiceProxyMethodParameterAccessor.cs" />
     <Compile Include="ClientSide\ProxyKey.cs" />
+    <Compile Include="ClientSide\RefServiceProxyMethodParameterAccessor.cs" />
     <Compile Include="ClientSide\RequestSenderContainer.cs" />
+    <Compile Include="ClientSide\RetvalServiceProxyMethodParameterAccessor.cs" />
+    <Compile Include="ClientSide\ServiceProxyClassBuildingContext.cs" />
     <Compile Include="ClientSide\ServiceProxyFields.cs" />
     <Compile Include="ClientSide\ServiceProxyContainer.cs" />
     <Compile Include="ClientSide\ServiceProxyClassFactory.cs" />
-    <Compile Include="ClientSide\ServiceProxyMethodGenericTypeParameterNecessity.cs" />
-    <Compile Include="ClientSide\ServiceProxyMethodParameterNecessity.cs" />
+    <Compile Include="ClientSide\ServiceProxyMethodGenericTypeParameterCodec.cs" />
+    <Compile Include="ClientSide\InliningServiceProxyMethodIoCodec.cs" />
+    <Compile Include="ClientSide\ServiceProxyMethodIoCodecFactory.cs" />
+    <Compile Include="ClientSide\ValServiceProxyMethodParameterAccessor.cs" />
     <Compile Include="Codecs\ClassArrayCodec.cs" />
     <Compile Include="Codecs\CodecContainer.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />

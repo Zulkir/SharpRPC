@@ -22,33 +22,12 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
+using SharpRpc.Codecs;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.ClientSide
 {
-    public class MethodParameterDescription
+    public interface IServiceProxyMethodRetvalCodec
     {
-        public int Index { get; private set; }
-        public Type Type { get; private set; }
-        public string Name { get; private set; }
-        public MethodParameterWay Way { get; private set; }
-
-        public MethodParameterDescription(int index, Type type, string name, MethodParameterWay way = MethodParameterWay.Val)
-        {
-            Index = index;
-            if (type == null)
-                throw new ArgumentNullException("type");
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Method parameter name cannot be null, empty, or consist of whitespace characters");
-            Type = type;
-            Name = name;
-            Way = way;
-        }
-
-        public MethodParameterDescription DeepSubstituteGenerics(IReadOnlyDictionary<string, Type> genericArguments)
-        {
-            return new MethodParameterDescription(Index, Type.DeepSubstituteGenerics(genericArguments), Name, Way);
-        }
+        void EmitDecode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext); 
     }
 }

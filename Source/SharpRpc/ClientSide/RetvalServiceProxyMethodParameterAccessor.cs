@@ -1,4 +1,4 @@
-﻿#region License
+#region License
 /*
 Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -23,32 +23,25 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
+using System.Reflection.Emit;
 
-namespace SharpRpc.Reflection
+namespace SharpRpc.ClientSide
 {
-    public class MethodParameterDescription
+    public class RetvalServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
     {
-        public int Index { get; private set; }
-        public Type Type { get; private set; }
-        public string Name { get; private set; }
-        public MethodParameterWay Way { get; private set; }
-
-        public MethodParameterDescription(int index, Type type, string name, MethodParameterWay way = MethodParameterWay.Val)
+        public void EmitLoad(ILGenerator il)
         {
-            Index = index;
-            if (type == null)
-                throw new ArgumentNullException("type");
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Method parameter name cannot be null, empty, or consist of whitespace characters");
-            Type = type;
-            Name = name;
-            Way = way;
+            throw new InvalidOperationException("Trying to emit Load for retval");
         }
 
-        public MethodParameterDescription DeepSubstituteGenerics(IReadOnlyDictionary<string, Type> genericArguments)
+        public void EmitBeginStore(ILGenerator il)
         {
-            return new MethodParameterDescription(Index, Type.DeepSubstituteGenerics(genericArguments), Name, Way);
+            throw new InvalidOperationException("Trying to emit Store for retval");
+        }
+
+        public void EmitEndStore(ILGenerator il)
+        {
+            throw new InvalidOperationException("Trying to emit Store for retval");
         }
     }
 }
