@@ -22,20 +22,12 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-
 namespace SharpRpc.Reflection
 {
-    public class MethodDescription
+    public enum MethodRemotingType
     {
-        public MethodRemotingType RemotingType { get; set; }
-        public MethodInfo MethodInfo { get; set; }
-        public Type ReturnType { get; set; }
-        public Type PureReturnType { get; set; }
-        public string Name { get; set; }
-        public IReadOnlyList<GenericParameterDescription> GenericParameters { get; set; }
-        public IReadOnlyList<MethodParameterDescription> Parameters { get; set; }
+        Direct,
+        AsyncVoid,
+        AsyncWithRetval
     }
 }

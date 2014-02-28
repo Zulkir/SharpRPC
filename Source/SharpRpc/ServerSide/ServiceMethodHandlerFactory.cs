@@ -51,8 +51,13 @@ namespace SharpRpc.ServerSide
         private static MethodDescription GetMethodDescription(ServiceDescription serviceDescription, ServicePath servicePath)
         {
             for (int i = 1; i < servicePath.Length - 1; i++)
-                serviceDescription = serviceDescription.GetSubservice(servicePath[i]).Service;
-            return serviceDescription.GetMethod(servicePath.MethodName);
+                if (!serviceDescription.TryGetSubservice(servicePath[i], out serviceDescription))
+                    throw new InvalidPathException();
+
+            MethodDescription methodDescription;
+            if (!serviceDescription.TryGetMethod(servicePath.MethodName, out methodDescription))
+                throw new InvalidPathException();
+            return methodDescription;
         }
     }
 }

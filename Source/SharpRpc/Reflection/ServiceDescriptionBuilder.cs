@@ -40,24 +40,35 @@ namespace SharpRpc.Reflection
 
         public ServiceDescription Build(Type interfaceType)
         {
+            return BuildInternal(interfaceType.GetServiceName(), interfaceType);
+        }
+
+        private ServiceDescription BuildInternal(string name, Type interfaceType)
+        {
             var allInterfaces = GetAllInterfaces(interfaceType).Distinct().ToArray();
 
-            var properties = allInterfaces.SelectMany(x => x.GetProperties());
-            var subinterfaceDescs = new List<SubserviceDescription>();
+            var properties = allInterfaces.SelectMany(x => x.GetProperties()).ToArray();
+            var subinterfaceDescs = new List<ServiceDescription>();
             foreach (var propertyInfo in properties)
             {
                 if (propertyInfo.SetMethod != null)
                     throw new ArgumentException(string.Format("{0} is not a valid service interface since it has a setter ({1})", interfaceType.Name, propertyInfo.Name));
-                subinterfaceDescs.Add(new SubserviceDescription(propertyInfo.Name, Build(propertyInfo.PropertyType)));
+                subinterfaceDescs.Add(BuildInternal(propertyInfo.Name, propertyInfo.PropertyType));
             }
 
             var methods = allInterfaces.SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                 .Where(m => !properties.Any(p => p.GetMethod == m || p.SetMethod == m));
-            var methodDescs = methods.Select(methodInfo => methodDescriptionBuilder.Build(methodInfo));
-            return new ServiceDescription(interfaceType, interfaceType.Name.Substring(1), subinterfaceDescs, methodDescs);
+            var methodDescs = methods.Select(methodInfo => methodDescriptionBuilder.Build(methodInfo)).ToArray();
+            return new ServiceDescription
+            {
+                Type = interfaceType,
+                Name = name,
+                Subservices = subinterfaceDescs,
+                Methods = methodDescs
+            };
         }
 
-        private IEnumerable<Type> GetAllInterfaces(Type baseInterface)
+        private static IEnumerable<Type> GetAllInterfaces(Type baseInterface)
         {
             yield return baseInterface;
             foreach (var subInterface in baseInterface.GetInterfaces())

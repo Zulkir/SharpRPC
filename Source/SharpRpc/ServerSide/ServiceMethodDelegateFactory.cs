@@ -62,10 +62,8 @@ namespace SharpRpc.ServerSide
             {
                 var propertyInfo = serviceDesc.Type.GetProperty(servicePath[i]);
                 il.Emit(OpCodes.Callvirt, propertyInfo.GetGetMethod());         // stack_0 = stack_0.Property
-                SubserviceDescription subserviceDescription;
-                if (!serviceDesc.TryGetSubservice(servicePath[i], out subserviceDescription))
+                if (!serviceDesc.TryGetSubservice(servicePath[i], out serviceDesc))
                     throw new InvalidPathException();
-                serviceDesc = subserviceDescription.Service;
             }
 
             var methodName = servicePath.MethodName;

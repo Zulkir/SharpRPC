@@ -26,6 +26,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;
@@ -625,6 +626,24 @@ namespace SharpRpc.Tests.ClientSide
             var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(retval, Is.EquivalentTo(expectedRetval));
+        }
+
+        public interface IServiceWithEmptyAsync
+        {
+            Task DoSomethingAsync();
+        }
+
+        [Test]
+        [Ignore]
+        public void EmptyAsync()
+        {
+            var proxy = factory.CreateProxyClass<IServiceWithEmptyAsync>()(methodCallProcessor, null, null);
+            var task = Substitute.For<Task>();
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+
+            var resultingTask = proxy.DoSomethingAsync();
+
+            Assert.That(resultingTask, Is.EqualTo(task));
         }
     }
 }

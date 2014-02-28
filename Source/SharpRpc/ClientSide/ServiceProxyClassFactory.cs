@@ -66,6 +66,7 @@ namespace SharpRpc.ClientSide
         private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
+        private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("ProcessAsync");
 
         public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
@@ -248,7 +249,7 @@ namespace SharpRpc.ClientSide
 
             foreach (var subserviceDesc in serviceDescription.Subservices)
             {
-                var proxyClass = CreateProxyClass(classContext.InterfaceType, subserviceDesc.Service.Type, path + "/" + subserviceDesc.Name);
+                var proxyClass = CreateProxyClass(classContext.InterfaceType, subserviceDesc.Type, path + "/" + subserviceDesc.Name);
                 var fieldBuilder = CreateSubserviceField(classContext, subserviceDesc, proxyClass);
                 CreateSubserviceProperty(classContext, subserviceDesc, fieldBuilder);
                 
@@ -264,18 +265,18 @@ namespace SharpRpc.ClientSide
             il.Emit(OpCodes.Ret);
         }
 
-        private static FieldBuilder CreateSubserviceField(IServiceProxyClassBuildingContext classContext, SubserviceDescription subserviceDescription, Type proxyClass)
+        private static FieldBuilder CreateSubserviceField(IServiceProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, Type proxyClass)
         {
             return classContext.Builder.DefineField("_" + subserviceDescription.Name, proxyClass,
                     FieldAttributes.Private | FieldAttributes.InitOnly);
         }
 
-        private static void CreateSubserviceProperty(IServiceProxyClassBuildingContext classContext, SubserviceDescription subserviceDescription, FieldBuilder fieldBuilder)
+        private static void CreateSubserviceProperty(IServiceProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, FieldBuilder fieldBuilder)
         {
             var methodBuilder = classContext.Builder.DefineMethod("get_" + subserviceDescription.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
                     MethodAttributes.SpecialName | MethodAttributes.NewSlot | MethodAttributes.Virtual,
-                    subserviceDescription.Service.Type, Type.EmptyTypes);
+                    subserviceDescription.Type, Type.EmptyTypes);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
             var il = methodBuilder.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
@@ -283,7 +284,7 @@ namespace SharpRpc.ClientSide
             il.Emit(OpCodes.Ret);
 
             var propertyBuilder = classContext.Builder.DefineProperty(subserviceDescription.Name,
-                PropertyAttributes.None, subserviceDescription.Service.Type, Type.EmptyTypes);
+                PropertyAttributes.None, subserviceDescription.Type, Type.EmptyTypes);
             propertyBuilder.SetGetMethod(methodBuilder);
         }
     }

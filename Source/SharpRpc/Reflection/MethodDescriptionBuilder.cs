@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace SharpRpc.Reflection
 {
@@ -32,14 +33,42 @@ namespace SharpRpc.Reflection
     {
         public MethodDescription Build(MethodInfo methodInfo)
         {
-            var parameters = methodInfo.GetParameters();
-            var parameterDescs = parameters.Select(BuildParameterDescription);
-            if (methodInfo.IsGenericMethod)
+            var remotingType = GetRemotingType(methodInfo.ReturnType);
+            var pureReturnType = GetPureReturnType(remotingType, methodInfo.ReturnType);
+            var parameters = methodInfo.GetParameters().Select(BuildParameterDescription).ToArray();
+            var genericParameters = methodInfo.IsGenericMethod
+                ? methodInfo.GetGenericArguments().Select(BuildGenericParameterDescription).ToArray()
+                : new GenericParameterDescription[0];
+            return new MethodDescription
             {
-                var genericParameters = methodInfo.GetGenericArguments().Select(BuildGenericParameterDescription);
-                return new MethodDescription(methodInfo, methodInfo.ReturnType, methodInfo.Name, genericParameters, parameterDescs);
+                RemotingType = GetRemotingType(methodInfo.ReturnType),
+                MethodInfo = methodInfo,
+                ReturnType = methodInfo.ReturnType,
+                PureReturnType = pureReturnType,
+                Name = methodInfo.Name,
+                Parameters = parameters,
+                GenericParameters = genericParameters
+            };
+        }
+
+        private static MethodRemotingType GetRemotingType(Type returnType)
+        {
+            if (returnType == typeof(Task))
+                return MethodRemotingType.AsyncVoid;
+            if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
+                return MethodRemotingType.AsyncWithRetval;
+            return MethodRemotingType.Direct;
+        }
+
+        private static Type GetPureReturnType(MethodRemotingType remotingType, Type returnType)
+        {
+            switch (remotingType)
+            {
+                case MethodRemotingType.Direct: return returnType;
+                case MethodRemotingType.AsyncVoid: return typeof(void);
+                case MethodRemotingType.AsyncWithRetval: return returnType.GetGenericArguments().Single();
+                default: throw new ArgumentOutOfRangeException("remotingType");
             }
-            return new MethodDescription(methodInfo, methodInfo.ReturnType, methodInfo.Name, parameterDescs);
         }
 
         private static MethodParameterDescription BuildParameterDescription(ParameterInfo parameterInfo, int index)

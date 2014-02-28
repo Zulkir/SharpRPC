@@ -82,6 +82,8 @@
     <Compile Include="Codecs\StringCodecBase.cs" />
     <Compile Include="Codecs\TypeCodec.cs" />
     <Compile Include="Reflection\GenericParameterDescription.cs" />
+    <Compile Include="Reflection\MethodRemotingType.cs" />
+    <Compile Include="Reflection\ServiceDescriptionExtensions.cs" />
     <Compile Include="RpcClientExtensions.cs" />
     <Compile Include="ServerSide\GenericServiceMethodHandler.cs" />
     <Compile Include="ServerSide\IServiceMethodHandler.cs" />
@@ -179,7 +181,6 @@
     <Compile Include="Reflection\MethodDescriptionBuilder.cs" />
     <Compile Include="Reflection\MethodParameterDescription.cs" />
     <Compile Include="Reflection\MethodParameterWay.cs" />
-    <Compile Include="Reflection\SubserviceDescription.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerSide\IIncomingRequestProcessor.cs" />
     <Compile Include="ServerSide\IServiceImplementationContainer.cs" />

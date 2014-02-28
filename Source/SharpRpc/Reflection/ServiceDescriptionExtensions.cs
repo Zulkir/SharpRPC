@@ -22,24 +22,22 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
+using System.Linq;
 
 namespace SharpRpc.Reflection
 {
-    public class SubserviceDescription
+    public static class ServiceDescriptionExtensions
     {
-        public string Name { get; private set; }
-        public ServiceDescription Service { get; private set; }
-
-        public SubserviceDescription(string name, ServiceDescription serviceDesc)
+        public static bool TryGetSubservice(this ServiceDescription serive, string name, out ServiceDescription subservice)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Subservice name cannot be null, empty, or consist of whitespace characters");
-            if (serviceDesc == null)
-                throw new ArgumentNullException("serviceDesc");
+            subservice = serive.Subservices.FirstOrDefault(x => x.Name == name);
+            return subservice != null;
+        }
 
-            Name = name;
-            Service = serviceDesc;
+        public static bool TryGetMethod(this ServiceDescription service, string name, out MethodDescription method)
+        {
+            method = service.Methods.FirstOrDefault(x => x.Name == name);
+            return method != null;
         }
     }
 }
