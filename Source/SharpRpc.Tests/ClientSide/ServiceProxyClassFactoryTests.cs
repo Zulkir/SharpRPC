@@ -634,16 +634,41 @@ namespace SharpRpc.Tests.ClientSide
         }
 
         [Test]
-        [Ignore]
-        public void EmptyAsync()
+        public void EmptyVoidAsync()
         {
             var proxy = factory.CreateProxyClass<IServiceWithEmptyAsync>()(methodCallProcessor, null, null);
-            var task = Substitute.For<Task>();
+            var task = Task.FromResult(new byte[0]);
             methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
 
             var resultingTask = proxy.DoSomethingAsync();
 
             Assert.That(resultingTask, Is.EqualTo(task));
+        }
+
+        public interface IAsyncServiceWithArgumets
+        {
+            Task DoSomethingWithArgsAsync(int a, double b);
+        }
+
+        [Test]
+        public void VoidAsyncWithArguments()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncServiceWithArgumets>()(methodCallProcessor, null, null);
+            var task = Task.FromResult(new byte[0]);
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+
+            var expectedArgsData = new byte[12];
+            fixed (byte* pData = expectedArgsData)
+            {
+                *(int*)pData = 123;
+                *(double*)(pData + 4) = 234.567;
+            }
+
+            var resultingTask = proxy.DoSomethingWithArgsAsync(123, 234.567);
+
+            Assert.That(resultingTask, Is.EqualTo(task));
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EqualTo(expectedArgsData));
         }
     }
 }

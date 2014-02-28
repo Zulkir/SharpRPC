@@ -52,7 +52,7 @@ namespace SharpRpc.ServerSide
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
                 typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var emittingContext = new EmittingContext(il, true);
+            var emittingContext = new EmittingContext(il);
 
             il.Emit(OpCodes.Ldarg_1);                                           // stack_0 = (TServiceImplementation) arg_1
             il.Emit(OpCodes.Castclass, serviceInterface);

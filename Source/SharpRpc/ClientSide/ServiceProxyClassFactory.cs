@@ -111,18 +111,7 @@ namespace SharpRpc.ClientSide
             var parameterTypesAdjustedForRefs = parameters.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
             var allParameterCodecs = parameters.Select(x => ioCodecFactory.CreateParameterCodec(x)).ToArray();
 
-            var requestParameterCodecs = allParameterCodecs.Zip(parameters, (c, d) => new DescriptionCodecPair(d, c))
-                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
-                .Select(x => x.Codec)
-                .ToArray();
-
-            var responseParameterCodecs = allParameterCodecs.Zip(parameters, (c, d) => new DescriptionCodecPair(d, c))
-                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
-                .Select(x => x.Codec)
-                .ToArray();
-
             var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
-            var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
             
             methodBuilder.SetParameters(parameterTypesAdjustedForRefs);
             methodBuilder.SetReturnType(retvalType);
@@ -131,9 +120,17 @@ namespace SharpRpc.ClientSide
             bool hasRetval = methodDesc.ReturnType != typeof(void);
 
             var il = methodBuilder.GetILGenerator();
-            var emittingContext = new EmittingContext(il, responseParameterCodecs.Any() || hasRetval);
+            var emittingContext = new EmittingContext(il);
 
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));              // byte[] dataArray
+
+            var requestParameterCodecs = allParameterCodecs.Zip(parameters, (c, d) => new DescriptionCodecPair(d, c))
+                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                .Select(x => x.Codec)
+                .ToArray();
+
+            
+
             if (requestParameterCodecs.Any() || genericTypeParameterCodecs.Any())
             {
                 bool haveSizeOnStack = false;
@@ -175,27 +172,55 @@ namespace SharpRpc.ClientSide
             il.Emit(OpCodes.Ldloc, requestDataArrayVar);                            // stack_4 = dataArray
             il.Emit_Ldarg(0);                                                       // stack_5 = timeoutSettings
             il.Emit(OpCodes.Ldfld, classContext.TimeoutSettingsField);
-            il.Emit(OpCodes.Callvirt, ProcessMethod);                               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
 
-            if (responseParameterCodecs.Any() || hasRetval)
-            {
-                var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
-                il.Emit(OpCodes.Stloc, responseDataArrayVar);                       // dataArray = stack_0
-                il.Emit(OpCodes.Ldloc, responseDataArrayVar);                       // remainingBytes = dataArray.Length
-                il.Emit(OpCodes.Ldlen);
-                il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
-                var pinnedVar = il.Emit_PinArray(typeof(byte), responseDataArrayVar);// var pinned dataPointer = pin(dataArray)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
-                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+            var responseParameterCodecs = allParameterCodecs.Zip(parameters, (c, d) => new DescriptionCodecPair(d, c))
+                .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
+                .Select(x => x.Codec)
+                .ToArray();
 
-                foreach (var codec in responseParameterCodecs)
-                    codec.EmitDecodeAndStore(classContext, emittingContext);        // arg_i+1 = Decode(data, remainingBytes, false)
-                if (hasRetval)
-                    retvalCodec.EmitDecode(classContext, emittingContext);          // stack_0 = Decode(data, remainingBytes, false)
-            }
-            else
+            if (responseParameterCodecs.Any() && methodDesc.RemotingType != MethodRemotingType.Direct)
+                throw new ArgumentException("Error processing {0} method: async methods cannot have Ref or Out parameters");
+
+            switch (methodDesc.RemotingType)
             {
-                il.Emit(OpCodes.Pop);                                               // pop(stack_0)
+                case MethodRemotingType.Direct:
+                {
+                    il.Emit(OpCodes.Callvirt, ProcessMethod);                               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+
+                    if (responseParameterCodecs.Any() || hasRetval)
+                    {
+                        var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
+                        il.Emit(OpCodes.Stloc, responseDataArrayVar);                       // dataArray = stack_0
+                        il.Emit(OpCodes.Ldloc, responseDataArrayVar);                       // remainingBytes = dataArray.Length
+                        il.Emit(OpCodes.Ldlen);
+                        il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
+                        var pinnedVar = il.Emit_PinArray(typeof(byte), responseDataArrayVar);// var pinned dataPointer = pin(dataArray)
+                        il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
+                        il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+
+                        foreach (var codec in responseParameterCodecs)
+                            codec.EmitDecodeAndStore(classContext, emittingContext);        // arg_i+1 = Decode(data, remainingBytes, false)
+                        if (hasRetval)
+                        {
+                            var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
+                            retvalCodec.EmitDecode(classContext, emittingContext);          // stack_0 = Decode(data, remainingBytes, false)
+                        }   
+                    }
+                    else
+                    {
+                        il.Emit(OpCodes.Pop);                                               // pop(stack_0)
+                    }
+                    break;
+                }
+                case MethodRemotingType.AsyncVoid:
+                {
+                    il.Emit(OpCodes.Callvirt, ProcessAsyncMethod);                          // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
+                    break;
+                }   
+                case MethodRemotingType.AsyncWithRetval:
+                    throw new NotImplementedException();
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
             il.Emit(OpCodes.Ret);

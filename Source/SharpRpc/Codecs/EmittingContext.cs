@@ -31,30 +31,19 @@ namespace SharpRpc.Codecs
     public class EmittingContext : IEmittingContext
     {
         private readonly ILGenerator il;
-        private readonly LocalBuilder dataPointerVar;
-        private readonly LocalBuilder remainingBytesVar;
         private readonly Dictionary<string, LocalBuilder> variables;
+        private LocalBuilder dataPointerVar;
+        private LocalBuilder remainingBytesVar;
 
-        public EmittingContext(ILGenerator il, bool decode)
+        public EmittingContext(ILGenerator il)
         {
             this.il = il;
-            dataPointerVar = il.DeclareLocal(typeof(byte*));
-            remainingBytesVar = decode ? il.DeclareLocal(typeof(int)) : null;
             variables = new Dictionary<string, LocalBuilder>();
         }
 
         public ILGenerator IL { get { return il; } }
-        public LocalBuilder DataPointerVar { get { return dataPointerVar; } }
-        
-        public LocalBuilder RemainingBytesVar
-        {
-            get
-            {
-                if (remainingBytesVar == null) 
-                    throw new InvalidOperationException("Cannot access 'remaining bytes' variable inside encode method");
-                return remainingBytesVar;
-            }
-        }
+        public LocalBuilder DataPointerVar { get { return dataPointerVar ?? (dataPointerVar = il.DeclareLocal(typeof(byte*))); } }
+        public LocalBuilder RemainingBytesVar { get { return remainingBytesVar ?? (remainingBytesVar = il.DeclareLocal(typeof(int))); } }
 
         public LocalBuilder GetSharedVariable(Type type, string name)
         {

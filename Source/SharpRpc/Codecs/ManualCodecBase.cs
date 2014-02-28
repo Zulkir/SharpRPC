@@ -63,7 +63,7 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + type.FullName,
                                                   typeof(int), new[] { type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var context = new EmittingContext(il, false);
+            var context = new EmittingContext(il);
             emittingCodec.EmitCalculateSize(context, 0);
             il.Emit(OpCodes.Ret);
 
@@ -75,7 +75,7 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_encode_manual_" + type.FullName,
                                                   typeof(void), new[] { typeof(byte*).MakeByRefType(), type }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var context = new EmittingContext(il, false);
+            var context = new EmittingContext(il);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldind_I);
             il.Emit(OpCodes.Stloc, context.DataPointerVar);
@@ -92,7 +92,7 @@ namespace SharpRpc.Codecs
             var dynamicMethod = new DynamicMethod("_decode_manual_" + type.FullName + (doNoCheckBounds ? "_dncb_" : ""),
                                                   type, new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
-            var context = new EmittingContext(il, true);
+            var context = new EmittingContext(il);
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldind_I);
             il.Emit(OpCodes.Stloc, context.DataPointerVar);
