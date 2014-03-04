@@ -34,7 +34,6 @@ namespace SharpRpc.Reflection
         public MethodDescription Build(MethodInfo methodInfo)
         {
             var remotingType = GetRemotingType(methodInfo.ReturnType);
-            var pureReturnType = GetPureReturnType(remotingType, methodInfo.ReturnType);
             var parameters = methodInfo.GetParameters().Select(BuildParameterDescription).ToArray();
             var genericParameters = methodInfo.IsGenericMethod
                 ? methodInfo.GetGenericArguments().Select(BuildGenericParameterDescription).ToArray()
@@ -44,7 +43,6 @@ namespace SharpRpc.Reflection
                 RemotingType = GetRemotingType(methodInfo.ReturnType),
                 MethodInfo = methodInfo,
                 ReturnType = methodInfo.ReturnType,
-                PureReturnType = pureReturnType,
                 Name = methodInfo.Name,
                 Parameters = parameters,
                 GenericParameters = genericParameters
@@ -58,17 +56,6 @@ namespace SharpRpc.Reflection
             if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
                 return MethodRemotingType.AsyncWithRetval;
             return MethodRemotingType.Direct;
-        }
-
-        private static Type GetPureReturnType(MethodRemotingType remotingType, Type returnType)
-        {
-            switch (remotingType)
-            {
-                case MethodRemotingType.Direct: return returnType;
-                case MethodRemotingType.AsyncVoid: return typeof(void);
-                case MethodRemotingType.AsyncWithRetval: return returnType.GetGenericArguments().Single();
-                default: throw new ArgumentOutOfRangeException("remotingType");
-            }
         }
 
         private static MethodParameterDescription BuildParameterDescription(ParameterInfo parameterInfo, int index)

@@ -26,6 +26,7 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using System.Linq;
@@ -63,10 +64,35 @@ namespace SharpRpc.ClientSide
         }
 
         private static readonly Type[] ConstructorParameterTypes = { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
+        private static readonly Type[] FuncConstructorParameters = { typeof(object), typeof(IntPtr) };
+        private static readonly Type[] DecodeDeferredParameterTypes = { typeof(Task<byte[]>) };
         private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
         private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("ProcessAsync");
+        private static readonly MethodInfo ContinueWithMethod = typeof(Task<byte[]>).GetMethods().Where(IsCorrectContinueWith).Single();
+        private static readonly MethodInfo GetResultMethod = typeof(Task<byte[]>).GetMethod("get_Result");
+
+        private static bool IsCorrectContinueWith(MethodInfo methodInfo)
+        {
+            if (methodInfo.Name != "ContinueWith")
+                return false;
+
+            var genericArguments = methodInfo.GetGenericArguments();
+            if (genericArguments.Length != 1)
+                return false;
+
+            var parameters = methodInfo.GetParameters();
+            if (parameters.Length != 1)
+                return false;
+
+            var parameterType = parameters[0].ParameterType;
+            var expectedParameterType = typeof(Func<,>).MakeGenericType(typeof(Task<byte[]>), genericArguments[0]);
+            if (parameterType != expectedParameterType)
+                return false;
+
+            return true;
+        }
 
         public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
         {
@@ -117,8 +143,6 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetReturnType(retvalType);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
-            bool hasRetval = methodDesc.ReturnType != typeof(void);
-
             var il = methodBuilder.GetILGenerator();
             var emittingContext = new EmittingContext(il);
 
@@ -128,8 +152,6 @@ namespace SharpRpc.ClientSide
                 .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
                 .Select(x => x.Codec)
                 .ToArray();
-
-            
 
             if (requestParameterCodecs.Any() || genericTypeParameterCodecs.Any())
             {
@@ -179,46 +201,19 @@ namespace SharpRpc.ClientSide
                 .ToArray();
 
             if (responseParameterCodecs.Any() && methodDesc.RemotingType != MethodRemotingType.Direct)
-                throw new ArgumentException("Error processing {0} method: async methods cannot have Ref or Out parameters");
+                throw new ArgumentException(string.Format("Error processing {0} method: only direct methods can have Ref or Out parameters", path));
 
             switch (methodDesc.RemotingType)
             {
                 case MethodRemotingType.Direct:
-                {
-                    il.Emit(OpCodes.Callvirt, ProcessMethod);                               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
-
-                    if (responseParameterCodecs.Any() || hasRetval)
-                    {
-                        var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
-                        il.Emit(OpCodes.Stloc, responseDataArrayVar);                       // dataArray = stack_0
-                        il.Emit(OpCodes.Ldloc, responseDataArrayVar);                       // remainingBytes = dataArray.Length
-                        il.Emit(OpCodes.Ldlen);
-                        il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
-                        var pinnedVar = il.Emit_PinArray(typeof(byte), responseDataArrayVar);// var pinned dataPointer = pin(dataArray)
-                        il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
-                        il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
-
-                        foreach (var codec in responseParameterCodecs)
-                            codec.EmitDecodeAndStore(classContext, emittingContext);        // arg_i+1 = Decode(data, remainingBytes, false)
-                        if (hasRetval)
-                        {
-                            var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
-                            retvalCodec.EmitDecode(classContext, emittingContext);          // stack_0 = Decode(data, remainingBytes, false)
-                        }   
-                    }
-                    else
-                    {
-                        il.Emit(OpCodes.Pop);                                               // pop(stack_0)
-                    }
+                    EmitProcessDirect(classContext, emittingContext, responseParameterCodecs, retvalType);
                     break;
-                }
                 case MethodRemotingType.AsyncVoid:
-                {
-                    il.Emit(OpCodes.Callvirt, ProcessAsyncMethod);                          // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
+                    EmitProcessAsyncVoid(il);
                     break;
-                }   
                 case MethodRemotingType.AsyncWithRetval:
-                    throw new NotImplementedException();
+                    EmitProcessAsyncWithRetval(classContext, emittingContext, methodDesc.Name, genericTypeParameterBuilders, retvalType);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -232,6 +227,99 @@ namespace SharpRpc.ClientSide
                 il.Emit(OpCodes.Add);
             else
                 haveSizeOnStack = true;
+        }
+
+        private void EmitProcessDirect(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext, IServiceProxyMethodParameterCodec[] responseParameterCodecs, Type retvalType)
+        {
+            bool hasRetval = retvalType != typeof(void);
+            var il = emittingContext.IL;
+            il.Emit(OpCodes.Callvirt, ProcessMethod);                               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+
+            if (responseParameterCodecs.Any() || hasRetval)
+            {
+                EmitPrepareToDecode(emittingContext);
+
+                foreach (var codec in responseParameterCodecs)
+                    codec.EmitDecodeAndStore(classContext, emittingContext);        // arg_i+1 = Decode(data, remainingBytes, false)
+
+                if (hasRetval)
+                {
+                    var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
+                    retvalCodec.EmitDecode(classContext, emittingContext);          // stack_0 = Decode(data, remainingBytes, false)
+                }
+            }
+            else
+            {
+                il.Emit(OpCodes.Pop);                                               // pop(stack_0)
+            }
+        }
+
+        private static void EmitProcessAsyncVoid(ILGenerator il)
+        {
+            il.Emit(OpCodes.Callvirt, ProcessAsyncMethod); // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
+        }
+
+        private void EmitProcessAsyncWithRetval(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext, string parameterMethodName, GenericTypeParameterBuilder[] genericTypeArguments, Type retvalType)
+        {
+            var pureRetvalType = retvalType.GetGenericArguments().Single();
+            var decodeDeferredMethod = CreateDecodeDeferredMethod(classContext, parameterMethodName, genericTypeArguments, pureRetvalType);
+            if (decodeDeferredMethod.IsGenericMethodDefinition)
+                decodeDeferredMethod = decodeDeferredMethod.MakeGenericMethod(genericTypeArguments);
+            var funcType = typeof(Func<,>).MakeGenericType(new[] { typeof(Task<byte[]>), pureRetvalType });
+            var funcConstructor = pureRetvalType.ContainsGenericParameters 
+                ? TypeBuilder.GetConstructor(funcType, typeof(Func<,>).GetConstructor(FuncConstructorParameters))
+                : funcType.GetConstructor(FuncConstructorParameters);
+            var continueWithMethod = ContinueWithMethod.MakeGenericMethod(new[] { pureRetvalType });
+
+            var il = emittingContext.IL;
+            il.Emit(OpCodes.Callvirt, ProcessAsyncMethod);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldftn, decodeDeferredMethod);
+            il.Emit(OpCodes.Newobj, funcConstructor);
+            il.Emit(OpCodes.Callvirt, continueWithMethod);
+        }
+
+        private MethodInfo CreateDecodeDeferredMethod(IServiceProxyClassBuildingContext classContext, string parentMethodName, GenericTypeParameterBuilder[] genericTypeArguments, Type pureRetvalType)
+        {
+            var methodBuilder = classContext.Builder.DefineMethod("__rpc_decode_deferred_" + parentMethodName,
+                    MethodAttributes.Private | MethodAttributes.HideBySig);
+
+            var genericTypeParameterBuilders = genericTypeArguments.Any()
+                ? methodBuilder.DefineGenericParameters(genericTypeArguments.Select(x => x.Name).ToArray())
+                : new GenericTypeParameterBuilder[0];
+            var genericArgumentMap = genericTypeParameterBuilders.ToDictionary(x => x.Name, x => (Type)x);
+
+            var retvalType = pureRetvalType.DeepSubstituteGenerics(genericArgumentMap);
+
+            methodBuilder.SetParameters(DecodeDeferredParameterTypes);
+            methodBuilder.SetReturnType(retvalType);
+            methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
+
+            var il = methodBuilder.GetILGenerator();
+            var emittingContext = new EmittingContext(il);
+
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Call, GetResultMethod);
+            EmitPrepareToDecode(emittingContext);
+
+            var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
+            retvalCodec.EmitDecode(classContext, emittingContext);
+            il.Emit(OpCodes.Ret);
+
+            return methodBuilder;
+        }
+
+        private static void EmitPrepareToDecode(IEmittingContext emittingContext)
+        {
+            var il = emittingContext.IL;
+            var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
+            il.Emit(OpCodes.Stloc, responseDataArrayVar);                       // dataArray = stack_0
+            il.Emit(OpCodes.Ldloc, responseDataArrayVar);                       // remainingBytes = dataArray.Length
+            il.Emit(OpCodes.Ldlen);
+            il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
+            var pinnedVar = il.Emit_PinArray(typeof(byte), responseDataArrayVar);// var pinned dataPointer = pin(dataArray)
+            il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
+            il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
         }
 
         private void CreateConstructor(IServiceProxyClassBuildingContext classContext, string path, ServiceDescription serviceDescription)

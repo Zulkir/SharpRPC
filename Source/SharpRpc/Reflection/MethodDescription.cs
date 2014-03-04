@@ -33,7 +33,6 @@ namespace SharpRpc.Reflection
         public MethodRemotingType RemotingType { get; set; }
         public MethodInfo MethodInfo { get; set; }
         public Type ReturnType { get; set; }
-        public Type PureReturnType { get; set; }
         public string Name { get; set; }
         public IReadOnlyList<GenericParameterDescription> GenericParameters { get; set; }
         public IReadOnlyList<MethodParameterDescription> Parameters { get; set; }

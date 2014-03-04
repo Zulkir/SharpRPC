@@ -628,7 +628,7 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(retval, Is.EquivalentTo(expectedRetval));
         }
 
-        public interface IServiceWithEmptyAsync
+        public interface IAsyncVoidService
         {
             Task DoSomethingAsync();
         }
@@ -636,7 +636,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void EmptyVoidAsync()
         {
-            var proxy = factory.CreateProxyClass<IServiceWithEmptyAsync>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxyClass<IAsyncVoidService>()(methodCallProcessor, null, null);
             var task = Task.FromResult(new byte[0]);
             methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
 
@@ -669,6 +669,156 @@ namespace SharpRpc.Tests.ClientSide
             Assert.That(resultingTask, Is.EqualTo(task));
             var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EqualTo(expectedArgsData));
+        }
+
+        public interface IAsyncServiceWithRetval
+        {
+            Task<int> GetSomethingAsync();
+        }
+
+        [Test]
+        public void EmptyAsyncWithRetval()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncServiceWithRetval>()(methodCallProcessor, null, null);
+
+            var responseData = new byte[sizeof(int)];
+            fixed (byte* pData = responseData)
+            {
+                *(int*)pData = 123;
+            }
+
+            bool taskWasExecuted = false;
+            var task = new Task<byte[]>(() =>
+            {
+                taskWasExecuted = true;
+                return responseData;
+            });
+
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+
+            var resultingTask = proxy.GetSomethingAsync();
+
+            Assert.That(taskWasExecuted, Is.False);
+            task.Start();
+            Assert.That(resultingTask.Result, Is.EqualTo(123));
+            Assert.That(taskWasExecuted, Is.True);
+        }
+
+        public interface IAsyncServiceWithRetvalAndArguments
+        {
+            Task<int> GetSomethingAsync(int a, double b);
+        }
+
+        [Test]
+        public void AsyncWithRetvalAndArguments()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncServiceWithRetvalAndArguments>()(methodCallProcessor, null, null);
+
+            var expectedArgsData = new byte[12];
+            fixed (byte* pData = expectedArgsData)
+            {
+                *(int*)pData = 123;
+                *(double*)(pData + 4) = 234.567;
+            }
+
+            var responseData = new byte[sizeof(int)];
+            fixed (byte* pData = responseData)
+            {
+                *(int*)pData = 345;
+            }
+
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+
+            var resultingTask = proxy.GetSomethingAsync(123, 234.567);
+
+            Assert.That(resultingTask.Result, Is.EqualTo(345));
+            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            Assert.That(arguments[3], Is.EqualTo(expectedArgsData));
+        }
+
+        public interface IAsyncServiceWithGenericArguments
+        {
+            Task<int> GetSomething<T>(T arg);
+        }
+
+        [Test]
+        public void GenericAsyncWithRetval()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncServiceWithGenericArguments>()(methodCallProcessor, null, null);
+
+            var responseData = new byte[sizeof(int)];
+            fixed (byte* pData = responseData)
+            {
+                *(int*)pData = 345;
+            }
+
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+
+            var resultingTask = proxy.GetSomething("asd");
+
+            Assert.That(resultingTask.Result, Is.EqualTo(345));
+        }
+
+        public interface IAsyncServiceWithGenricRetval
+        {
+            Task<T> GetSomethingGenrciAsync<T>();
+        }
+
+        [Test]
+        public void AsyncWithGenericRetval()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncServiceWithGenricRetval>()(methodCallProcessor, null, null);
+
+            const string retval = "asd";
+            var stringCodec = codecContainer.GetManualCodecFor<string>();
+            var responseData = new byte[stringCodec.CalculateSize(retval)];
+            fixed (byte* pData = responseData)
+            {
+                var p = pData;
+                stringCodec.Encode(ref p, retval);
+            }
+
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+
+            var resultingTask = proxy.GetSomethingGenrciAsync<string>();
+
+            Assert.That(resultingTask.Result, Is.EqualTo(retval));
+        }
+
+        public interface IAsyncWithIndirectGenericRetval
+        {
+            Task<Dictionary<int, T1[]>> DoMixedStuffAsync<T1, T2>();
+        }
+
+        [Test]
+        public void AsyncWithIndirectGenericRetval()
+        {
+            var proxy = factory.CreateProxyClass<IAsyncWithIndirectGenericRetval>()(methodCallProcessor, null, null);
+
+            var retval = new Dictionary<int, string[]>
+            {
+                { 1, new [] {"one"} },
+                { 2, new [] {"one", "two"} },
+                { 3, new [] {"one", "two", "three"} },
+            };
+
+            var retvalCodec = codecContainer.GetManualCodecFor<Dictionary<int, string[]>>();
+            var responseData = new byte[retvalCodec.CalculateSize(retval)];
+            fixed (byte* pData = responseData)
+            {
+                var p = pData;
+                retvalCodec.Encode(ref p, retval);
+            }
+
+            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+
+            var resultingTask = proxy.DoMixedStuffAsync<string, double>();
+
+            var result = resultingTask.Result;
+            Assert.That(result.Count, Is.EqualTo(retval.Count));
+            Assert.That(result[1], Is.EquivalentTo(retval[1]));
+            Assert.That(result[2], Is.EquivalentTo(retval[2]));
+            Assert.That(result[3], Is.EquivalentTo(retval[3]));
         }
     }
 }

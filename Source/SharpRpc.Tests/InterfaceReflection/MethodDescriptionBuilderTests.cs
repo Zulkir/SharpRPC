@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using SharpRpc.Reflection;
 
@@ -43,6 +44,8 @@ namespace SharpRpc.Tests.InterfaceReflection
             void ModifyVariables(ref int a, ref string b);
             void GetManySomething(out int a, out string b);
             void GenericMethod<TFirst, TSecond>(TFirst first, TSecond second);
+            Task VoidAsync();
+            Task<int> RetvalAsync();
         }
 
         [SetUp]
@@ -127,6 +130,14 @@ namespace SharpRpc.Tests.InterfaceReflection
             Assert.That(desc.GenericParameters.Count, Is.EqualTo(2));
             Assert.That(desc.GenericParameters[0].Name, Is.EqualTo("TFirst"));
             Assert.That(desc.GenericParameters[1].Name, Is.EqualTo("TSecond"));
+        }
+
+        [Test]
+        public void RemotingType()
+        {
+            Assert.That(builder.Build(type.GetMethod("GetInt")).RemotingType, Is.EqualTo(MethodRemotingType.Direct));
+            Assert.That(builder.Build(type.GetMethod("VoidAsync")).RemotingType, Is.EqualTo(MethodRemotingType.AsyncVoid));
+            Assert.That(builder.Build(type.GetMethod("RetvalAsync")).RemotingType, Is.EqualTo(MethodRemotingType.AsyncWithRetval));
         }
     }
 }
