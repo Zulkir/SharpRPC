@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using SharpRpc.Interaction;
 using SharpRpc.Logs;
 using SharpRpc.Utility;
@@ -55,7 +56,7 @@ namespace SharpRpc.ServerSide
                     try
                     {
                         var context = listener.GetContext();
-                        ThreadPool.QueueUserWorkItem(x => DoWork((HttpListenerContext)x), context);
+                        Task.Run(() => DoWork(context));
                     }
                     catch (Exception ex)
                     {
@@ -73,14 +74,14 @@ namespace SharpRpc.ServerSide
             logger.Info("Listener has finished working");
         }
 
-        private void DoWork(HttpListenerContext context)
+        private async Task DoWork(HttpListenerContext context)
         {
             try
             {
                 Request request;
                 if (TryDecodeRequest(context.Request, out request))
                 {
-                    var response = requestProcessor.Process(request);
+                    var response = await requestProcessor.Process(request);
                     context.Response.StatusCode = (int)response.Status;
                     context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
                 }

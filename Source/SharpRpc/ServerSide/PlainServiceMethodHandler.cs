@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -40,11 +41,12 @@ namespace SharpRpc.ServerSide
             methodDelegate = delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, Type.EmptyTypes);
         }
 
-        public byte[] Handle(object serviceImplementation, byte[] data)
+        public Task<byte[]> Handle(object serviceImplementation, byte[] data)
         {
             fixed (byte* pData = data)
             {
-                return methodDelegate(codecContainer, serviceImplementation, pData, data.Length);
+                var result = methodDelegate(codecContainer, serviceImplementation, pData, data.Length);
+                return Task.FromResult(result);
             }
         }
     }

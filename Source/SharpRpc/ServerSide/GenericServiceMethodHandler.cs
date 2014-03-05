@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -51,7 +52,7 @@ namespace SharpRpc.ServerSide
             methodDelegates = new ConcurrentDictionary<TypesKey, ServiceMethodDelegate>();
         }
 
-        public byte[] Handle(object serviceImplementation, byte[] data)
+        public Task<byte[]> Handle(object serviceImplementation, byte[] data)
         {
             fixed (byte* pData = data)
             {
@@ -66,7 +67,8 @@ namespace SharpRpc.ServerSide
                 var methodDelegate = methodDelegates.GetOrAdd(genericArgumentsKey, 
                     k => delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, k.Types));
 
-                return methodDelegate(codecContainer, serviceImplementation, p, remainingBytes);
+                var result = methodDelegate(codecContainer, serviceImplementation, p, remainingBytes);
+                return Task.FromResult(result);
             }
         }
     }

@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Logs;
@@ -45,7 +46,7 @@ namespace SharpRpc.ServerSide
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
         }
 
-        public Response Process(Request request)
+        public async Task<Response> Process(Request request)
         {
             try
             {
@@ -56,7 +57,7 @@ namespace SharpRpc.ServerSide
 
                 var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo.Description, request.Path);
 
-                var responseData = methodHandler.Handle(implementationInfo.Implementation, request.Data);
+                var responseData = await methodHandler.Handle(implementationInfo.Implementation, request.Data);
 
                 var executionTime = DateTime.Now - startTime;
                 logger.ProcessedRequestSuccessfully(request, executionTime);
