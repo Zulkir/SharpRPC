@@ -30,7 +30,7 @@ using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
-    public unsafe class PlainServiceMethodHandler : IServiceMethodHandler
+    public class PlainServiceMethodHandler : IServiceMethodHandler
     {
         private readonly ICodecContainer codecContainer;
         private readonly ServiceMethodDelegate methodDelegate;
@@ -41,13 +41,9 @@ namespace SharpRpc.ServerSide
             methodDelegate = delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, Type.EmptyTypes);
         }
 
-        public Task<byte[]> Handle(object serviceImplementation, byte[] data)
+        public async Task<byte[]> Handle(object serviceImplementation, byte[] data)
         {
-            fixed (byte* pData = data)
-            {
-                var result = methodDelegate(codecContainer, serviceImplementation, pData, data.Length);
-                return Task.FromResult(result);
-            }
+            return await methodDelegate(codecContainer, serviceImplementation, data, 0);
         }
     }
 }

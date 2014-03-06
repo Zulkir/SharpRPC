@@ -92,7 +92,7 @@ namespace SharpRpc.Tests.ServerSide
         public void Trivial()
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "Trivial"), Type.EmptyTypes);
-            var result = methodDelegate(codecContainer, service, (byte*)0, 0);
+            var result = methodDelegate(codecContainer, service, null, 0).Result;
             Assert.That(result.Length, Is.EqualTo(0));
             Assert.That(service.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
         }
@@ -103,7 +103,7 @@ namespace SharpRpc.Tests.ServerSide
             var middleService = Substitute.For<IMiddleService>();
             service.Middle.Returns(middleService);
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "Middle", "Trivial"), Type.EmptyTypes);
-            methodDelegate(codecContainer, service, (byte*)0, 0);
+            methodDelegate(codecContainer, service, null, 0);
             Assert.That(middleService.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
         }
 
@@ -115,7 +115,7 @@ namespace SharpRpc.Tests.ServerSide
             middleService.Local.Returns(localService);
             service.Middle.Returns(middleService);
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "Middle", "Local", "Trivial"), Type.EmptyTypes);
-            methodDelegate(codecContainer, service, (byte*)0, 0);
+            methodDelegate(codecContainer, service, null, 0);
             Assert.That(localService.ReceivedCalls().Single().GetMethodInfo().Name, Is.EqualTo("Trivial"));
         }
 
@@ -131,12 +131,31 @@ namespace SharpRpc.Tests.ServerSide
                 *(double*) (pData + 4) = 234.567;
             }
 
-            byte[] result;
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
+            
+            Assert.That(result.Length, Is.EqualTo(0));
+            var serviceCall = service.ReceivedCalls().Single();
+            var arguments = serviceCall.GetArguments();
+            Assert.That(serviceCall.GetMethodInfo().Name, Is.EqualTo("MethodWithArgs"));
+            Assert.That(arguments[0], Is.EqualTo(123));
+            Assert.That(arguments[1], Is.EqualTo(234.567));
+        }
+
+        [Test]
+        public void Offset()
+        {
+            const int offset = 123;
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "MethodWithArgs"), Type.EmptyTypes);
+
+            var data = new byte[offset + 12];
             fixed (byte* pData = data)
             {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
+                *(int*)(pData + offset) = 123;
+                *(double*)(pData + 4 + offset) = 234.567;
             }
-            
+
+            var result = methodDelegate(codecContainer, service, data, offset).Result;
+
             Assert.That(result.Length, Is.EqualTo(0));
             var serviceCall = service.ReceivedCalls().Single();
             var arguments = serviceCall.GetArguments();
@@ -157,7 +176,7 @@ namespace SharpRpc.Tests.ServerSide
             }
 
             service.MethodWithRetval().Returns(123.456);
-            var result = methodDelegate(codecContainer, service, (byte*)0, 0);
+            var result = methodDelegate(codecContainer, service, null, 0).Result;
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
 
@@ -181,11 +200,7 @@ namespace SharpRpc.Tests.ServerSide
             double dummy = 0;
             service.WhenForAnyArgs(x => x.ModifyByRef(ref dummy)).Do(x => { x[0] = (double)x[0] * 2; });
 
-            byte[] result;
-            fixed (byte* pData = data)
-            {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
 
@@ -203,7 +218,7 @@ namespace SharpRpc.Tests.ServerSide
             int dummy;
             service.When(x => x.GetSomethingOut(out dummy)).Do(x => { x[0] = 1234; });
 
-            var result = methodDelegate(codecContainer, service, (byte*)0, 0);
+            var result = methodDelegate(codecContainer, service, null, 0).Result;
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
 
@@ -236,11 +251,7 @@ namespace SharpRpc.Tests.ServerSide
                     return 123.456;
                 });
 
-            byte[] result;
-            fixed (byte* pData = data)
-            {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
 
@@ -265,11 +276,7 @@ namespace SharpRpc.Tests.ServerSide
                     x[0] = "OK";
                 });
 
-            byte[] result;
-            fixed (byte* pData = data)
-            {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
             Assert.That(result, Is.EquivalentTo(expectedData));
         }
 
@@ -277,7 +284,7 @@ namespace SharpRpc.Tests.ServerSide
         public void Inheritance()
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "DoBaseStuff"), Type.EmptyTypes);
-            methodDelegate(codecContainer, service, (byte*)0, 0);
+            methodDelegate(codecContainer, service, null, 0);
         }
 
         [Test]
@@ -291,7 +298,7 @@ namespace SharpRpc.Tests.ServerSide
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "EmptyGeneric"), new[] { typeof(T) });
 
-            methodDelegate(codecContainer, service, (byte*)0, 0);
+            methodDelegate(codecContainer, service, null, 0);
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("EmptyGeneric").MakeGenericMethod(new[] { typeof(T) })));
@@ -317,10 +324,7 @@ namespace SharpRpc.Tests.ServerSide
                 argCodec.Encode(ref p, arg);
             }
 
-            fixed (byte* pData = data)
-            {
-                methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            methodDelegate(codecContainer, service, data, 0);
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericParameters").MakeGenericMethod(new[] { typeof(T) })));
@@ -349,7 +353,7 @@ namespace SharpRpc.Tests.ServerSide
 
             service.GenericRetval<T>().ReturnsForAnyArgs(expectedRetval);
 
-            var result = methodDelegate(codecContainer, service, (byte*)0, 0);
+            var result = methodDelegate(codecContainer, service, null, 0).Result;
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("GenericRetval").MakeGenericMethod(new[] { typeof(T) })));
@@ -388,11 +392,7 @@ namespace SharpRpc.Tests.ServerSide
 
             service.NestedGenerics<TKey, TValue>(arg).ReturnsForAnyArgs(expectedRetval);
 
-            byte[] result;
-            fixed (byte* pData = data)
-            {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("NestedGenerics").MakeGenericMethod(new[] { typeof(TKey), typeof(TValue) })));
@@ -449,11 +449,7 @@ namespace SharpRpc.Tests.ServerSide
                 return expectedRetval;
             });
 
-            byte[] result;
-            fixed (byte* pData = data)
-            {
-                result = methodDelegate(codecContainer, service, pData, data.Length);
-            }
+            var result = methodDelegate(codecContainer, service, data, 0).Result;
 
             var serviceCall = service.ReceivedCalls().Last();
             Assert.That(serviceCall.GetMethodInfo(), Is.EqualTo(typeof(IGlobalService).GetMethod("MixedGenerics").MakeGenericMethod(new[] { typeof(T1), typeof(T2), typeof(T3) })));

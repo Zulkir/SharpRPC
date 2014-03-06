@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -42,7 +43,8 @@ namespace SharpRpc.ServerSide
             public LocalBuilder LocalVariable;
         }
 
-        private static readonly Type[] ParameterTypes = new[] {typeof(ICodecContainer), typeof(object), typeof (byte*), typeof(int)};
+        private static readonly Type[] ParameterTypes = { typeof(ICodecContainer), typeof(object), typeof (byte[]), typeof(int) };
+        private static readonly MethodInfo TaskFromResultMethod = typeof(Task).GetMethod("FromResult").MakeGenericMethod(typeof(byte[]));
 
         public ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments)
         {
@@ -50,7 +52,7 @@ namespace SharpRpc.ServerSide
 
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
-                typeof(byte[]), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
+                typeof(Task<byte[]>), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var emittingContext = new EmittingContext(il);
 
@@ -86,10 +88,16 @@ namespace SharpRpc.ServerSide
 
             if (requestParameters.Any())
             {
-                il.Emit_Ldarg(2);                                           // data = arg_2
-                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
-                il.Emit_Ldarg(3);                                           // remainingBytes = arg_3
+                il.Emit_Ldarg(2);                                           // remainingBytes = dataArray.Length - offset
+                il.Emit(OpCodes.Ldlen);
+                il.Emit_Ldarg(3);
+                il.Emit(OpCodes.Sub);
                 il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
+                var pinnedVar = il.Emit_PinArray(typeof(byte), 2);         // var pinned dataPointer = pin(dataArray)
+                il.Emit(OpCodes.Ldloc, pinnedVar);                         // data = dataPointer + offset
+                il.Emit_Ldarg(3);
+                il.Emit(OpCodes.Add);
+                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
             }
 
             foreach (var parameter in parameters)
@@ -163,6 +171,7 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Newarr, typeof(byte));
             }
 
+            il.Emit(OpCodes.Call, TaskFromResultMethod);
             il.Emit(OpCodes.Ret);
             return (ServiceMethodDelegate)dynamicMethod.CreateDelegate(typeof(ServiceMethodDelegate));
         }

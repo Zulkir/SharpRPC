@@ -31,7 +31,7 @@ using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
-    public unsafe class GenericServiceMethodHandler : IServiceMethodHandler
+    public class GenericServiceMethodHandler : IServiceMethodHandler
     {
         private readonly ICodecContainer codecContainer;
         private readonly IServiceMethodDelegateFactory delegateFactory;
@@ -52,24 +52,29 @@ namespace SharpRpc.ServerSide
             methodDelegates = new ConcurrentDictionary<TypesKey, ServiceMethodDelegate>();
         }
 
-        public Task<byte[]> Handle(object serviceImplementation, byte[] data)
+        public async Task<byte[]> Handle(object serviceImplementation, byte[] data)
         {
+            int offset;
+            var genericArguments = DecodeGenericArguments(data, out offset);
+            var genericArgumentsKey = new TypesKey(genericArguments);
+            var methodDelegate = methodDelegates.GetOrAdd(genericArgumentsKey,
+                    k => delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, k.Types));
+
+            return await methodDelegate(codecContainer, serviceImplementation, data, offset);
+        }
+
+        private unsafe Type[] DecodeGenericArguments(byte[] data, out int offset)
+        {
+            var genericArguments = new Type[genericParameterCount];
+            int remainingBytes = data.Length;
             fixed (byte* pData = data)
             {
                 var p = pData;
-                int remainingBytes = data.Length;
-
-                var genericArguments = new Type[genericParameterCount];
                 for (int i = 0; i < genericArguments.Length; i++)
                     genericArguments[i] = typeCodec.Decode(ref p, ref remainingBytes, false);
-                var genericArgumentsKey = new TypesKey(genericArguments);
-
-                var methodDelegate = methodDelegates.GetOrAdd(genericArgumentsKey, 
-                    k => delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, k.Types));
-
-                var result = methodDelegate(codecContainer, serviceImplementation, p, remainingBytes);
-                return Task.FromResult(result);
             }
+            offset = data.Length - remainingBytes;
+            return genericArguments;
         }
     }
 }
