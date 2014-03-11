@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -58,6 +59,7 @@ namespace SharpRpc.Tests.ServerSide
             T GenericRetval<T>();
             Dictionary<TKey, TValue> NestedGenerics<TKey, TValue>(TKey[] keys); 
             T1 MixedGenerics<T1, T2, T3>(int a, T1 b, ref T2 c, out T3 d);
+            Task VoidAsync();
         }
 
         public interface IMiddleService
@@ -459,6 +461,16 @@ namespace SharpRpc.Tests.ServerSide
             Assert.That(realC, Is.EqualTo(argC));
 
             Assert.That(result, Is.EquivalentTo(expectedData));
+        }
+
+        [Test]
+        public void VoidAsync()
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "VoidAsync"), Type.EmptyTypes);
+            var task = new Task(() => { });
+            service.VoidAsync().Returns(task);
+            var resultingTask = methodDelegate(codecContainer, service, null, 0);
+            Assert.That(resultingTask, Is.EqualTo(task));
         }
     }
 }

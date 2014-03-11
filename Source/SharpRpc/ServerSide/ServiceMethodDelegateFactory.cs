@@ -75,7 +75,7 @@ namespace SharpRpc.ServerSide
 
             var genericArgumentMap = methodDesc.GenericParameters.Zip(genericArguments, (p, a) => new KeyValuePair<string, Type>(p.Name, a)).ToDictionary(x => x.Key, x => x.Value);
 
-            bool hasRetval = methodDesc.ReturnType != typeof(void);
+            
             var parameters = methodDesc.Parameters.Select((x, i) => CreateParameterNecessity(methodDesc, i, codecContainer, genericArgumentMap, il)).ToArray();
 
             var requestParameters = parameters
@@ -125,6 +125,39 @@ namespace SharpRpc.ServerSide
                 : methodDesc.MethodInfo;
             il.Emit(OpCodes.Callvirt, resolvedMethodInfo);                 // stack_0 = stack_0.Method(stack_1, stack_2, ...)
 
+            switch (methodDesc.RemotingType)
+            {
+                case MethodRemotingType.Direct:
+                    EmitProcessAndEncodeDirect(emittingContext, codecContainer, methodDesc, responseParameters, genericArgumentMap);
+                    break;
+                case MethodRemotingType.AsyncVoid:
+                    break;
+                case MethodRemotingType.AsyncWithRetval:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            return (ServiceMethodDelegate)dynamicMethod.CreateDelegate(typeof(ServiceMethodDelegate));
+        }
+
+        private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, ILGenerator il)
+        {
+            var parameterDesc = methodDesc.Parameters[parameterIndex];
+            var resolvedType = parameterDesc.Type.DeepSubstituteGenerics(genericArgumentMap);
+            return new ParameterNecessity
+            {
+                Description = parameterDesc,
+                Codec = codecContainer.GetEmittingCodecFor(resolvedType),
+                LocalVariable = parameterDesc.Way != MethodParameterWay.Val ? il.DeclareLocal(resolvedType) : null
+            };
+        }
+
+        private static void EmitProcessAndEncodeDirect(IEmittingContext emittingContext, ICodecContainer codecContainer, MethodDescription methodDescription, ParameterNecessity[] responseParameters, IReadOnlyDictionary<string, Type> genericArgumentMap)
+        {
+            var il = emittingContext.IL;
+            bool hasRetval = methodDescription.ReturnType != typeof(void);
+
             if (hasRetval || responseParameters.Any())
             {
                 IEmittingCodec retvalCodec = null;
@@ -132,7 +165,7 @@ namespace SharpRpc.ServerSide
 
                 if (hasRetval)
                 {
-                    var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
+                    var retvalType = methodDescription.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
                     retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
                     retvalVar = il.DeclareLocal(retvalType);                                        // var ret = stack_0
                     il.Emit(OpCodes.Stloc, retvalVar);
@@ -173,19 +206,10 @@ namespace SharpRpc.ServerSide
 
             il.Emit(OpCodes.Call, TaskFromResultMethod);
             il.Emit(OpCodes.Ret);
-            return (ServiceMethodDelegate)dynamicMethod.CreateDelegate(typeof(ServiceMethodDelegate));
         }
 
-        private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, ILGenerator il)
+        private static void EmitProcessAndEncodeAsyncVoid()
         {
-            var parameterDesc = methodDesc.Parameters[parameterIndex];
-            var resolvedType = parameterDesc.Type.DeepSubstituteGenerics(genericArgumentMap);
-            return new ParameterNecessity
-            {
-                Description = parameterDesc,
-                Codec = codecContainer.GetEmittingCodecFor(resolvedType),
-                LocalVariable = parameterDesc.Way != MethodParameterWay.Val ? il.DeclareLocal(resolvedType) : null
-            };
         }
     }
 }
