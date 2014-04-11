@@ -34,7 +34,7 @@ using System.Linq;
 
 namespace SharpRpc.ServerSide
 {
-    public unsafe class ServiceMethodDelegateFactory : IServiceMethodDelegateFactory
+    public class ServiceMethodDelegateFactory : IServiceMethodDelegateFactory
     {
         struct ParameterNecessity
         {
@@ -43,15 +43,24 @@ namespace SharpRpc.ServerSide
             public LocalBuilder LocalVariable;
         }
 
+        // ReSharper disable once UnusedMember.Global
+        public static Task<byte[]> ToEmptyByteArrayTask(Task task)
+        {
+            return task.ContinueWith(t => new byte[0]);
+        }
+
         private static readonly Type[] ParameterTypes = { typeof(ICodecContainer), typeof(object), typeof (byte[]), typeof(int) };
+        private static readonly Type[] FuncConstructorParameters = { typeof(object), typeof(IntPtr) };
         private static readonly MethodInfo TaskFromResultMethod = typeof(Task).GetMethod("FromResult").MakeGenericMethod(typeof(byte[]));
+        private static readonly MethodInfo ToEmptyByteArrayTaskMethod = typeof(ServiceMethodDelegateFactory).GetMethod("ToEmptyByteArrayTask");
+        private static readonly MethodInfo IntPtrFromLong = typeof(IntPtr).GetMethods().Single(x => x.Name == "op_Explicit" && x.GetParameters()[0].ParameterType == typeof(long));
 
         public ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments)
         {
             var serviceInterface = serviceDescription.Type;
+            var methodNameWithPath = serviceInterface.FullName + "__" + string.Join("_", servicePath);
 
-            var dynamicMethod = new DynamicMethod(
-                "__srpc__handle__" + serviceInterface.FullName + "__" + string.Join("_", servicePath),
+            var dynamicMethod = new DynamicMethod("__srpc__handle__" + methodNameWithPath,
                 typeof(Task<byte[]>), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = dynamicMethod.GetILGenerator();
             var emittingContext = new EmittingContext(il);
@@ -75,16 +84,17 @@ namespace SharpRpc.ServerSide
 
             var genericArgumentMap = methodDesc.GenericParameters.Zip(genericArguments, (p, a) => new KeyValuePair<string, Type>(p.Name, a)).ToDictionary(x => x.Key, x => x.Value);
 
-            
             var parameters = methodDesc.Parameters.Select((x, i) => CreateParameterNecessity(methodDesc, i, codecContainer, genericArgumentMap, il)).ToArray();
 
             var requestParameters = parameters
-                    .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
-                    .ToArray();
+                .Where(x => x.Description.Way == MethodParameterWay.Val || x.Description.Way == MethodParameterWay.Ref)
+                .ToArray();
 
             var responseParameters = parameters
                 .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
                 .ToArray();
+
+            var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
 
             if (requestParameters.Any())
             {
@@ -128,11 +138,13 @@ namespace SharpRpc.ServerSide
             switch (methodDesc.RemotingType)
             {
                 case MethodRemotingType.Direct:
-                    EmitProcessAndEncodeDirect(emittingContext, codecContainer, methodDesc, responseParameters, genericArgumentMap);
+                    EmitProcessAndEncodeDirect(emittingContext, codecContainer, responseParameters, retvalType);
                     break;
                 case MethodRemotingType.AsyncVoid:
+                    EmitProcessAndEncodeAsyncVoid(emittingContext);
                     break;
                 case MethodRemotingType.AsyncWithRetval:
+                    EmitProcessAndEncodeAsyncWithRetval(emittingContext, codecContainer, methodNameWithPath, retvalType.GetGenericArguments()[0]);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -153,10 +165,86 @@ namespace SharpRpc.ServerSide
             };
         }
 
-        private static void EmitProcessAndEncodeDirect(IEmittingContext emittingContext, ICodecContainer codecContainer, MethodDescription methodDescription, ParameterNecessity[] responseParameters, IReadOnlyDictionary<string, Type> genericArgumentMap)
+        private static void EmitProcessAndEncodeDirect(IEmittingContext emittingContext, ICodecContainer codecContainer, ParameterNecessity[] responseParameters, Type retvalType)
         {
             var il = emittingContext.IL;
-            bool hasRetval = methodDescription.ReturnType != typeof(void);
+            EmitEncodeDirect(emittingContext, codecContainer, responseParameters, retvalType);
+            il.Emit(OpCodes.Call, TaskFromResultMethod);
+            il.Emit(OpCodes.Ret);
+        }
+
+        private static void EmitProcessAndEncodeAsyncVoid(IEmittingContext emittingContext)
+        {
+            var il = emittingContext.IL;
+            il.Emit(OpCodes.Call, ToEmptyByteArrayTaskMethod);
+            il.Emit(OpCodes.Ret);
+        }
+
+        private static void EmitProcessAndEncodeAsyncWithRetval(IEmittingContext emittingContext, ICodecContainer codecContainer, string methodNameWithPath, Type pureRetvalType)
+        {
+            var encodeDeferredMethod = CreateEncodeDeferredMethod(codecContainer, methodNameWithPath, pureRetvalType);
+            var funcType = GetDeferredMethodFuncType(pureRetvalType);
+            var continueWithMethod = GetTaskContinueWithMethod(pureRetvalType);
+            
+            var il = emittingContext.IL;
+            il.Emit(OpCodes.Ldnull);
+            il.Emit(OpCodes.Ldc_I8, (long)DynamicMethodPointerExtractor.ExtractPointer(encodeDeferredMethod));
+            il.Emit(OpCodes.Call, IntPtrFromLong);
+            il.Emit(OpCodes.Newobj, funcType.GetConstructor(FuncConstructorParameters));
+            il.Emit(OpCodes.Callvirt, continueWithMethod);
+            il.Emit(OpCodes.Ret);
+        }
+
+        private static MethodInfo GetTaskContinueWithMethod(Type pureRetvalType)
+        {
+            var typeofTask = typeof(Task<>).MakeGenericType(pureRetvalType);
+            return typeofTask.GetMethods().Single(IsCorrectContinueWith).MakeGenericMethod(typeof(byte[]));
+        }
+
+        private static bool IsCorrectContinueWith(MethodInfo methodInfo)
+        {
+            if (methodInfo.Name != "ContinueWith")
+                return false;
+
+            var parameters = methodInfo.GetParameters();
+            if (parameters.Length != 1)
+                return false;
+
+            var parameterType = parameters[0].ParameterType;
+            if (parameterType.GetGenericTypeDefinition() != typeof(Func<,>))
+                return false;
+
+            if (!parameterType.GetGenericArguments()[0].IsGenericType)
+                return false;
+
+            return true;
+        }
+
+        private static Type GetDeferredMethodFuncType(Type pureRetvalType)
+        {
+            var typeofTask = typeof(Task<>).MakeGenericType(pureRetvalType);
+            return typeof(Func<,>).MakeGenericType(new[] { typeofTask, typeof(byte[]) });
+        }
+
+        private static DynamicMethod CreateEncodeDeferredMethod(ICodecContainer codecContainer, string methodNameWithPath, Type pureRetvalType)
+        {
+            var dynamicMethod = new DynamicMethod(
+                "__srpc__handle_" + methodNameWithPath + "__EncodeDeferred",
+                typeof(byte[]), new [] { typeof(Task<>).MakeGenericType(pureRetvalType) }, Assembly.GetExecutingAssembly().ManifestModule, true);
+            var il = dynamicMethod.GetILGenerator();
+            var emittingContext = new EmittingContext(il);
+
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, typeof(Task<>).MakeGenericType(pureRetvalType).GetMethod("get_Result"));
+            EmitEncodeDirect(emittingContext, codecContainer, new ParameterNecessity[0], pureRetvalType);
+            il.Emit(OpCodes.Ret);
+            return dynamicMethod;
+        }
+
+        private static void EmitEncodeDirect(IEmittingContext emittingContext, ICodecContainer codecContainer, ParameterNecessity[] responseParameters, Type retvalType)
+        {
+            var il = emittingContext.IL;
+            bool hasRetval = retvalType != typeof(void);
 
             if (hasRetval || responseParameters.Any())
             {
@@ -165,7 +253,6 @@ namespace SharpRpc.ServerSide
 
                 if (hasRetval)
                 {
-                    var retvalType = methodDescription.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
                     retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
                     retvalVar = il.DeclareLocal(retvalType);                                        // var ret = stack_0
                     il.Emit(OpCodes.Stloc, retvalVar);
@@ -203,13 +290,16 @@ namespace SharpRpc.ServerSide
                 il.Emit(OpCodes.Ldc_I4, 0);                                                 // stack_0 = new byte[0]
                 il.Emit(OpCodes.Newarr, typeof(byte));
             }
-
-            il.Emit(OpCodes.Call, TaskFromResultMethod);
-            il.Emit(OpCodes.Ret);
         }
 
-        private static void EmitProcessAndEncodeAsyncVoid()
+        private Task<byte[]> __ProcessAndEncodeAsync(Task<int> methodResult)
         {
+            return methodResult.ContinueWith((Func<Task<int>, byte[]>)__EncodeDeferred);
+        }
+
+        private byte[] __EncodeDeferred(Task<int> metodResult)
+        {
+            return new byte[] { 1, 2, 3, 4 };
         }
     }
 }

@@ -31,6 +31,6 @@ namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodDelegateFactory
     {
-        ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments); 
+        ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments);
     }
 }

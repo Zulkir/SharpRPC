@@ -60,6 +60,8 @@ namespace SharpRpc.Tests.ServerSide
             Dictionary<TKey, TValue> NestedGenerics<TKey, TValue>(TKey[] keys); 
             T1 MixedGenerics<T1, T2, T3>(int a, T1 b, ref T2 c, out T3 d);
             Task VoidAsync();
+            Task<int> RetvalAsync();
+            Task<Dictionary<TKey, TValue>> GenericRetvalAsync<TKey, TValue>();
         }
 
         public interface IMiddleService
@@ -468,9 +470,41 @@ namespace SharpRpc.Tests.ServerSide
         {
             var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "VoidAsync"), Type.EmptyTypes);
             var task = new Task(() => { });
+            task.Start();
             service.VoidAsync().Returns(task);
             var resultingTask = methodDelegate(codecContainer, service, null, 0);
-            Assert.That(resultingTask, Is.EqualTo(task));
+            Assert.That(resultingTask.Result, Is.EqualTo(new byte[0]));
+        }
+
+        [Test]
+        public void RetvalAsync()
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "RetvalAsync"), Type.EmptyTypes);
+            service.RetvalAsync().Returns(Task.FromResult(123456789));
+
+            var expectedData = new byte[4];
+            fixed (byte* pData = expectedData)
+            {
+                *(int*)pData = 123456789;
+            }
+
+            var resultingTask = methodDelegate(codecContainer, service, null, 0);
+            Assert.That(resultingTask.Result, Is.EqualTo(expectedData));
+        }
+
+        [Test]
+        public void GenericRetvalAsync()
+        {
+            var methodDelegate = factory.CreateMethodDelegate(codecContainer, globalServiceDescription, new ServicePath("MyService", "GenericRetvalAsync"), new[] {typeof(string), typeof(int)});
+            var pureRetval = new Dictionary<string, int> { {"one", 1}, {"two", 2} };
+            
+            service.GenericRetvalAsync<string, int>().Returns(Task.FromResult(pureRetval));
+
+            var retvalCodec = codecContainer.GetManualCodecFor<Dictionary<string, int>>();
+            var expectedData = retvalCodec.EncodeSingle(pureRetval);
+
+            var resultingTask = methodDelegate(codecContainer, service, null, 0);
+            Assert.That(resultingTask.Result, Is.EqualTo(expectedData));
         }
     }
 }

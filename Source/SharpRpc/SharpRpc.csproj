@@ -81,6 +81,7 @@
     <Compile Include="Codecs\IForeachLoopEmittingContext.cs" />
     <Compile Include="Codecs\StringCodecBase.cs" />
     <Compile Include="Codecs\TypeCodec.cs" />
+    <Compile Include="Reflection\DynamicMethodPointerExtractor.cs" />
     <Compile Include="Reflection\GenericParameterDescription.cs" />
     <Compile Include="Reflection\MethodRemotingType.cs" />
     <Compile Include="Reflection\ServiceDescriptionExtensions.cs" />
