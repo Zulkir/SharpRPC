@@ -34,7 +34,7 @@ namespace SharpRpc.TestClient
         static void Main(string[] args)
         {
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
-            var client = new RpcClient(topologyLoader, new TimeoutSettings(5000));
+            var client = new RpcClient(topologyLoader, new TimeoutSettings(500));
 
             var myService = client.GetService<IMyService>();
 
@@ -61,11 +61,33 @@ namespace SharpRpc.TestClient
                         Console.WriteLine(sum);
                     }
                     break;
+                    case "aadd":
+                    {
+                        Console.Write("Enter a: ");
+                        var a = int.Parse(Console.ReadLine());
+                        Console.Write("Enter b: ");
+                        var b = int.Parse(Console.ReadLine());
+                        var sum = myService.AddAsync(a, b).Result;
+                        Console.WriteLine(sum);
+                    }
+                    break;
                     case "throw":
                     {
                         try
                         {
                             myService.Throw();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex);
+                        }
+                    }
+                    break;
+                    case "sleep":
+                    {
+                        try
+                        {
+                            myService.SleepOneSecond();
                         }
                         catch (Exception ex)
                         {

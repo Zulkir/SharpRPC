@@ -23,12 +23,19 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SharpRpc.TestCommon
 {
     public class MyService : IMyService
     {
         public int Add(int a, int b)
+        {
+            return a + b;
+        }
+
+        public async Task<int> AddAsync(int a, int b)
         {
             return a + b;
         }
@@ -43,6 +50,11 @@ namespace SharpRpc.TestCommon
         public void Throw()
         {
             throw new DivideByZeroException("Because we can!");
+        }
+
+        public void SleepOneSecond()
+        {
+            Thread.Sleep(1000);
         }
     }
 }
