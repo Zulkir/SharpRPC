@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -34,17 +35,17 @@ namespace SharpRpc.Codecs
         {
         }
 
-        protected override void EmitCreateCollection(ILGenerator il, LocalBuilder lengthVar)
+        protected override void EmitCreateCollection(MyILGenerator il, LocalBuilder lengthVar)
         {
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit(OpCodes.Newarr, ElementType);
+            il.Ldloc(lengthVar);
+            il.Newarr(ElementType);
         }
 
-        protected override void EmitLoadCount(ILGenerator il, Action<ILGenerator> emitLoad)
+        protected override void EmitLoadCount(MyILGenerator il, Action<MyILGenerator> emitLoad)
         {
             emitLoad(il);
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Conv_I4);
+            il.Ldlen();
+            il.Conv_I4();
         }
     }
 }

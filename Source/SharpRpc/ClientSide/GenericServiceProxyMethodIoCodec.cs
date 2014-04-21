@@ -45,43 +45,43 @@ namespace SharpRpc.ClientSide
         public void EmitCalculateSize(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
         {
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.CodecContainerField);
-            il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(substitutedType));
+            il.Ldarg(0);
+            il.Ldfld(classContext.CodecContainerField);
+            il.Call(GetManualCodecForMethod.MakeGenericMethod(substitutedType));
             parameterAccessor.EmitLoad(il);
             var methodInfo = typeof(IManualCodec<>).GetMethod("CalculateSize");
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(substitutedType);
             var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
-            il.Emit(OpCodes.Callvirt, genericMethodInfo);
+            il.Callvirt(genericMethodInfo);
         }
 
         public void EmitEncode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
         {
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.CodecContainerField);
-            il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(substitutedType));
-            il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
+            il.Ldarg(0);
+            il.Ldfld(classContext.CodecContainerField);
+            il.Call(GetManualCodecForMethod.MakeGenericMethod(substitutedType));
+            il.Ldloca(emittingContext.DataPointerVar);
             parameterAccessor.EmitLoad(il);
             var methodInfo = typeof(IManualCodec<>).GetMethod("Encode");
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(substitutedType);
             var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
-            il.Emit(OpCodes.Callvirt, genericMethodInfo);
+            il.Callvirt(genericMethodInfo);
         }
 
         public void EmitDecode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
         {
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.CodecContainerField);
-            il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(substitutedType));
-            il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
-            il.Emit(OpCodes.Ldloca, emittingContext.RemainingBytesVar);
-            il.Emit_Ldc_I4(0);
+            il.Ldarg(0);
+            il.Ldfld(classContext.CodecContainerField);
+            il.Call(GetManualCodecForMethod.MakeGenericMethod(substitutedType));
+            il.Ldloca(emittingContext.DataPointerVar);
+            il.Ldloca(emittingContext.RemainingBytesVar);
+            il.Ldc_I4(0);
             var methodInfo = typeof(IManualCodec<>).GetMethod("Decode");
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(substitutedType);
             var genericMethodInfo = TypeBuilder.GetMethod(concreteCodecType, methodInfo);
-            il.Emit(OpCodes.Callvirt, genericMethodInfo);
+            il.Callvirt(genericMethodInfo);
         }
 
         public void EmitDecodeAndStore(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)

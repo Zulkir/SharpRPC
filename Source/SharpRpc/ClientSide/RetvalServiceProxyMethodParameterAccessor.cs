@@ -23,23 +23,23 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
     public class RetvalServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
     {
-        public void EmitLoad(ILGenerator il)
+        public void EmitLoad(MyILGenerator il)
         {
             throw new InvalidOperationException("Trying to emit Load for retval");
         }
 
-        public void EmitBeginStore(ILGenerator il)
+        public void EmitBeginStore(MyILGenerator il)
         {
             throw new InvalidOperationException("Trying to emit Store for retval");
         }
 
-        public void EmitEndStore(ILGenerator il)
+        public void EmitEndStore(MyILGenerator il)
         {
             throw new InvalidOperationException("Trying to emit Store for retval");
         }

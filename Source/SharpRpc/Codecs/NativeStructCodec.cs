@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
 using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
@@ -47,19 +46,19 @@ namespace SharpRpc.Codecs
 
         // todo: special op-codes for basic types
 
-        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
-            il.Emit_Ldc_I4(sizeInBytes);
+            il.Ldc_I4(sizeInBytes);
         }
 
-        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(T*) data = val
+            il.Ldloc(context.DataPointerVar);                           // *(T*) data = val
             emitLoad(il);
-            il.Emit(OpCodes.Stobj, type);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeInBytes);   // data += sizeInBytes
+            il.Stobj(type);
+            il.IncreasePointer(context.DataPointerVar, sizeInBytes);   // data += sizeInBytes
         }
 
         public void EmitDecode(IEmittingContext context, bool doNotCheckBounds)
@@ -68,16 +67,16 @@ namespace SharpRpc.Codecs
             if (!doNotCheckBounds)
             {
                 var everythingsAllrightLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeInBytes)
-                il.Emit_Ldc_I4(sizeInBytes);                                //     goto everythingsAllrightLabel
-                il.Emit(OpCodes.Bge, everythingsAllrightLabel);
-                il.Emit_ThrowUnexpectedEndException();                      // throw new InvalidDataException("...")
-                il.MarkLabel(everythingsAllrightLabel);                     // label everythingsAllrightLabel
+                il.Ldloc(context.RemainingBytesVar);                    // if (remainingBytes >= sizeInBytes)
+                il.Ldc_I4(sizeInBytes);                                 //     goto everythingsAllrightLabel
+                il.Bge(everythingsAllrightLabel);
+                il.ThrowUnexpectedEndException();                       // throw new InvalidDataException("...")
+                il.MarkLabel(everythingsAllrightLabel);                 // label everythingsAllrightLabel
             }
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                  // stack_0 = *(T*) data
-            il.Emit(OpCodes.Ldobj, type);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeInBytes);    // data += sizeInBytes
-            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeInBytes); // remainingBytes -= sizeInBytes
+            il.Ldloc(context.DataPointerVar);                           // stack_0 = *(T*) data
+            il.Ldobj(type);
+            il.IncreasePointer(context.DataPointerVar, sizeInBytes);    // data += sizeInBytes
+            il.DecreaseInteger(context.RemainingBytesVar, sizeInBytes); // remainingBytes -= sizeInBytes
         }
     }
 }

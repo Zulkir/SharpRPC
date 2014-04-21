@@ -25,8 +25,8 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Reflection.Emit;
 using SharpRpc.Reflection;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -52,17 +52,17 @@ namespace SharpRpc.Codecs
             return member.PropertyType;
         }
 
-        protected override void EmitLoadMember(ILGenerator il, Action<ILGenerator> emitLoad, PropertyInfo member)
+        protected override void EmitLoadMember(MyILGenerator il, Action<MyILGenerator> emitLoad, PropertyInfo member)
         {
             var propertyGetter = member.GetGetMethod(true);
             emitLoad(il);
-            il.Emit(OpCodes.Call, propertyGetter);
+            il.Call(propertyGetter);
         }
 
-        protected override void EmitSetMember(ILGenerator il, PropertyInfo member)
+        protected override void EmitSetMember(MyILGenerator il, PropertyInfo member)
         {
             var propertySetter = member.GetSetMethod(true);
-            il.Emit(OpCodes.Call, propertySetter);
+            il.Call(propertySetter);
         }
     }
 }

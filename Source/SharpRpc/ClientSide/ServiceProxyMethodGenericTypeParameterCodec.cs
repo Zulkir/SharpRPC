@@ -26,6 +26,7 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -52,10 +53,10 @@ namespace SharpRpc.ClientSide
             typeCodec.EmitEncode(emittingContext, EmitLoad);
         }
 
-        private void EmitLoad(ILGenerator il)
+        private void EmitLoad(MyILGenerator il)
         {
-            il.Emit(OpCodes.Ldtoken, typeParameterBuilder);
-            il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
+            il.Ldtoken(typeParameterBuilder);
+            il.Call(GetTypeFromHandleMethod);
         }
     }
 }

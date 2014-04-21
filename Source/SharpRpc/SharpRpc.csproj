@@ -95,6 +95,7 @@
     <Compile Include="ServiceNotReadyException.cs" />
     <Compile Include="ServiceTimeoutException.cs" />
     <Compile Include="TimeoutSettings.cs" />
+    <Compile Include="Utility\MyILGenerator.cs" />
     <Compile Include="Utility\NativeStructHelper.cs" />
     <Compile Include="Codecs\ReferenceArrayCodecBase.cs" />
     <Compile Include="Codecs\DataContractCodec.cs" />
@@ -105,7 +106,6 @@
     <Compile Include="Codecs\ICodec.cs" />
     <Compile Include="Codecs\IEmittingCodec.cs" />
     <Compile Include="Codecs\ICodecContainer.cs" />
-    <Compile Include="Codecs\ILGeneratorExtensions.cs" />
     <Compile Include="Codecs\IEmittingContext.cs" />
     <Compile Include="Codecs\IManualCodec.cs" />
     <Compile Include="Codecs\IMethodBasedManualCodec.cs" />

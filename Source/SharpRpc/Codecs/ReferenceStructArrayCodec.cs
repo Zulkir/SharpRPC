@@ -36,11 +36,11 @@ namespace SharpRpc.Codecs
         protected override void EmitDecodeAndStore(IEmittingContext context, LocalBuilder collectionVar, Action emitLoadIndex, bool doNotCheckBounds)
         {
             var il = context.IL;
-            il.Emit(OpCodes.Ldloc, collectionVar);
+            il.Ldloc(collectionVar);
             emitLoadIndex();
-            il.Emit(OpCodes.Ldelema, ElementType);
+            il.Ldelema(ElementType);
             ElementCodec.EmitDecode(context, doNotCheckBounds);
-            il.Emit(OpCodes.Stobj, ElementType);
+            il.Stobj(ElementType);
         }
     }
 }

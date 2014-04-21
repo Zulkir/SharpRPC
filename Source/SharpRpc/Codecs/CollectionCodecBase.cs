@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -49,11 +50,11 @@ namespace SharpRpc.Codecs
             elementCodec = codecContainer.GetEmittingCodecFor(elementType);
         }
 
-        protected abstract void EmitCreateCollection(ILGenerator il, LocalBuilder lengthVar);
-        protected abstract void EmitLoadCount(ILGenerator il, Action<ILGenerator> emitLoad);
+        protected abstract void EmitCreateCollection(MyILGenerator il, LocalBuilder lengthVar);
+        protected abstract void EmitLoadCount(MyILGenerator il, Action<MyILGenerator> emitLoad);
         protected abstract void EmitDecodeAndStore(IEmittingContext context, LocalBuilder collectionVar, Action emitLoadIndex, bool doNotCheckBounds);
 
-        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
             var valueIsNullOrEmptyLabel = il.DefineLabel();
@@ -63,28 +64,28 @@ namespace SharpRpc.Codecs
             var elemVar = il.DeclareLocal(elementType);                     // T elem
 
             emitLoad(il);                                                   // if (!value)
-            il.Emit(OpCodes.Brfalse, valueIsNullOrEmptyLabel);//               goto valueIsNullOrEmptyLabel
+            il.Brfalse(valueIsNullOrEmptyLabel);                            //     goto valueIsNullOrEmptyLabel
 
             EmitLoadCount(il, emitLoad);                                    // if ((int)value.Length)
-            il.Emit(OpCodes.Brtrue, valueHasElementsLabel);                 //     goto valueHasElementsLabel
+            il.Brtrue(valueHasElementsLabel);                               //     goto valueHasElementsLabel
 
             il.MarkLabel(valueIsNullOrEmptyLabel);                          // label valueIsNullOrEmptyLabel
-            il.Emit_Ldc_I4(sizeof(int));                                    // stack_0 = sizeof(int)
-            il.Emit(OpCodes.Br, endOfMethodLabel);                          // goto endOfMethodLabel
+            il.Ldc_I4(sizeof(int));                                         // stack_0 = sizeof(int)
+            il.Br(endOfMethodLabel);                                        // goto endOfMethodLabel
 
             il.MarkLabel(valueHasElementsLabel);                            // label valueHasElementsLabel
-            il.Emit_Ldc_I4(sizeof(int));                                    // sum = sizeof(int)
+            il.Ldc_I4(sizeof(int));                                         // sum = sizeof(int)
             using (var loop = il.EmitForeachLoop(elementType, emitLoad))    // foreach (current in value) 
             {
                 loop.LoadCurrent();                                         //     elem = current
-                il.Emit(OpCodes.Stloc, elemVar);
+                il.Stloc(elemVar);
                 elementCodec.EmitCalculateSize(context, elemVar);           //     stack_1 = CalculateSize(elem)
-                il.Emit(OpCodes.Add);                                       //     stack_0 = stack_0 + stack_1
+                il.Add();                                                   //     stack_0 = stack_0 + stack_1
             }
             il.MarkLabel(endOfMethodLabel);                                 // label endOfMethodLabel
         }
 
-        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
             var valueIsNotNullLabel = il.DefineLabel();
@@ -93,25 +94,25 @@ namespace SharpRpc.Codecs
             var elemVar = il.DeclareLocal(elementType);                     // TElement elem
 
             emitLoad(il);                                                   // if (value)
-            il.Emit(OpCodes.Brtrue, valueIsNotNullLabel);                   //     goto valueIsNotNullLabel
+            il.Brtrue(valueIsNotNullLabel);                                 //     goto valueIsNotNullLabel
 
             // value is null branch
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(int*) data = -1
-            il.Emit_Ldc_I4(-1);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfMethodLabel);                          // goto endOfMethodLabel
+            il.Ldloc(context.DataPointerVar);                               // *(int*) data = -1
+            il.Ldc_I4(-1);
+            il.Stind_I4();
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));        // data += sizeof(int)
+            il.Br(endOfMethodLabel);                                        // goto endOfMethodLabel
 
             // value is not null branch
             il.MarkLabel(valueIsNotNullLabel);                              // label valueIsNotNullLabel
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);                 // *(int*) data = (int)value.Count
+            il.Ldloc(context.DataPointerVar);                               // *(int*) data = (int)value.Count
             EmitLoadCount(il, emitLoad);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
+            il.Stind_I4();
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));        // data += sizeof(int)
             using (var loop = il.EmitForeachLoop(elementType, emitLoad))    // foreach (current in value)
             {
                 loop.LoadCurrent();                                         //     elem = current
-                il.Emit(OpCodes.Stloc, elemVar);
+                il.Stloc(elemVar);
                 elementCodec.EmitEncode(context, elemVar);                  //     encode(data, elem)
             }
             il.MarkLabel(endOfMethodLabel);                                 // label endOfMethodLabel
@@ -128,29 +129,29 @@ namespace SharpRpc.Codecs
             if (!doNotCheckBounds)
             {
                 var canReadLengthLabel = il.DefineLabel();
-                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);      // if (remainingBytes >= sizeof(int))
-                il.Emit_Ldc_I4(sizeof(int));                            //     goto canReadLengthLabel
-                il.Emit(OpCodes.Bge, canReadLengthLabel);
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException("...")
+                il.Ldloc(context.RemainingBytesVar);                    // if (remainingBytes >= sizeof(int))
+                il.Ldc_I4(sizeof(int));                                 //     goto canReadLengthLabel
+                il.Bge(canReadLengthLabel);
+                il.ThrowUnexpectedEndException();                       // throw new InvalidDataException("...")
                 il.MarkLabel(canReadLengthLabel);                       // label canReadLengthLabel
             }
 
             var lengthVar = il.DeclareLocal(typeof(int));               // var length = *(int*) data
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-            il.Emit(OpCodes.Ldind_I4);
-            il.Emit(OpCodes.Stloc, lengthVar);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
-            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeof(int));// remainingBytes -= sizeof(int)
-            il.Emit(OpCodes.Ldloc, lengthVar);                              // if (length != -1)
-            il.Emit_Ldc_I4(-1);                                             //     goto valueIsNotNullLabel
-            il.Emit(OpCodes.Bne_Un, valueIsNotNullLabel);
+            il.Ldloc(context.DataPointerVar);
+            il.Ldind_I4();
+            il.Stloc(lengthVar);
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));    // data += sizeof(int)
+            il.DecreaseInteger(context.RemainingBytesVar, sizeof(int)); // remainingBytes -= sizeof(int)
+            il.Ldloc(lengthVar);                                        // if (length != -1)
+            il.Ldc_I4(-1);                                              //     goto valueIsNotNullLabel
+            il.Bne_Un(valueIsNotNullLabel);
 
-            il.Emit(OpCodes.Ldnull);                                    // stack_0 = null
-            il.Emit(OpCodes.Br, endOfMethodLabel);                      // goto endOfMethodLabel
+            il.Ldnull();                                                // stack_0 = null
+            il.Br(endOfMethodLabel);                                    // goto endOfMethodLabel
 
             il.MarkLabel(valueIsNotNullLabel);                          // label valueIsNotNullLabel
             EmitCreateCollection(il, lengthVar);                        // result = new TCollection()
-            il.Emit(OpCodes.Stloc, resultVar);
+            il.Stloc(resultVar);
 
             using (var loop = il.EmitForLoop(lengthVar))                // for (int i = 0; i < length; i++)
             {                                                           //     result.Add(decode(data, remainingBytes))
@@ -158,7 +159,7 @@ namespace SharpRpc.Codecs
                                    loop.LoadIndex, doNotCheckBounds);
             }
 
-            il.Emit(OpCodes.Ldloc, resultVar);                          // stack_0 = result
+            il.Ldloc(resultVar);                                        // stack_0 = result
             il.MarkLabel(endOfMethodLabel);                             // label endOfMethodLabel
         }
     }

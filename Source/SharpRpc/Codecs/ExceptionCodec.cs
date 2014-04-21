@@ -26,6 +26,7 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -82,21 +83,21 @@ namespace SharpRpc.Codecs
                 "__srpc__CreateException",
                 typeof(Exception), new[] { typeof(Type), typeof(string), typeof(string) },
                 Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
 
-            il.Emit_Ldarg(0);                               // stack_0 = (Exception)FormatterServices.GetUninitializedObject(typeof(T))
-            il.Emit(OpCodes.Call, GetUninitializedObject);
-            il.Emit(OpCodes.Castclass, typeof(Exception));
+            il.Ldarg(0);                            // stack_0 = (Exception)FormatterServices.GetUninitializedObject(typeof(T))
+            il.Call(GetUninitializedObject);
+            il.Castclass(typeof(Exception));
 
-            il.Emit(OpCodes.Dup);                           // stack_0.Init()
-            il.Emit(OpCodes.Call, InitMethod);
-            il.Emit(OpCodes.Dup);                           // stack_0._message = message
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Stfld, MessageField);
-            il.Emit(OpCodes.Dup);                           // stack_0._message = message
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Stfld, RemoteStackTraceStringField);
-            il.Emit(OpCodes.Ret);
+            il.Dup();                               // stack_0.Init()
+            il.Call(InitMethod);
+            il.Dup();                               // stack_0._message = message
+            il.Ldarg(1);
+            il.Stfld(MessageField);
+            il.Dup();                               // stack_0._message = message
+            il.Ldarg(2);
+            il.Stfld(RemoteStackTraceStringField);
+            il.Ret();
             return (Func<Type, string, string, Exception>)dynamicMethod.CreateDelegate(typeof(Func<Type, string, string, Exception>));
         }
     }

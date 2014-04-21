@@ -23,7 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -31,8 +31,8 @@ namespace SharpRpc.Codecs
     {
         bool CanBeInlined { get; }
         int EncodingComplexity { get; }
-        void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad);
-        void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad);
+        void EmitCalculateSize(IEmittingContext context, Action<MyILGenerator> emitLoad);
+        void EmitEncode(IEmittingContext context, Action<MyILGenerator> emitLoad);
         void EmitDecode(IEmittingContext context, bool doNotCheckBounds);
     }
 }

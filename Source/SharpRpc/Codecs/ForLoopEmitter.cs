@@ -23,18 +23,19 @@ THE SOFTWARE.
 #endregion
 
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
     public class ForLoopEmitter : IForLoopEmittingContext
     {
-        private readonly ILGenerator il;
+        private readonly MyILGenerator il;
         private readonly LocalBuilder lengthVar;
         private LocalBuilder iVar;
         private Label loopStartLabel;
         private Label loopConditionLabel;
 
-        public ForLoopEmitter(ILGenerator il, LocalBuilder lengthVar)
+        public ForLoopEmitter(MyILGenerator il, LocalBuilder lengthVar)
         {
             this.il = il;
             this.lengthVar = lengthVar;
@@ -48,7 +49,7 @@ namespace SharpRpc.Codecs
 
         public void LoadIndex()
         {
-            il.Emit(OpCodes.Ldloc, iVar);
+            il.Ldloc(iVar);
         }
 
         private void EmitLoopBeginning()
@@ -58,24 +59,24 @@ namespace SharpRpc.Codecs
 
             iVar = il.DeclareLocal(typeof(int));        // int i
 
-            il.Emit_Ldc_I4(0);                          // i = 0
-            il.Emit(OpCodes.Stloc, iVar);
-            il.Emit(OpCodes.Br, loopConditionLabel);    // goto loopConditionLabel
+            il.Ldc_I4(0);                               // i = 0
+            il.Stloc(iVar);
+            il.Br(loopConditionLabel);                  // goto loopConditionLabel
 
             il.MarkLabel(loopStartLabel);               // label loopStartLabel
         }
 
         private void EmitLoopEnd()
         {
-            il.Emit(OpCodes.Ldloc, iVar);               // i++
-            il.Emit_Ldc_I4(1);
-            il.Emit(OpCodes.Add);
-            il.Emit(OpCodes.Stloc, iVar);
+            il.Ldloc(iVar);                             // i++
+            il.Ldc_I4(1);
+            il.Add();
+            il.Stloc(iVar);
 
             il.MarkLabel(loopConditionLabel);           // label loopConditionLabel
-            il.Emit(OpCodes.Ldloc, iVar);               // if (i < (int)value.Length)
-            il.Emit(OpCodes.Ldloc, lengthVar);          //     goto loopStartLabel
-            il.Emit(OpCodes.Blt, loopStartLabel);
+            il.Ldloc(iVar);                             // if (i < (int)value.Length)
+            il.Ldloc(lengthVar);                        //     goto loopStartLabel
+            il.Blt(loopStartLabel);
         }
     }
 }

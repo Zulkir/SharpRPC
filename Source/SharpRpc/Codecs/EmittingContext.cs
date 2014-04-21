@@ -25,23 +25,24 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
     public class EmittingContext : IEmittingContext
     {
-        private readonly ILGenerator il;
+        private readonly MyILGenerator il;
         private readonly Dictionary<string, LocalBuilder> variables;
         private LocalBuilder dataPointerVar;
         private LocalBuilder remainingBytesVar;
 
-        public EmittingContext(ILGenerator il)
+        public EmittingContext(MyILGenerator il)
         {
             this.il = il;
             variables = new Dictionary<string, LocalBuilder>();
         }
 
-        public ILGenerator IL { get { return il; } }
+        public MyILGenerator IL { get { return il; } }
         public LocalBuilder DataPointerVar { get { return dataPointerVar ?? (dataPointerVar = il.DeclareLocal(typeof(byte*))); } }
         public LocalBuilder RemainingBytesVar { get { return remainingBytesVar ?? (remainingBytesVar = il.DeclareLocal(typeof(int))); } }
 

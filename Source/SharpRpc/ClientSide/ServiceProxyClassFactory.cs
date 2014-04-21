@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using System.Linq;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -143,7 +144,7 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetReturnType(retvalType);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
-            var il = methodBuilder.GetILGenerator();
+            var il = new MyILGenerator(methodBuilder.GetILGenerator());
             var emittingContext = new EmittingContext(il);
 
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));              // byte[] dataArray
@@ -167,11 +168,11 @@ namespace SharpRpc.ClientSide
                     EmitAddIf(il, ref haveSizeOnStack);
                 }
 
-                il.Emit(OpCodes.Newarr, typeof(byte));                              // dataArray = new byte[stack_0]
-                il.Emit(OpCodes.Stloc, requestDataArrayVar);
-                var pinnedVar = il.Emit_PinArray(typeof(byte), requestDataArrayVar);// var pinned dataPointer = pin(dataArray)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
-                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+                il.Newarr(typeof(byte));                                            // dataArray = new byte[stack_0]
+                il.Stloc(requestDataArrayVar);
+                var pinnedVar = il.PinArray(typeof(byte), requestDataArrayVar);     // var pinned dataPointer = pin(dataArray)
+                il.Ldloc(pinnedVar);                                                // data = dataPointer
+                il.Stloc(emittingContext.DataPointerVar);
 
                 foreach (var codec in genericTypeParameterCodecs)
                     codec.EmitEncode(classContext, emittingContext);                // Encode(T_i, data)
@@ -180,20 +181,20 @@ namespace SharpRpc.ClientSide
             }
             else
             {
-                il.Emit(OpCodes.Ldnull);                                            // dataArray = null
-                il.Emit(OpCodes.Stloc, requestDataArrayVar);
+                il.Ldnull();                                                        // dataArray = null
+                il.Stloc(requestDataArrayVar);
             }
 
-            il.Emit_Ldarg(0);                                                       // stack_0 = methodCallProcessor
-            il.Emit(OpCodes.Ldfld, classContext.ProcessorField);
-            il.Emit(OpCodes.Ldtoken, classContext.InterfaceType);                   // stack_1 = typeof(T)
-            il.Emit(OpCodes.Call, GetTypeFromHandleMethod);
-            il.Emit(OpCodes.Ldstr, string.Format("{0}/{1}", path, methodDesc.Name));// stack_2 = SuperServicePath/ServiceName/MethodName
-            il.Emit_Ldarg(0);                                                       // stack_3 = scope
-            il.Emit(OpCodes.Ldfld, classContext.ScopeField);
-            il.Emit(OpCodes.Ldloc, requestDataArrayVar);                            // stack_4 = dataArray
-            il.Emit_Ldarg(0);                                                       // stack_5 = timeoutSettings
-            il.Emit(OpCodes.Ldfld, classContext.TimeoutSettingsField);
+            il.Ldarg(0);                                                            // stack_0 = methodCallProcessor
+            il.Ldfld(classContext.ProcessorField);
+            il.Ldtoken(classContext.InterfaceType);                                 // stack_1 = typeof(T)
+            il.Call(GetTypeFromHandleMethod);
+            il.Ldstr(string.Format("{0}/{1}", path, methodDesc.Name));              // stack_2 = SuperServicePath/ServiceName/MethodName
+            il.Ldarg(0);                                                            // stack_3 = scope
+            il.Ldfld(classContext.ScopeField);
+            il.Ldloc(requestDataArrayVar);                                          // stack_4 = dataArray
+            il.Ldarg(0);                                                            // stack_5 = timeoutSettings
+            il.Ldfld(classContext.TimeoutSettingsField);
 
             var responseParameterCodecs = allParameterCodecs.Zip(parameters, (c, d) => new DescriptionCodecPair(d, c))
                 .Where(x => x.Description.Way == MethodParameterWay.Ref || x.Description.Way == MethodParameterWay.Out)
@@ -218,13 +219,13 @@ namespace SharpRpc.ClientSide
                     throw new ArgumentOutOfRangeException();
             }
 
-            il.Emit(OpCodes.Ret);
+            il.Ret();
         }
 
-        private static void EmitAddIf(ILGenerator il, ref bool haveSizeOnStack)
+        private static void EmitAddIf(MyILGenerator il, ref bool haveSizeOnStack)
         {
             if (haveSizeOnStack)
-                il.Emit(OpCodes.Add);
+                il.Add();
             else
                 haveSizeOnStack = true;
         }
@@ -233,7 +234,7 @@ namespace SharpRpc.ClientSide
         {
             bool hasRetval = retvalType != typeof(void);
             var il = emittingContext.IL;
-            il.Emit(OpCodes.Callvirt, ProcessMethod);                               // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+            il.Callvirt(ProcessMethod);                                             // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
 
             if (responseParameterCodecs.Any() || hasRetval)
             {
@@ -250,13 +251,13 @@ namespace SharpRpc.ClientSide
             }
             else
             {
-                il.Emit(OpCodes.Pop);                                               // pop(stack_0)
+                il.Pop();                                                           // pop(stack_0)
             }
         }
 
-        private static void EmitProcessAsyncVoid(ILGenerator il)
+        private static void EmitProcessAsyncVoid(MyILGenerator il)
         {
-            il.Emit(OpCodes.Callvirt, ProcessAsyncMethod); // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
+            il.Callvirt(ProcessAsyncMethod);    // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
         }
 
         private void EmitProcessAsyncWithRetval(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext, string parameterMethodName, GenericTypeParameterBuilder[] genericTypeArguments, Type retvalType)
@@ -272,11 +273,11 @@ namespace SharpRpc.ClientSide
             var continueWithMethod = ContinueWithMethod.MakeGenericMethod(new[] { pureRetvalType });
 
             var il = emittingContext.IL;
-            il.Emit(OpCodes.Callvirt, ProcessAsyncMethod);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldftn, decodeDeferredMethod);
-            il.Emit(OpCodes.Newobj, funcConstructor);
-            il.Emit(OpCodes.Callvirt, continueWithMethod);
+            il.Callvirt(ProcessAsyncMethod);
+            il.Ldarg(0);
+            il.Ldftn(decodeDeferredMethod);
+            il.Newobj(funcConstructor);
+            il.Callvirt(continueWithMethod);
         }
 
         private MethodInfo CreateDecodeDeferredMethod(IServiceProxyClassBuildingContext classContext, string parentMethodName, GenericTypeParameterBuilder[] genericTypeArguments, Type pureRetvalType)
@@ -295,16 +296,16 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetReturnType(retvalType);
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
-            var il = methodBuilder.GetILGenerator();
+            var il = new MyILGenerator(methodBuilder.GetILGenerator());
             var emittingContext = new EmittingContext(il);
 
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Call, GetResultMethod);
+            il.Ldarg(1);
+            il.Call(GetResultMethod);
             EmitPrepareToDecode(emittingContext);
 
             var retvalCodec = ioCodecFactory.CreateRetvalCodec(retvalType);
             retvalCodec.EmitDecode(classContext, emittingContext);
-            il.Emit(OpCodes.Ret);
+            il.Ret();
 
             return methodBuilder;
         }
@@ -313,13 +314,13 @@ namespace SharpRpc.ClientSide
         {
             var il = emittingContext.IL;
             var responseDataArrayVar = il.DeclareLocal(typeof(byte[]));
-            il.Emit(OpCodes.Stloc, responseDataArrayVar);                       // dataArray = stack_0
-            il.Emit(OpCodes.Ldloc, responseDataArrayVar);                       // remainingBytes = dataArray.Length
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
-            var pinnedVar = il.Emit_PinArray(typeof(byte), responseDataArrayVar);// var pinned dataPointer = pin(dataArray)
-            il.Emit(OpCodes.Ldloc, pinnedVar);                                  // data = dataPointer
-            il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+            il.Stloc(responseDataArrayVar);                                     // dataArray = stack_0
+            il.Ldloc(responseDataArrayVar);                                     // remainingBytes = dataArray.Length
+            il.Ldlen();
+            il.Stloc(emittingContext.RemainingBytesVar);
+            var pinnedVar = il.PinArray(typeof(byte), responseDataArrayVar);    // var pinned dataPointer = pin(dataArray)
+            il.Ldloc(pinnedVar);                                                // data = dataPointer
+            il.Stloc(emittingContext.DataPointerVar);
         }
 
         private void CreateConstructor(IServiceProxyClassBuildingContext classContext, string path, ServiceDescription serviceDescription)
@@ -328,36 +329,36 @@ namespace SharpRpc.ClientSide
                 MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
                 CallingConventions.Standard, ConstructorParameterTypes);
             var baseConstructor = typeof(object).GetConstructor(Type.EmptyTypes);
-            var il = constructorBuilder.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Call, baseConstructor);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Stfld, classContext.ProcessorField);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Stfld, classContext.ScopeField);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_3);
-            il.Emit(OpCodes.Stfld, classContext.TimeoutSettingsField);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit_Ldarg(4);
-            il.Emit(OpCodes.Stfld, classContext.CodecContainerField);
+            var il = new MyILGenerator(constructorBuilder.GetILGenerator());
+            il.Ldarg(0);
+            il.Call(baseConstructor);
+            il.Ldarg(0);
+            il.Ldarg(1);
+            il.Stfld(classContext.ProcessorField);
+            il.Ldarg(0);
+            il.Ldarg(2);
+            il.Stfld(classContext.ScopeField);
+            il.Ldarg(0);
+            il.Ldarg(3);
+            il.Stfld(classContext.TimeoutSettingsField);
+            il.Ldarg(0);
+            il.Ldarg(4);
+            il.Stfld(classContext.CodecContainerField);
 
             var manualCodecTypes = classContext.GetAllManualCodecTypes();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit_Ldc_I4(manualCodecTypes.Length);
-            il.Emit(OpCodes.Newarr, typeof(IManualCodec));
-            il.Emit(OpCodes.Stfld, classContext.ManualCodecsField);
+            il.Ldarg(0);
+            il.Ldc_I4(manualCodecTypes.Length);
+            il.Newarr(typeof(IManualCodec));
+            il.Stfld(classContext.ManualCodecsField);
             for (int i = 0; i < manualCodecTypes.Length; i++)
             {
                 var codecType = manualCodecTypes[i];
-                il.Emit_Ldarg(0);
-                il.Emit(OpCodes.Ldfld, classContext.ManualCodecsField);
-                il.Emit_Ldc_I4(i);
-                il.Emit_Ldarg(4);
-                il.Emit(OpCodes.Call, GetManualCodecForMethod.MakeGenericMethod(codecType));
-                il.Emit(OpCodes.Stelem_Ref);
+                il.Ldarg(0);
+                il.Ldfld(classContext.ManualCodecsField);
+                il.Ldc_I4(i);
+                il.Ldarg(4);
+                il.Call(GetManualCodecForMethod.MakeGenericMethod(codecType));
+                il.Stelem_Ref();
             }
 
             foreach (var subserviceDesc in serviceDescription.Subservices)
@@ -366,16 +367,16 @@ namespace SharpRpc.ClientSide
                 var fieldBuilder = CreateSubserviceField(classContext, subserviceDesc, proxyClass);
                 CreateSubserviceProperty(classContext, subserviceDesc, fieldBuilder);
                 
-                il.Emit_Ldarg(0);
-                il.Emit_Ldarg(1);
-                il.Emit_Ldarg(2);
-                il.Emit_Ldarg(3);
-                il.Emit_Ldarg(4);
-                il.Emit(OpCodes.Newobj, proxyClass.GetConstructor(ConstructorParameterTypes));
-                il.Emit(OpCodes.Stfld, fieldBuilder);
+                il.Ldarg(0);
+                il.Ldarg(1);
+                il.Ldarg(2);
+                il.Ldarg(3);
+                il.Ldarg(4);
+                il.Newobj(proxyClass.GetConstructor(ConstructorParameterTypes));
+                il.Stfld(fieldBuilder);
             }
 
-            il.Emit(OpCodes.Ret);
+            il.Ret();
         }
 
         private static FieldBuilder CreateSubserviceField(IServiceProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, Type proxyClass)

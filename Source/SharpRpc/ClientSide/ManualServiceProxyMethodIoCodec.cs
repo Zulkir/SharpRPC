@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
 using SharpRpc.Codecs;
 
 namespace SharpRpc.ClientSide
@@ -43,45 +42,45 @@ namespace SharpRpc.ClientSide
         {
             int indexOfCodec = classContext.GetManualCodecIndex(type);
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.ManualCodecsField);
-            il.Emit_Ldc_I4(indexOfCodec);
-            il.Emit(OpCodes.Ldelem_Ref);
+            il.Ldarg(0);
+            il.Ldfld(classContext.ManualCodecsField);
+            il.Ldc_I4(indexOfCodec);
+            il.Ldelem_Ref();
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(type);
-            il.Emit(OpCodes.Isinst, concreteCodecType);
+            il.Isinst(concreteCodecType);
             parameterAccessor.EmitLoad(il);
-            il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("CalculateSize"));
+            il.Callvirt(concreteCodecType.GetMethod("CalculateSize"));
         }
 
         public void EmitEncode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
         {
             int indexOfCodec = classContext.GetManualCodecIndex(type);
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.ManualCodecsField);
-            il.Emit_Ldc_I4(indexOfCodec);
-            il.Emit(OpCodes.Ldelem_Ref);
+            il.Ldarg(0);
+            il.Ldfld(classContext.ManualCodecsField);
+            il.Ldc_I4(indexOfCodec);
+            il.Ldelem_Ref();
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(type);
-            il.Emit(OpCodes.Isinst, concreteCodecType);
-            il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
+            il.Isinst(concreteCodecType);
+            il.Ldloca(emittingContext.DataPointerVar);
             parameterAccessor.EmitLoad(il);
-            il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Encode"));
+            il.Callvirt(concreteCodecType.GetMethod("Encode"));
         }
 
         public void EmitDecode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
         {
             int indexOfCodec = classContext.GetManualCodecIndex(type);
             var il = emittingContext.IL;
-            il.Emit_Ldarg(0);
-            il.Emit(OpCodes.Ldfld, classContext.ManualCodecsField);
-            il.Emit_Ldc_I4(indexOfCodec);
-            il.Emit(OpCodes.Ldelem_Ref);
+            il.Ldarg(0);
+            il.Ldfld(classContext.ManualCodecsField);
+            il.Ldc_I4(indexOfCodec);
+            il.Ldelem_Ref();
             var concreteCodecType = typeof(IManualCodec<>).MakeGenericType(type);
-            il.Emit(OpCodes.Isinst, concreteCodecType);
-            il.Emit(OpCodes.Ldloca, emittingContext.DataPointerVar);
-            il.Emit(OpCodes.Ldloca, emittingContext.RemainingBytesVar);
-            il.Emit_Ldc_I4(0);
-            il.Emit(OpCodes.Callvirt, concreteCodecType.GetMethod("Decode"));
+            il.Isinst(concreteCodecType);
+            il.Ldloca(emittingContext.DataPointerVar);
+            il.Ldloca(emittingContext.RemainingBytesVar);
+            il.Ldc_I4(0);
+            il.Callvirt(concreteCodecType.GetMethod("Decode"));
         }
 
         public void EmitDecodeAndStore(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)

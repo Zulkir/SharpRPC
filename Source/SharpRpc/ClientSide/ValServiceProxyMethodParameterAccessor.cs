@@ -23,8 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
-using SharpRpc.Codecs;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
@@ -37,17 +36,17 @@ namespace SharpRpc.ClientSide
             this.argIndex = argIndex;
         }
 
-        public void EmitLoad(ILGenerator il)
+        public void EmitLoad(MyILGenerator il)
         {
-            il.Emit_Ldarg(argIndex);
+            il.Ldarg(argIndex);
         }
 
-        public void EmitBeginStore(ILGenerator il)
+        public void EmitBeginStore(MyILGenerator il)
         {
             throw new InvalidOperationException("Trying to emit Store for a Val parameter");
         }
 
-        public void EmitEndStore(ILGenerator il)
+        public void EmitEndStore(MyILGenerator il)
         {
             throw new InvalidOperationException("Trying to emit Store for a Val parameter");
         }

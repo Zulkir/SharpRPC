@@ -24,12 +24,13 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
     public interface IEmittingContext
     {
-        ILGenerator IL { get; }
+        MyILGenerator IL { get; }
         LocalBuilder DataPointerVar { get; }
         LocalBuilder RemainingBytesVar { get; }
         LocalBuilder GetSharedVariable(Type type, string name);

@@ -27,13 +27,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
     public class ForeachLoopEmitter : IForeachLoopEmittingContext
     {
-        private readonly ILGenerator il;
-        private readonly Action<ILGenerator> emitLoadCollection;
+        private readonly MyILGenerator il;
+        private readonly Action<MyILGenerator> emitLoadCollection;
 
         private readonly Type enumerableType;
         private readonly Type enumeratorType;
@@ -42,7 +43,7 @@ namespace SharpRpc.Codecs
         private Label loopConditionLabel;
         private LocalBuilder enumeratorVar;
         
-        public ForeachLoopEmitter(ILGenerator il, Type elementType, Action<ILGenerator> emitLoadCollection)
+        public ForeachLoopEmitter(MyILGenerator il, Type elementType, Action<MyILGenerator> emitLoadCollection)
         {
             this.il = il;
             this.emitLoadCollection = emitLoadCollection;
@@ -62,8 +63,8 @@ namespace SharpRpc.Codecs
 
         public void LoadCurrent()
         {
-            il.Emit(OpCodes.Ldloc, enumeratorVar);
-            il.Emit(OpCodes.Callvirt, GetCurrentMethod);
+            il.Ldloc(enumeratorVar);
+            il.Callvirt(GetCurrentMethod);
         }
 
         private void EmitLoopBeginning()
@@ -73,18 +74,18 @@ namespace SharpRpc.Codecs
             enumeratorVar = il.DeclareLocal(enumeratorType);    // IEnumerator<T> enumerator
                 
             emitLoadCollection(il);                             // enumerator = value.GetEnumerator()
-            il.Emit(OpCodes.Callvirt, GetEnumeratorMethod);
-            il.Emit(OpCodes.Stloc, enumeratorVar);
-            il.Emit(OpCodes.Br, loopConditionLabel);            // goto loopConditionLabel
+            il.Callvirt(GetEnumeratorMethod);
+            il.Stloc(enumeratorVar);
+            il.Br(loopConditionLabel);                          // goto loopConditionLabel
             il.MarkLabel(loopStartLabel);                       // label loopStartLabel
         }
 
         private void EmitLoopEnd()
         {
             il.MarkLabel(loopConditionLabel);                   // label loopConditionLabel
-            il.Emit(OpCodes.Ldloc, enumeratorVar);              // if (i < (int)value.Length)
-            il.Emit(OpCodes.Callvirt, MoveNextMethod);          //     goto loopStartLabel
-            il.Emit(OpCodes.Brtrue, loopStartLabel);
+            il.Ldloc(enumeratorVar);                            // if (i < (int)value.Length)
+            il.Callvirt(MoveNextMethod);                        //     goto loopStartLabel
+            il.Brtrue(loopStartLabel);
         }
     }
 }

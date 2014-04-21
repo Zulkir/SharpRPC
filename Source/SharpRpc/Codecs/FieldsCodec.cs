@@ -25,7 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -51,15 +51,15 @@ namespace SharpRpc.Codecs
             return member.FieldType;
         }
 
-        protected override void EmitLoadMember(ILGenerator il, Action<ILGenerator> emitLoad, FieldInfo member)
+        protected override void EmitLoadMember(MyILGenerator il, Action<MyILGenerator> emitLoad, FieldInfo member)
         {
             emitLoad(il);
-            il.Emit(OpCodes.Ldfld, member);
+            il.Ldfld(member);
         }
 
-        protected override void EmitSetMember(ILGenerator il, FieldInfo member)
+        protected override void EmitSetMember(MyILGenerator il, FieldInfo member)
         {
-            il.Emit(OpCodes.Stfld, member);
+            il.Stfld(member);
         }
     }
 }

@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -38,7 +39,7 @@ namespace SharpRpc.Codecs
         private readonly DynamicMethod decodeMethod;
         private readonly DynamicMethod decodeFastMethod;
 
-        public ManualCodecBase(Type type, IEmittingCodec emittingCodec)
+        protected ManualCodecBase(Type type, IEmittingCodec emittingCodec)
         {
             this.type = type;
             this.emittingCodec = emittingCodec;
@@ -62,10 +63,10 @@ namespace SharpRpc.Codecs
         {
             var dynamicMethod = new DynamicMethod("_calculate_size_manual_" + type.FullName,
                                                   typeof(int), new[] { type }, Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
             var context = new EmittingContext(il);
             emittingCodec.EmitCalculateSize(context, 0);
-            il.Emit(OpCodes.Ret);
+            il.Ret();
 
             return dynamicMethod;
         }
@@ -74,16 +75,16 @@ namespace SharpRpc.Codecs
         {
             var dynamicMethod = new DynamicMethod("_encode_manual_" + type.FullName,
                                                   typeof(void), new[] { typeof(byte*).MakeByRefType(), type }, Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
             var context = new EmittingContext(il);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, context.DataPointerVar);
+            il.Ldarg(0);
+            il.Ldind_I();
+            il.Stloc(context.DataPointerVar);
             emittingCodec.EmitEncode(context, 1);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-            il.Emit(OpCodes.Stind_I);
-            il.Emit(OpCodes.Ret);
+            il.Ldarg(0);
+            il.Ldloc(context.DataPointerVar);
+            il.Stind_I();
+            il.Ret();
             return dynamicMethod;
         }
 
@@ -91,22 +92,22 @@ namespace SharpRpc.Codecs
         {
             var dynamicMethod = new DynamicMethod("_decode_manual_" + type.FullName + (doNoCheckBounds ? "_dncb_" : ""),
                                                   type, new[] { typeof(byte*).MakeByRefType(), typeof(int).MakeByRefType() }, Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
             var context = new EmittingContext(il);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldind_I);
-            il.Emit(OpCodes.Stloc, context.DataPointerVar);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldind_I4);
-            il.Emit(OpCodes.Stloc, context.RemainingBytesVar);
+            il.Ldarg(0);
+            il.Ldind_I();
+            il.Stloc(context.DataPointerVar);
+            il.Ldarg(1);
+            il.Ldind_I4();
+            il.Stloc(context.RemainingBytesVar);
             emittingCodec.EmitDecode(context, doNoCheckBounds);
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-            il.Emit(OpCodes.Stind_I);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit(OpCodes.Ret);
+            il.Ldarg(0);
+            il.Ldloc(context.DataPointerVar);
+            il.Stind_I();
+            il.Ldarg(1);
+            il.Ldloc(context.RemainingBytesVar);
+            il.Stind_I4();
+            il.Ret();
             return dynamicMethod;
         }
     }

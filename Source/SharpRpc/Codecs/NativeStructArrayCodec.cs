@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
 using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
@@ -45,33 +44,33 @@ namespace SharpRpc.Codecs
         public bool CanBeInlined { get { return true; } }
         public int EncodingComplexity { get { return 1; } }
 
-        public void EmitCalculateSize(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitCalculateSize(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
 
             var arrayIsNotNullLabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                // if (value)
-            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);//     goto arrayIsNotNullLabel
+            emitLoad(il);                               // if (value)
+            il.Brtrue(arrayIsNotNullLabel);             //     goto arrayIsNotNullLabel
 
             // Array is null branch
-            il.Emit_Ldc_I4(sizeof(int));                 // stack_0 = sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);    // goto endOfSubmethodLabel
+            il.Ldc_I4(sizeof(int));                     // stack_0 = sizeof(int)
+            il.Br(endOfSubmethodLabel);                 // goto endOfSubmethodLabel
 
             // String is not null branch
             il.MarkLabel(arrayIsNotNullLabel);
             emitLoad(il);                               // stack_0 = value.Length * sizeOfStruct + sizeof(int)
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Conv_I4);
-            il.Emit_Ldc_I4(sizeOfStruct);
-            il.Emit(OpCodes.Mul);
-            il.Emit_Ldc_I4(sizeof(int));
-            il.Emit(OpCodes.Add);
+            il.Ldlen();
+            il.Conv_I4();
+            il.Ldc_I4(sizeOfStruct);
+            il.Mul();
+            il.Ldc_I4(sizeof(int));
+            il.Add();
             il.MarkLabel(endOfSubmethodLabel);
         }
 
-        public void EmitEncode(IEmittingContext context, Action<ILGenerator> emitLoad)
+        public void EmitEncode(IEmittingContext context, Action<MyILGenerator> emitLoad)
         {
             var il = context.IL;
 
@@ -79,53 +78,53 @@ namespace SharpRpc.Codecs
             var arrayIsNotEmptylabel = il.DefineLabel();
             var endOfSubmethodLabel = il.DefineLabel();
 
-            emitLoad(il);                                             // if (value)
-            il.Emit(OpCodes.Brtrue, arrayIsNotNullLabel);             //     goto arrayIsNotNullLabel
+            emitLoad(il);                                               // if (value)
+            il.Brtrue(arrayIsNotNullLabel);                             //     goto arrayIsNotNullLabel
 
             // Array is null branch
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);               // *(int*) data = -1
-            il.Emit_Ldc_I4(-1);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int)); // data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                 // goto endOfSubmethodLabel
+            il.Ldloc(context.DataPointerVar);                           // *(int*) data = -1
+            il.Ldc_I4(-1);
+            il.Stind_I4();
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));    // data += sizeof(int)
+            il.Br(endOfSubmethodLabel);                                 // goto endOfSubmethodLabel
 
             il.MarkLabel(arrayIsNotNullLabel);
-            emitLoad(il);                                             // if (value.Length)
-            il.Emit(OpCodes.Ldlen);                                   //     goto arrayIsNotEmptylabel
-            il.Emit(OpCodes.Conv_I4);
-            il.Emit(OpCodes.Brtrue, arrayIsNotEmptylabel);
+            emitLoad(il);                                               // if (value.Length)
+            il.Ldlen();                                                 //     goto arrayIsNotEmptylabel
+            il.Conv_I4();
+            il.Brtrue(arrayIsNotEmptylabel);
 
             // Array is empty branch
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);               // *(int*) data = 0
-            il.Emit_Ldc_I4(0);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int)); // data += sizeof(int)
-            il.Emit(OpCodes.Br, endOfSubmethodLabel);                 // goto endOfSubmethodLabel
+            il.Ldloc(context.DataPointerVar);                           // *(int*) data = 0
+            il.Ldc_I4(0);
+            il.Stind_I4();
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));    // data += sizeof(int)
+            il.Br(endOfSubmethodLabel);                                 // goto endOfSubmethodLabel
 
             // Array is not empty branch
             il.MarkLabel(arrayIsNotEmptylabel);
-            var lengthVar = context.GetSharedVariable<int>("length");    // var length = value.Length
+            var lengthVar = context.GetSharedVariable<int>("length");   // var length = value.Length
             emitLoad(il);                                   
-            il.Emit(OpCodes.Ldlen);
-            il.Emit(OpCodes.Conv_I4);
-            il.Emit(OpCodes.Stloc, lengthVar);
-            var sizeVar = context.GetSharedVariable<int>("sizeInBytes"); // var sizeInBytes = length * sizeOfStruct
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit_Ldc_I4(sizeOfStruct);
-            il.Emit(OpCodes.Mul);
-            il.Emit(OpCodes.Stloc, sizeVar);
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);               // *(int*) data = length
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit(OpCodes.Stind_I4);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int)); // data += sizeof(int)
-            var pointerVar = il.Emit_PinArray(typeOfStruct, emitLoad);// var pinned arrayPointer = pin(value)
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);               // cpblk(data, (byte*)arrayPointer, sizeInBytes)
-            il.Emit(OpCodes.Ldloc, pointerVar);
-            il.Emit(OpCodes.Conv_I);
-            il.Emit(OpCodes.Ldloc, sizeVar);
-            il.Emit(OpCodes.Cpblk);
-            il.Emit_UnpinArray(pointerVar);                           // unpin(arrayPointer)
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeVar);     // data += sizeInBytes
+            il.Ldlen();
+            il.Conv_I4();
+            il.Stloc(lengthVar);
+            var sizeVar = context.GetSharedVariable<int>("sizeInBytes");// var sizeInBytes = length * sizeOfStruct
+            il.Ldloc(lengthVar);
+            il.Ldc_I4(sizeOfStruct);
+            il.Mul();
+            il.Stloc(sizeVar);
+            il.Ldloc(context.DataPointerVar);                           // *(int*) data = length
+            il.Ldloc(lengthVar);
+            il.Stind_I4();
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));    // data += sizeof(int)
+            var pointerVar = il.PinArray(typeOfStruct, emitLoad);       // var pinned arrayPointer = pin(value)
+            il.Ldloc(context.DataPointerVar);                           // cpblk(data, (byte*)arrayPointer, sizeInBytes)
+            il.Ldloc(pointerVar);
+            il.Conv_I();
+            il.Ldloc(sizeVar);
+            il.Cpblk();
+            il.UnpinArray(pointerVar);                                  // unpin(arrayPointer)
+            il.IncreasePointer(context.DataPointerVar, sizeVar);        // data += sizeInBytes
             il.MarkLabel(endOfSubmethodLabel);
         }
 
@@ -143,74 +142,74 @@ namespace SharpRpc.Codecs
 
             if (!doNotCheckBounds)
             {
-                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeof(int))
-                il.Emit_Ldc_I4(sizeof(int));                            //     goto enoughBytesForLengthLabel
-                il.Emit(OpCodes.Bge, enoughBytesForLengthLabel);
+                il.Ldloc(context.RemainingBytesVar);                    // if (remainingBytes >= sizeof(int))
+                il.Ldc_I4(sizeof(int));                                 //     goto enoughBytesForLengthLabel
+                il.Bge(enoughBytesForLengthLabel);
 
                 // not enough bytes for length
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException(...)
+                il.ThrowUnexpectedEndException();                       // throw new InvalidDataException(...)
             }
             
             // enough bytes for length
             il.MarkLabel(enoughBytesForLengthLabel);
             var lengthVar = context.GetSharedVariable<int>("length");    // var length = *(int*)data
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-            il.Emit(OpCodes.Ldind_I4);
-            il.Emit(OpCodes.Stloc, lengthVar);
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeof(int));   // data += sizeof(int)
-            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeof(int));// remainingBytes -= sizeof(int)
-            il.Emit(OpCodes.Ldloc, lengthVar);                          // switch(length + 1)
-            il.Emit_Ldc_I4(1);                                          //     case 0:  goto lengthIsMinusOneLabel
-            il.Emit(OpCodes.Add);                                       //     case 1:  goto lengthIsZeroLabel
-            il.Emit(OpCodes.Switch, labelGroup);                        //     default: goto lengthIsPositiveLabel
-            il.Emit(OpCodes.Br, lengthIsPositiveLabel);
+            il.Ldloc(context.DataPointerVar);
+            il.Ldind_I4();
+            il.Stloc(lengthVar);
+            il.IncreasePointer(context.DataPointerVar, sizeof(int));    // data += sizeof(int)
+            il.DecreaseInteger(context.RemainingBytesVar, sizeof(int)); // remainingBytes -= sizeof(int)
+            il.Ldloc(lengthVar);                                        // switch(length + 1)
+            il.Ldc_I4(1);                                               //     case 0:  goto lengthIsMinusOneLabel
+            il.Add();                                                   //     case 1:  goto lengthIsZeroLabel
+            il.Switch(labelGroup);                                      //     default: goto lengthIsPositiveLabel
+            il.Br(lengthIsPositiveLabel);
             
             // length is -1
             il.MarkLabel(lengthIsMinusOneLabel);
-            il.Emit(OpCodes.Ldnull);                                    // stack_0 = null
-            il.Emit(OpCodes.Br, endOfMethodLabel);                      // goto endOfMethodLabel
+            il.Ldnull();                                                // stack_0 = null
+            il.Br(endOfMethodLabel);                                    // goto endOfMethodLabel
 
             // length is 0
             il.MarkLabel(lengthIsZeroLabel);
-            il.Emit_Ldc_I4(0);                                          // stack_0 = new T[0]
-            il.Emit(OpCodes.Newarr, typeOfStruct);
-            il.Emit(OpCodes.Br, endOfMethodLabel);                      // goto endOfMethodLabel
+            il.Ldc_I4(0);                                               // stack_0 = new T[0]
+            il.Newarr(typeOfStruct);
+            il.Br(endOfMethodLabel);                                    // goto endOfMethodLabel
             
             // length is positive
             il.MarkLabel(lengthIsPositiveLabel);
-            var sizeVar = context.GetSharedVariable<int>("sizeInBytes"); // var sizeInBytes = length * sizeOfStruct
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit_Ldc_I4(sizeOfStruct);
-            il.Emit(OpCodes.Mul);
-            il.Emit(OpCodes.Stloc, sizeVar);
+            var sizeVar = context.GetSharedVariable<int>("sizeInBytes");// var sizeInBytes = length * sizeOfStruct
+            il.Ldloc(lengthVar);
+            il.Ldc_I4(sizeOfStruct);
+            il.Mul();
+            il.Stloc(sizeVar);
             
             if (!doNotCheckBounds)
             {
-                il.Emit(OpCodes.Ldloc, context.RemainingBytesVar);          // if (remainingBytes >= sizeInBytes)
-                il.Emit(OpCodes.Ldloc, sizeVar);                        //     goto enoughBytesForDataLabel
-                il.Emit(OpCodes.Bge, enoughBytesForDataLabel);
+                il.Ldloc(context.RemainingBytesVar);                    // if (remainingBytes >= sizeInBytes)
+                il.Ldloc(sizeVar);                                      //     goto enoughBytesForDataLabel
+                il.Bge(enoughBytesForDataLabel);
             
                 // not enough bytes for data
-                il.Emit_ThrowUnexpectedEndException();                  // throw new InvalidDataException(...)
+                il.ThrowUnexpectedEndException();                       // throw new InvalidDataException(...)
             }
             
             // enough bytes for data
             il.MarkLabel(enoughBytesForDataLabel);
             var resultVar = context.GetSharedVariable(                   // var result = new T[length]
                 typeOfStruct.MakeArrayType(), "arrayOf"); 
-            il.Emit(OpCodes.Ldloc, lengthVar);
-            il.Emit(OpCodes.Newarr, typeOfStruct);
-            il.Emit(OpCodes.Stloc, resultVar);
-            var pointerVar = il.Emit_PinArray(typeOfStruct, resultVar); // var pinned arrayPointer = pin(value)
-            il.Emit(OpCodes.Ldloc, pointerVar);                         // cpblk((byte*)arrayPointer, data, sizeInBytes)
-            il.Emit(OpCodes.Conv_I);
-            il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-            il.Emit(OpCodes.Ldloc, sizeVar);
-            il.Emit(OpCodes.Cpblk);
-            il.Emit_UnpinArray(pointerVar);                                // unpin(arrayPointer)
-            il.Emit_IncreasePointer(context.DataPointerVar, sizeVar);       // data += size
-            il.Emit_DecreaseInteger(context.RemainingBytesVar, sizeVar);    // remainingBytes -= size
-            il.Emit(OpCodes.Ldloc, resultVar);                          // stack_0 = result
+            il.Ldloc(lengthVar);
+            il.Newarr(typeOfStruct);
+            il.Stloc(resultVar);
+            var pointerVar = il.PinArray(typeOfStruct, resultVar); // var pinned arrayPointer = pin(value)
+            il.Ldloc(pointerVar);                         // cpblk((byte*)arrayPointer, data, sizeInBytes)
+            il.Conv_I();
+            il.Ldloc(context.DataPointerVar);
+            il.Ldloc(sizeVar);
+            il.Cpblk();
+            il.UnpinArray(pointerVar);                                // unpin(arrayPointer)
+            il.IncreasePointer(context.DataPointerVar, sizeVar);       // data += size
+            il.DecreaseInteger(context.RemainingBytesVar, sizeVar);    // remainingBytes -= size
+            il.Ldloc(resultVar);                          // stack_0 = result
             il.MarkLabel(endOfMethodLabel);
         }
     }

@@ -35,9 +35,9 @@ namespace SharpRpc.TestCommon
             return a + b;
         }
 
-        public async Task<int> AddAsync(int a, int b)
+        public Task<int> AddAsync(int a, int b)
         {
-            return a + b;
+            return Task.FromResult(a + b);
         }
 
         public string Greet(string name)

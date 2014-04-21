@@ -23,7 +23,6 @@ THE SOFTWARE.
 #endregion
 
 using System.Reflection;
-using System.Reflection.Emit;
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -55,7 +54,7 @@ namespace SharpRpc.Tests.Codecs
             emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null, null)).Do(x =>
                 {
                     var context = x.Arg<IEmittingContext>();
-                    context.IL.Emit_Ldc_I4(size);
+                    context.IL.Ldc_I4(size);
                 });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
            
@@ -74,10 +73,10 @@ namespace SharpRpc.Tests.Codecs
                     {
                         var context = x.Arg<IEmittingContext>();
                         var il = context.IL;
-                        il.Emit(OpCodes.Ldloc, context.DataPointerVar);
-                        il.Emit_Ldc_I4(expectedValue);
-                        il.Emit(OpCodes.Stind_I4);
-                        il.Emit_IncreasePointer(context.DataPointerVar, expectedPointerDistance);
+                        il.Ldloc(context.DataPointerVar);
+                        il.Ldc_I4(expectedValue);
+                        il.Stind_I4();
+                        il.IncreasePointer(context.DataPointerVar, expectedPointerDistance);
                     });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
 
@@ -120,10 +119,10 @@ namespace SharpRpc.Tests.Codecs
                 {
                     var context = x.Arg<EmittingContext>();
                     var il = context.IL;
-                    il.Emit_Ldc_I4(expectedValue);
-                    il.Emit(OpCodes.Newobj, MyClass.Constructor);
-                    il.Emit_IncreasePointer(context.DataPointerVar, expectedPointerDistance);
-                    il.Emit_DecreaseInteger(context.RemainingBytesVar, expetedRemainingBytesDistance);
+                    il.Ldc_I4(expectedValue);
+                    il.Newobj(MyClass.Constructor);
+                    il.IncreasePointer(context.DataPointerVar, expectedPointerDistance);
+                    il.DecreaseInteger(context.RemainingBytesVar, expetedRemainingBytesDistance);
                 });
             var manualCodec = new ManualCodec<MyClass>(emittingCodec);
 

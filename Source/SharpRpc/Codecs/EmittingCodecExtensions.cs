@@ -27,6 +27,7 @@ THE SOFTWARE.
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -34,42 +35,42 @@ namespace SharpRpc.Codecs
     {
         public static void EmitCalculateSize(this IEmittingCodec codec, IEmittingContext context, int argIndex)
         {
-            codec.EmitCalculateSize(context, il => il.Emit_Ldarg(argIndex));
+            codec.EmitCalculateSize(context, il => il.Ldarg(argIndex));
         }
 
         public static void EmitCalculateSizeIndirect(this IEmittingCodec codec, IEmittingContext context, int argIndex, Type type)
         {
-            codec.EmitCalculateSize(context, il => { il.Emit_Ldarg(argIndex); il.Emit(OpCodes.Ldobj, type); });
+            codec.EmitCalculateSize(context, il => { il.Ldarg(argIndex); il.Ldobj(type); });
         }
 
         public static void EmitCalculateSize(this IEmittingCodec codec, IEmittingContext context, LocalBuilder localVar)
         {
-            codec.EmitCalculateSize(context, il => il.Emit(OpCodes.Ldloc, localVar));
+            codec.EmitCalculateSize(context, il => il.Ldloc(localVar));
         }
 
-        public static void EmitCalculateSize(this IEmittingCodec codec, IEmittingContext context, Action<ILGenerator> emitLoadParent, MethodInfo propertyGetter)
+        public static void EmitCalculateSize(this IEmittingCodec codec, IEmittingContext context, Action<MyILGenerator> emitLoadParent, MethodInfo propertyGetter)
         {
-            codec.EmitCalculateSize(context, il => { emitLoadParent(il); il.Emit(OpCodes.Call, propertyGetter); });
+            codec.EmitCalculateSize(context, il => { emitLoadParent(il); il.Call(propertyGetter); });
         }
 
         public static void EmitEncode(this IEmittingCodec codec, IEmittingContext context, int argIndex)
         {
-            codec.EmitEncode(context, il => il.Emit_Ldarg(argIndex));
+            codec.EmitEncode(context, il => il.Ldarg(argIndex));
         }
 
         public static void EmitEncodeIndirect(this IEmittingCodec codec, IEmittingContext context, int argIndex, Type type)
         {
-            codec.EmitEncode(context, il => { il.Emit_Ldarg(argIndex); il.Emit(OpCodes.Ldobj, type); });
+            codec.EmitEncode(context, il => { il.Ldarg(argIndex); il.Ldobj(type); });
         }
 
         public static void EmitEncode(this IEmittingCodec codec, IEmittingContext context, LocalBuilder localVar)
         {
-            codec.EmitEncode(context, il => il.Emit(OpCodes.Ldloc, localVar));
+            codec.EmitEncode(context, il => il.Ldloc(localVar));
         }
 
-        public static void EmitEncode(this IEmittingCodec codec, IEmittingContext context, Action<ILGenerator> emitLoadParent, MethodInfo propertyGetter)
+        public static void EmitEncode(this IEmittingCodec codec, IEmittingContext context, Action<MyILGenerator> emitLoadParent, MethodInfo propertyGetter)
         {
-            codec.EmitEncode(context, il => { emitLoadParent(il); il.Emit(OpCodes.Call, propertyGetter); });
+            codec.EmitEncode(context, il => { emitLoadParent(il); il.Call(propertyGetter); });
         }
     }
 }

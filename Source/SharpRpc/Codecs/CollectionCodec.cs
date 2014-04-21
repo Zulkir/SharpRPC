@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -44,23 +45,23 @@ namespace SharpRpc.Codecs
             addMethod = typeof(ICollection<>).MakeGenericType(elementType).GetMethod("Add");
         }
 
-        protected override void EmitCreateCollection(ILGenerator il, LocalBuilder lengthVar)
+        protected override void EmitCreateCollection(MyILGenerator il, LocalBuilder lengthVar)
         {
-            il.Emit(OpCodes.Newobj, collectionConstructor);
+            il.Newobj(collectionConstructor);
         }
 
-        protected override void EmitLoadCount(ILGenerator il, Action<ILGenerator> emitLoad)
+        protected override void EmitLoadCount(MyILGenerator il, Action<MyILGenerator> emitLoad)
         {
             emitLoad(il);
-            il.Emit(OpCodes.Callvirt, getCountMethod);
+            il.Callvirt(getCountMethod);
         }
 
         protected override void EmitDecodeAndStore(IEmittingContext context, LocalBuilder collectionVar, Action emitLoadIndex, bool doNotCheckBounds)
         {
             var il = context.IL;
-            il.Emit(OpCodes.Ldloc, collectionVar);
+            il.Ldloc(collectionVar);
             ElementCodec.EmitDecode(context, doNotCheckBounds);
-            il.Emit(OpCodes.Callvirt, addMethod);
+            il.Callvirt(addMethod);
         }
     }
 }

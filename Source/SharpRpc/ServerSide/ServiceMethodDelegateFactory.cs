@@ -31,6 +31,7 @@ using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
 using System.Linq;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ServerSide
 {
@@ -62,17 +63,17 @@ namespace SharpRpc.ServerSide
 
             var dynamicMethod = new DynamicMethod("__srpc__handle__" + methodNameWithPath,
                 typeof(Task<byte[]>), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
             var emittingContext = new EmittingContext(il);
 
-            il.Emit(OpCodes.Ldarg_1);                                           // stack_0 = (TServiceImplementation) arg_1
-            il.Emit(OpCodes.Castclass, serviceInterface);
+            il.Ldarg(1);                                                            // stack_0 = (TServiceImplementation) arg_1
+            il.Castclass(serviceInterface);
 
             var serviceDesc = serviceDescription;
             for (int i = 1; i < servicePath.Length - 1; i++)
             {
                 var propertyInfo = serviceDesc.Type.GetProperty(servicePath[i]);
-                il.Emit(OpCodes.Callvirt, propertyInfo.GetGetMethod());         // stack_0 = stack_0.Property
+                il.Callvirt(propertyInfo.GetGetMethod());                           // stack_0 = stack_0.Property
                 if (!serviceDesc.TryGetSubservice(servicePath[i], out serviceDesc))
                     throw new InvalidPathException();
             }
@@ -98,16 +99,16 @@ namespace SharpRpc.ServerSide
 
             if (requestParameters.Any())
             {
-                il.Emit_Ldarg(2);                                           // remainingBytes = dataArray.Length - offset
-                il.Emit(OpCodes.Ldlen);
-                il.Emit_Ldarg(3);
-                il.Emit(OpCodes.Sub);
-                il.Emit(OpCodes.Stloc, emittingContext.RemainingBytesVar);
-                var pinnedVar = il.Emit_PinArray(typeof(byte), 2);         // var pinned dataPointer = pin(dataArray)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                         // data = dataPointer + offset
-                il.Emit_Ldarg(3);
-                il.Emit(OpCodes.Add);
-                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+                il.Ldarg(2);                                            // remainingBytes = dataArray.Length - offset
+                il.Ldlen();
+                il.Ldarg(3);
+                il.Sub();
+                il.Stloc(emittingContext.RemainingBytesVar);
+                var pinnedVar = il.PinArray(typeof(byte), 2);           // var pinned dataPointer = pin(dataArray)
+                il.Ldloc(pinnedVar);                                    // data = dataPointer + offset
+                il.Ldarg(3);
+                il.Add();
+                il.Stloc(emittingContext.DataPointerVar);
             }
 
             foreach (var parameter in parameters)
@@ -119,11 +120,11 @@ namespace SharpRpc.ServerSide
                         break;
                     case MethodParameterWay.Ref:
                         parameter.Codec.EmitDecode(emittingContext, false); // param_i = decode(data, remainingBytes, false)
-                        il.Emit(OpCodes.Stloc, parameter.LocalVariable);
-                        il.Emit(OpCodes.Ldloca, parameter.LocalVariable);   // stack_i = *param_i
+                        il.Stloc(parameter.LocalVariable);
+                        il.Ldloca(parameter.LocalVariable);                 // stack_i = *param_i
                         break;
                     case MethodParameterWay.Out:
-                        il.Emit(OpCodes.Ldloca, parameter.LocalVariable);   // stack_i = *param_i
+                        il.Ldloca(parameter.LocalVariable);                 // stack_i = *param_i
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -133,7 +134,7 @@ namespace SharpRpc.ServerSide
             var resolvedMethodInfo = genericArguments.Any()
                 ? methodDesc.MethodInfo.MakeGenericMethod(genericArguments)
                 : methodDesc.MethodInfo;
-            il.Emit(OpCodes.Callvirt, resolvedMethodInfo);                 // stack_0 = stack_0.Method(stack_1, stack_2, ...)
+            il.Callvirt(resolvedMethodInfo);                                // stack_0 = stack_0.Method(stack_1, stack_2, ...)
 
             switch (methodDesc.RemotingType)
             {
@@ -153,7 +154,7 @@ namespace SharpRpc.ServerSide
             return (ServiceMethodDelegate)dynamicMethod.CreateDelegate(typeof(ServiceMethodDelegate));
         }
 
-        private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, ILGenerator il)
+        private static ParameterNecessity CreateParameterNecessity(MethodDescription methodDesc, int parameterIndex, ICodecContainer codecContainer, Dictionary<string, Type> genericArgumentMap, MyILGenerator il)
         {
             var parameterDesc = methodDesc.Parameters[parameterIndex];
             var resolvedType = parameterDesc.Type.DeepSubstituteGenerics(genericArgumentMap);
@@ -169,15 +170,15 @@ namespace SharpRpc.ServerSide
         {
             var il = emittingContext.IL;
             EmitEncodeDirect(emittingContext, codecContainer, responseParameters, retvalType);
-            il.Emit(OpCodes.Call, TaskFromResultMethod);
-            il.Emit(OpCodes.Ret);
+            il.Call(TaskFromResultMethod);
+            il.Ret();
         }
 
         private static void EmitProcessAndEncodeAsyncVoid(IEmittingContext emittingContext)
         {
             var il = emittingContext.IL;
-            il.Emit(OpCodes.Call, ToEmptyByteArrayTaskMethod);
-            il.Emit(OpCodes.Ret);
+            il.Call(ToEmptyByteArrayTaskMethod);
+            il.Ret();
         }
 
         private static void EmitProcessAndEncodeAsyncWithRetval(IEmittingContext emittingContext, ICodecContainer codecContainer, string methodNameWithPath, Type pureRetvalType)
@@ -187,12 +188,12 @@ namespace SharpRpc.ServerSide
             var continueWithMethod = GetTaskContinueWithMethod(pureRetvalType);
             
             var il = emittingContext.IL;
-            il.Emit(OpCodes.Ldnull);
-            il.Emit(OpCodes.Ldc_I8, (long)DynamicMethodPointerExtractor.ExtractPointer(encodeDeferredMethod));
-            il.Emit(OpCodes.Call, IntPtrFromLong);
-            il.Emit(OpCodes.Newobj, funcType.GetConstructor(FuncConstructorParameters));
-            il.Emit(OpCodes.Callvirt, continueWithMethod);
-            il.Emit(OpCodes.Ret);
+            il.Ldnull();
+            il.Ldc_I8((long)DynamicMethodPointerExtractor.ExtractPointer(encodeDeferredMethod));
+            il.Call(IntPtrFromLong);
+            il.Newobj(funcType.GetConstructor(FuncConstructorParameters));
+            il.Callvirt(continueWithMethod);
+            il.Ret();
         }
 
         private static MethodInfo GetTaskContinueWithMethod(Type pureRetvalType)
@@ -231,13 +232,13 @@ namespace SharpRpc.ServerSide
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle_" + methodNameWithPath + "__EncodeDeferred",
                 typeof(byte[]), new [] { typeof(Task<>).MakeGenericType(pureRetvalType) }, Assembly.GetExecutingAssembly().ManifestModule, true);
-            var il = dynamicMethod.GetILGenerator();
+            var il = new MyILGenerator(dynamicMethod.GetILGenerator());
             var emittingContext = new EmittingContext(il);
 
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Call, typeof(Task<>).MakeGenericType(pureRetvalType).GetMethod("get_Result"));
+            il.Ldarg(0);
+            il.Call(typeof(Task<>).MakeGenericType(pureRetvalType).GetMethod("get_Result"));
             EmitEncodeDirect(emittingContext, codecContainer, new ParameterNecessity[0], pureRetvalType);
-            il.Emit(OpCodes.Ret);
+            il.Ret();
             return dynamicMethod;
         }
 
@@ -255,7 +256,7 @@ namespace SharpRpc.ServerSide
                 {
                     retvalCodec = codecContainer.GetEmittingCodecFor(retvalType);
                     retvalVar = il.DeclareLocal(retvalType);                                        // var ret = stack_0
-                    il.Emit(OpCodes.Stloc, retvalVar);
+                    il.Stloc(retvalVar);
                     retvalCodec.EmitCalculateSize(emittingContext, retvalVar);                      // stack_0 = calculateSize(ret)
                 }
 
@@ -264,18 +265,18 @@ namespace SharpRpc.ServerSide
                 {
                     parameter.Codec.EmitCalculateSize(emittingContext, parameter.LocalVariable);    // stack_0 += calculateSize(param_i)
                     if (hasSizeOnStack)
-                        il.Emit(OpCodes.Add);
+                        il.Add();
                     else
                         hasSizeOnStack = true;
                 }
 
                 var dataArrayVar = il.DeclareLocal(typeof(byte[]));                         // var dataArray = new byte[size of retval]
-                il.Emit(OpCodes.Newarr, typeof(byte));
-                il.Emit(OpCodes.Stloc, dataArrayVar);
+                il.Newarr(typeof(byte));
+                il.Stloc(dataArrayVar);
 
-                var pinnedVar = il.Emit_PinArray(typeof(byte), dataArrayVar);               // var pinned dataPointer = pin(dataArrayVar)
-                il.Emit(OpCodes.Ldloc, pinnedVar);                                          // data = dataPointer
-                il.Emit(OpCodes.Stloc, emittingContext.DataPointerVar);
+                var pinnedVar = il.PinArray(typeof(byte), dataArrayVar);                    // var pinned dataPointer = pin(dataArrayVar)
+                il.Ldloc(pinnedVar);                                                        // data = dataPointer
+                il.Stloc(emittingContext.DataPointerVar);
 
                 foreach (var parameter in responseParameters)
                     parameter.Codec.EmitEncode(emittingContext, parameter.LocalVariable);   // encode(data, param_i)
@@ -283,23 +284,13 @@ namespace SharpRpc.ServerSide
                 if (hasRetval)
                     retvalCodec.EmitEncode(emittingContext, retvalVar);                     // encode(data, ret)
 
-                il.Emit(OpCodes.Ldloc, dataArrayVar);                                       // stack_0 = dataArray
+                il.Ldloc(dataArrayVar);                                                     // stack_0 = dataArray
             }
             else
             {
-                il.Emit(OpCodes.Ldc_I4, 0);                                                 // stack_0 = new byte[0]
-                il.Emit(OpCodes.Newarr, typeof(byte));
+                il.Ldc_I4(0);                                                               // stack_0 = new byte[0]
+                il.Newarr(typeof(byte));
             }
-        }
-
-        private Task<byte[]> __ProcessAndEncodeAsync(Task<int> methodResult)
-        {
-            return methodResult.ContinueWith((Func<Task<int>, byte[]>)__EncodeDeferred);
-        }
-
-        private byte[] __EncodeDeferred(Task<int> metodResult)
-        {
-            return new byte[] { 1, 2, 3, 4 };
         }
     }
 }

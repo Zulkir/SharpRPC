@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Reflection;
-using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
@@ -42,15 +42,15 @@ namespace SharpRpc.Codecs
         public override bool CanBeInlined { get { return true; } }
         public override int EncodingComplexity { get { return 1; } }
 
-        protected override void EmitLoadAsString(ILGenerator il, Action<ILGenerator> emitLoad)
+        protected override void EmitLoadAsString(MyILGenerator il, Action<MyILGenerator> emitLoad)
         {
             emitLoad(il);
-            il.Emit(OpCodes.Callvirt, GetAssemblyQualifiedNameMethod);
+            il.Callvirt(GetAssemblyQualifiedNameMethod);
         }
 
-        protected override void EmitParseFromString(ILGenerator il)
+        protected override void EmitParseFromString(MyILGenerator il)
         {
-            il.Emit(OpCodes.Call, GetTypeMethod);
+            il.Call(GetTypeMethod);
         }
     }
 }

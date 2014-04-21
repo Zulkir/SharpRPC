@@ -22,14 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Reflection.Emit;
+using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
     public interface IServiceProxyMethodParameterAccessor
     {
-        void EmitLoad(ILGenerator il);
-        void EmitBeginStore(ILGenerator il);
-        void EmitEndStore(ILGenerator il);
+        void EmitLoad(MyILGenerator il);
+        void EmitBeginStore(MyILGenerator il);
+        void EmitEndStore(MyILGenerator il);
     }
 }
