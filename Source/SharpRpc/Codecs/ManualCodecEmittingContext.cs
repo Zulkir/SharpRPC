@@ -23,11 +23,23 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
-    public interface IForLoopEmittingContext : IDisposable
+    public class ManualCodecEmittingContext : EmittingContextBase
     {
-        void LoadIndex();
+        private readonly int codecContainerArgumentIndex;
+
+        public ManualCodecEmittingContext(MyILGenerator il, int codecContainerArgumentIndex) : base(il)
+        {
+            this.codecContainerArgumentIndex = codecContainerArgumentIndex;
+        }
+
+        public override void EmitLoadManualCodecFor(Type type)
+        {
+            IL.Ldarg(codecContainerArgumentIndex);
+            IL.Callvirt(CodecContainerMethods.GetManualCodecFor(type));
+        }
     }
 }

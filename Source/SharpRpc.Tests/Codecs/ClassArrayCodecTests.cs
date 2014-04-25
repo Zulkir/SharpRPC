@@ -30,17 +30,9 @@ namespace SharpRpc.Tests.Codecs
     [TestFixture]
     public class ClassArrayCodecTests : CodecTestsBase
     {
-        private ICodecContainer codecContainer;
-
-        [SetUp]
-        public void Setup()
-        {
-            codecContainer = new CodecContainer();
-        }
-
         private void DoTest<T>(T[] array)
         {
-            DoTest(new ClassArrayCodec(typeof(T), codecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
+            DoTest(new ClassArrayCodec(typeof(T), CodecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
         }
 
         private void DoTestBasic<T>() where T : class

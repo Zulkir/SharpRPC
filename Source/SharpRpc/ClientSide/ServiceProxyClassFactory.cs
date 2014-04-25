@@ -67,7 +67,7 @@ namespace SharpRpc.ClientSide
         private static readonly Type[] ConstructorParameterTypes = { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
         private static readonly Type[] FuncConstructorParameters = { typeof(object), typeof(IntPtr) };
         private static readonly Type[] DecodeDeferredParameterTypes = { typeof(Task<byte[]>) };
-        private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
+        //private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
         private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
         private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
         private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("ProcessAsync");
@@ -145,7 +145,7 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new EmittingContext(il);
+            var emittingContext = new ServiceProxyMethodEmittingContext(il);
 
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));              // byte[] dataArray
 
@@ -297,7 +297,7 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new EmittingContext(il);
+            var emittingContext = new ServiceProxyMethodEmittingContext(il);
 
             il.Ldarg(1);
             il.Call(GetResultMethod);
@@ -357,7 +357,7 @@ namespace SharpRpc.ClientSide
                 il.Ldfld(classContext.ManualCodecsField);
                 il.Ldc_I4(i);
                 il.Ldarg(4);
-                il.Call(GetManualCodecForMethod.MakeGenericMethod(codecType));
+                il.Call(CodecContainerMethods.GetManualCodecFor(codecType));
                 il.Stelem_Ref();
             }
 

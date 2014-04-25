@@ -23,17 +23,17 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
-using SharpRpc.Utility;
+using System.Reflection;
 
 namespace SharpRpc.Codecs
 {
-    public interface IEmittingContext
+    public static class CodecContainerMethods
     {
-        MyILGenerator IL { get; }
-        LocalBuilder DataPointerVar { get; }
-        LocalBuilder RemainingBytesVar { get; }
-        LocalBuilder GetSharedVariable(Type type, string name);
-        void EmitLoadManualCodecFor(Type type);
+        private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor");
+
+        public static MethodInfo GetManualCodecFor(Type type)
+        {
+            return GetManualCodecForMethod.MakeGenericMethod(type);
+        }
     }
 }

@@ -23,11 +23,20 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Codecs;
+using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.ClientSide
 {
-    public interface IForeachLoopEmittingContext : IDisposable
+    public class ServiceProxyMethodEmittingContext : EmittingContextBase
     {
-        void LoadCurrent();
+        public ServiceProxyMethodEmittingContext(MyILGenerator il) : base(il)
+        {
+        }
+
+        public override void EmitLoadManualCodecFor(Type type)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

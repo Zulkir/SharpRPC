@@ -29,14 +29,14 @@ using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
-    public class EmittingContext : IEmittingContext
+    public abstract class EmittingContextBase : IEmittingContext
     {
         private readonly MyILGenerator il;
         private readonly Dictionary<string, LocalBuilder> variables;
         private LocalBuilder dataPointerVar;
         private LocalBuilder remainingBytesVar;
 
-        public EmittingContext(MyILGenerator il)
+        protected EmittingContextBase(MyILGenerator il)
         {
             this.il = il;
             variables = new Dictionary<string, LocalBuilder>();
@@ -56,5 +56,7 @@ namespace SharpRpc.Codecs
             }
             return variable;
         }
+
+        public abstract void EmitLoadManualCodecFor(Type type);
     }
 }

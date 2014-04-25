@@ -31,16 +31,24 @@ namespace SharpRpc.Tests.Codecs
 {
     public unsafe class CodecTestsBase
     {
+        protected ICodecContainer CodecContainer { get; private set; }
+
+        [SetUp]
+        public virtual void Setup()
+        {
+            CodecContainer = new CodecContainer();
+        }
+
         protected void DoTest<T>(IEmittingCodec codec, T value)
         {
             DoTest(codec, value, (a, b) => Assert.That(a, Is.EqualTo(b)));
         }
 
-        protected static void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)
+        protected void DoTest<T>(IEmittingCodec codec, T value, Action<T, T> assert)
         {
             Assert.That(codec.Type, Is.EqualTo(typeof(T)));
 
-            var manualCodec = new ManualCodec<T>(codec);
+            var manualCodec = new ManualCodec<T>(CodecContainer, codec);
 
             if (codec.FixedSize.HasValue)
                 Assert.That(manualCodec.CalculateSize(value), Is.EqualTo(codec.FixedSize));

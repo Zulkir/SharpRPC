@@ -29,7 +29,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Linq;
-using SharpRpc.Codecs;
 
 namespace SharpRpc.Utility
 {
@@ -508,12 +507,12 @@ namespace SharpRpc.Utility
             Throw();
         }
 
-        public IForLoopEmittingContext EmitForLoop(LocalBuilder lengthVar)
+        public IForLoopEmitter EmitForLoop(LocalBuilder lengthVar)
         {
             return new ForLoopEmitter(this, lengthVar);
         }
 
-        public IForeachLoopEmittingContext EmitForeachLoop(Type elementType, Action<MyILGenerator> emitLoadCollection)
+        public IForeachLoopEmitter EmitForeachLoop(Type elementType, Action<MyILGenerator> emitLoadCollection)
         {
             return new ForeachLoopEmitter(this, elementType, emitLoadCollection);
         }

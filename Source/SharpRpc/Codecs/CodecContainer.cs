@@ -50,7 +50,7 @@ namespace SharpRpc.Codecs
         {
             if (typeof(T) == typeof(Exception))
                 return (IManualCodec<T>)new ExceptionCodec(this);
-            return new ManualCodec<T>(GetEmittingCodecFor(typeof(T)));
+            return new ManualCodec<T>(this, GetEmittingCodecFor(typeof(T)));
         }
 
         private IEmittingCodec CreateCodec(Type type)

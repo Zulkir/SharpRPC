@@ -56,7 +56,7 @@ namespace SharpRpc.Tests.Codecs
                     var context = x.Arg<IEmittingContext>();
                     context.IL.Ldc_I4(size);
                 });
-            var manualCodec = new ManualCodec<MyClass>(emittingCodec);
+            var manualCodec = new ManualCodec<MyClass>(null, emittingCodec);
            
             Assert.That(manualCodec.CalculateSize(item), Is.EqualTo(size));
         }
@@ -78,7 +78,7 @@ namespace SharpRpc.Tests.Codecs
                         il.Stind_I4();
                         il.IncreasePointer(context.DataPointerVar, expectedPointerDistance);
                     });
-            var manualCodec = new ManualCodec<MyClass>(emittingCodec);
+            var manualCodec = new ManualCodec<MyClass>(null, emittingCodec);
 
             int value;
             long pointerDistance;
@@ -117,14 +117,14 @@ namespace SharpRpc.Tests.Codecs
             var emittingCodec = Substitute.For<IEmittingCodec>();
             emittingCodec.When(x => x.EmitDecode(Arg.Any<IEmittingContext>(), fast)).Do(x =>
                 {
-                    var context = x.Arg<EmittingContext>();
+                    var context = x.Arg<EmittingContextBase>();
                     var il = context.IL;
                     il.Ldc_I4(expectedValue);
                     il.Newobj(MyClass.Constructor);
                     il.IncreasePointer(context.DataPointerVar, expectedPointerDistance);
                     il.DecreaseInteger(context.RemainingBytesVar, expetedRemainingBytesDistance);
                 });
-            var manualCodec = new ManualCodec<MyClass>(emittingCodec);
+            var manualCodec = new ManualCodec<MyClass>(null, emittingCodec);
 
             int value;
             int pointerDistance;
@@ -143,6 +143,28 @@ namespace SharpRpc.Tests.Codecs
             Assert.That(value, Is.EqualTo(expectedValue));
             Assert.That(pointerDistance, Is.EqualTo(expectedPointerDistance));
             Assert.That(remainingBytesDistance, Is.EqualTo(expetedRemainingBytesDistance));
+        }
+
+        [Test]
+        public void UseOwnCodecContainer()
+        {
+            var innerCodec = Substitute.For<IManualCodec<int>>();
+
+            var codecContainer = Substitute.For<ICodecContainer>();
+            codecContainer.GetManualCodecFor<int>().Returns(innerCodec);
+
+            var emittingCodec = Substitute.For<IEmittingCodec>();
+            emittingCodec.WhenForAnyArgs(x => x.EmitCalculateSize(null, null)).Do(x =>
+            {
+                var context = x.Arg<IEmittingContext>();
+                context.EmitLoadManualCodecFor(typeof(int));
+                context.IL.Callvirt(typeof(object).GetMethod("GetHashCode"));
+            });
+            
+            var manualCodec = new ManualCodec<object>(codecContainer, emittingCodec);
+            var result = manualCodec.CalculateSize(null);
+
+            Assert.That(result, Is.EqualTo(innerCodec.GetHashCode()));
         }
     }
 }

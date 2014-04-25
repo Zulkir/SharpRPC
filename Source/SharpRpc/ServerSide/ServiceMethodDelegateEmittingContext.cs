@@ -23,17 +23,21 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
+using SharpRpc.Codecs;
 using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.ServerSide
 {
-    public interface IEmittingContext
+    public class ServiceMethodDelegateEmittingContext : EmittingContextBase
     {
-        MyILGenerator IL { get; }
-        LocalBuilder DataPointerVar { get; }
-        LocalBuilder RemainingBytesVar { get; }
-        LocalBuilder GetSharedVariable(Type type, string name);
-        void EmitLoadManualCodecFor(Type type);
+        public ServiceMethodDelegateEmittingContext(MyILGenerator il)
+            : base(il)
+        {
+        }
+
+        public override void EmitLoadManualCodecFor(Type type)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

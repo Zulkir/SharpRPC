@@ -27,11 +27,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
-using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Utility
 {
-    public class ForeachLoopEmitter : IForeachLoopEmittingContext
+    public class ForeachLoopEmitter : IForeachLoopEmitter
     {
         private readonly MyILGenerator il;
         private readonly Action<MyILGenerator> emitLoadCollection;

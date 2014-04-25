@@ -23,11 +23,10 @@ THE SOFTWARE.
 #endregion
 
 using System.Reflection.Emit;
-using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Utility
 {
-    public class ForLoopEmitter : IForLoopEmittingContext
+    public class ForLoopEmitter : IForLoopEmitter
     {
         private readonly MyILGenerator il;
         private readonly LocalBuilder lengthVar;

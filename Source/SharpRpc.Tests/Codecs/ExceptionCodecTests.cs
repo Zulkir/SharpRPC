@@ -39,8 +39,8 @@ namespace SharpRpc.Tests.Codecs
         [SetUp]
         public void Setup()
         {
-            stringCodec = new ManualCodec<string>(new StringCodec());
             var codecContainer = Substitute.For<ICodecContainer>();
+            stringCodec = new ManualCodec<string>(codecContainer, new StringCodec());
             codecContainer.GetManualCodecFor<string>().Returns(stringCodec);
             exceptionCodec = new ExceptionCodec(codecContainer);
         }

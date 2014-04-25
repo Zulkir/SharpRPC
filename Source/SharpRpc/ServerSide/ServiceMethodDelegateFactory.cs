@@ -58,15 +58,20 @@ namespace SharpRpc.ServerSide
 
         public ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments)
         {
+            const int codecContainerArgIndex = 0;
+            const int implementationArgIndex = 1;
+            const int dataArgIndex = 2;
+            const int offsetArgIndex = 3;
+
             var serviceInterface = serviceDescription.Type;
             var methodNameWithPath = serviceInterface.FullName + "__" + string.Join("_", servicePath);
 
             var dynamicMethod = new DynamicMethod("__srpc__handle__" + methodNameWithPath,
                 typeof(Task<byte[]>), ParameterTypes, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = new MyILGenerator(dynamicMethod.GetILGenerator());
-            var emittingContext = new EmittingContext(il);
+            var emittingContext = new ServiceMethodDelegateEmittingContext(il);
 
-            il.Ldarg(1);                                                            // stack_0 = (TServiceImplementation) arg_1
+            il.Ldarg(implementationArgIndex);                                       // stack_0 = (TServiceImplementation) arg_1
             il.Castclass(serviceInterface);
 
             var serviceDesc = serviceDescription;
@@ -99,14 +104,14 @@ namespace SharpRpc.ServerSide
 
             if (requestParameters.Any())
             {
-                il.Ldarg(2);                                            // remainingBytes = dataArray.Length - offset
+                il.Ldarg(dataArgIndex);                                 // remainingBytes = dataArray.Length - offset
                 il.Ldlen();
-                il.Ldarg(3);
+                il.Ldarg(offsetArgIndex);
                 il.Sub();
                 il.Stloc(emittingContext.RemainingBytesVar);
                 var pinnedVar = il.PinArray(typeof(byte), 2);           // var pinned dataPointer = pin(dataArray)
                 il.Ldloc(pinnedVar);                                    // data = dataPointer + offset
-                il.Ldarg(3);
+                il.Ldarg(offsetArgIndex);
                 il.Add();
                 il.Stloc(emittingContext.DataPointerVar);
             }
@@ -229,13 +234,15 @@ namespace SharpRpc.ServerSide
 
         private static DynamicMethod CreateEncodeDeferredMethod(ICodecContainer codecContainer, string methodNameWithPath, Type pureRetvalType)
         {
+            const int taskArgIndex = 0;
+
             var dynamicMethod = new DynamicMethod(
                 "__srpc__handle_" + methodNameWithPath + "__EncodeDeferred",
                 typeof(byte[]), new [] { typeof(Task<>).MakeGenericType(pureRetvalType) }, Assembly.GetExecutingAssembly().ManifestModule, true);
             var il = new MyILGenerator(dynamicMethod.GetILGenerator());
-            var emittingContext = new EmittingContext(il);
+            var emittingContext = new ServiceMethodDelegateEmittingContext(il);
 
-            il.Ldarg(0);
+            il.Ldarg(taskArgIndex);
             il.Call(typeof(Task<>).MakeGenericType(pureRetvalType).GetMethod("get_Result"));
             EmitEncodeDirect(emittingContext, codecContainer, new ParameterNecessity[0], pureRetvalType);
             il.Ret();

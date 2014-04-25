@@ -24,19 +24,17 @@ THE SOFTWARE.
 
 namespace SharpRpc.Codecs
 {
-    public unsafe class ManualCodec<T> : ManualCodecBase, IManualCodec<T>
+    public unsafe class ManualCodec<T> : ManualCodecBase<T>, IManualCodec<T>
     {
-        private delegate int CalculateSizeDelegate(T value);
-        private delegate void EncodeDelegate(ref byte* data, T value);
-        private delegate T DecodeDelegate(ref byte* data, ref int remainingBytes);
-
+        private readonly ICodecContainer codecContainer;
         private readonly CalculateSizeDelegate calculateSizeDelegate;
         private readonly EncodeDelegate encodeDelegate;
         private readonly DecodeDelegate decodeDelegate;
         private readonly DecodeDelegate decodeFastDelegate;
 
-        public ManualCodec(IEmittingCodec emittingCodec) : base(typeof(T), emittingCodec)
+        public ManualCodec(ICodecContainer codecContainer, IEmittingCodec emittingCodec) : base(typeof(T), emittingCodec)
         {
+            this.codecContainer = codecContainer;
             calculateSizeDelegate = (CalculateSizeDelegate)CalculateSizeMethod.CreateDelegate(typeof(CalculateSizeDelegate));
             encodeDelegate = (EncodeDelegate)EncodeMethod.CreateDelegate(typeof(EncodeDelegate));
             decodeDelegate = (DecodeDelegate)DecodeMethod.CreateDelegate(typeof(DecodeDelegate));
@@ -45,19 +43,19 @@ namespace SharpRpc.Codecs
 
         public int CalculateSize(T value)
         {
-            return calculateSizeDelegate(value);
+            return calculateSizeDelegate(codecContainer, value);
         }
 
         public void Encode(ref byte* data, T value)
         {
-            encodeDelegate(ref data, value);
+            encodeDelegate(codecContainer, ref data, value);
         }
 
         public T Decode(ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
         {
             return doNotCheckBounds
-                ? decodeFastDelegate(ref data, ref remainingBytes)
-                : decodeDelegate(ref data, ref remainingBytes);
+                ? decodeFastDelegate(codecContainer, ref data, ref remainingBytes)
+                : decodeDelegate(codecContainer, ref data, ref remainingBytes);
         }
     }
 }

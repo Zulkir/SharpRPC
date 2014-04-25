@@ -23,17 +23,11 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
-using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Utility
 {
-    public interface IEmittingContext
+    public interface IForLoopEmitter : IDisposable
     {
-        MyILGenerator IL { get; }
-        LocalBuilder DataPointerVar { get; }
-        LocalBuilder RemainingBytesVar { get; }
-        LocalBuilder GetSharedVariable(Type type, string name);
-        void EmitLoadManualCodecFor(Type type);
+        void LoadIndex();
     }
 }
