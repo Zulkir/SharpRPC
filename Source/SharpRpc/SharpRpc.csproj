@@ -76,6 +76,8 @@
     <Compile Include="Codecs\CodecContainerMethods.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
+    <Compile Include="Codecs\IndirectCodec.cs" />
+    <Compile Include="Codecs\ManualCodecMethods.cs" />
     <Compile Include="ServerSide\ServiceMethodDelegateEmittingContext.cs" />
     <Compile Include="Utility\IForLoopEmitter.cs" />
     <Compile Include="Codecs\EmittingContextExtensions.cs" />
