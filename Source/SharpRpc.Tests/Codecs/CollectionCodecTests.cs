@@ -66,17 +66,9 @@ namespace SharpRpc.Tests.Codecs
         }
         #endregion
 
-        private ICodecContainer codecContainer;
-
-        [SetUp]
-        public void Setup()
-        {
-            codecContainer = new CodecContainer();
-        }
-
         private void DoTest<TCollection, TElement>(TCollection collection) where TCollection : class, ICollection<TElement>
         {
-            DoTest(new CollectionCodec(typeof(TCollection), typeof(TElement), codecContainer), collection, (b, a) =>
+            DoTest(new CollectionCodec(typeof(TCollection), typeof(TElement), CodecContainer), collection, (b, a) =>
                 {
                     if (a == null)
                         Assert.That(b, Is.Null);

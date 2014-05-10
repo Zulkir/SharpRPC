@@ -200,17 +200,9 @@ namespace SharpRpc.Tests.Codecs
         }
         #endregion
 
-        private ICodecContainer codecContainer;
-
-        [SetUp]
-        public void Setup()
-        {
-            codecContainer = new CodecContainer();
-        }
-
         private void DoTest<T>(T value) where T : class
         {
-            DoTest(new DataContractCodec(typeof(T), codecContainer), value, (o1, o2) =>
+            DoTest(new DataContractCodec(typeof(T), CodecContainer), value, (o1, o2) =>
                 {
                     if (ReferenceEquals(o1, null))
                         Assert.That(o2, Is.Null);

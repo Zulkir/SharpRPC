@@ -145,17 +145,9 @@ namespace SharpRpc.Tests.Codecs
 
         #endregion
 
-        private ICodecContainer codecContainer;
-
-        [SetUp]
-        public void Setup()
-        {
-            codecContainer = new CodecContainer();
-        }
-
         private void DoTest<T>(T value) where T : struct
         {
-            DoTest(new FieldsCodec(typeof(T), codecContainer), value, (o1, o2) => Assert.That(o2, Is.EqualTo(o1)));
+            DoTest(new FieldsCodec(typeof(T), CodecContainer), value, (o1, o2) => Assert.That(o2, Is.EqualTo(o1)));
         }
 
         [Test]

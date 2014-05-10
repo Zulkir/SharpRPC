@@ -42,17 +42,9 @@ namespace SharpRpc.Tests.Codecs
         }
         #endregion
 
-        private ICodecContainer codecContainer;
-
-        [SetUp]
-        public void Setup()
-        {
-            codecContainer = new CodecContainer();
-        }
-
         private void DoTest<T>(T[] array)
         {
-            DoTest(new ReferenceStructArrayCodec(typeof(T), codecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
+            DoTest(new ReferenceStructArrayCodec(typeof(T), CodecContainer), array, (b, a) => Assert.That(b, Is.EqualTo(a)));
         }
 
         [Test]
