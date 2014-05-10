@@ -23,32 +23,21 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using SharpRpc.Utility;
+using SharpRpc.Codecs;
 
 namespace SharpRpc.ClientSide
 {
-    public class ValServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
+    public class ServiceProxyMethodRetvalCodec : ServiceProxyMethodIoCodecBase
     {
-        private readonly int argIndex;
-
-        public ValServiceProxyMethodParameterAccessor(int argIndex)
+        public ServiceProxyMethodRetvalCodec(Type type, ICodecContainer codecContainer)
+            : base(type, codecContainer)
         {
-            this.argIndex = argIndex;
+            
         }
 
-        public void EmitLoad(MyILGenerator il)
+        public void EmitDecode(IEmittingContext emittingContext)
         {
-            il.Ldarg(argIndex);
-        }
-
-        public void EmitBeginStore(MyILGenerator il)
-        {
-            throw new InvalidOperationException("Trying to emit Store for a Val parameter");
-        }
-
-        public void EmitEndStore(MyILGenerator il)
-        {
-            throw new InvalidOperationException("Trying to emit Store for a Val parameter");
+            Codec.EmitDecode(emittingContext, false);
         }
     }
 }

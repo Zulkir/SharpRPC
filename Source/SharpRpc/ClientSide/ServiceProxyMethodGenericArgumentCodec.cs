@@ -22,16 +22,30 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Reflection.Emit;
+using System;
+using SharpRpc.Codecs;
 
 namespace SharpRpc.ClientSide
 {
-    public class ServiceProxyFields
+    public class ServiceProxyMethodGenericArgumentCodec
     {
-        public FieldBuilder Processor { get; set; }
-        public FieldBuilder Scope { get; set; }
-        public FieldBuilder TimeoutSettings { get; set; }
-        public FieldBuilder CodecContainer { get; set; }
-        public FieldBuilder ManualCodecs { get; set; }
+        private readonly Type type;
+        private readonly IEmittingCodec typeCodec;
+
+        public ServiceProxyMethodGenericArgumentCodec(Type type)
+        {
+            this.type = type;
+            typeCodec = new IndirectCodec(typeof(Type));
+        }
+
+        public void EmitCalculateSize(IEmittingContext emittingContext)
+        {
+            typeCodec.EmitCalculateSize(emittingContext, Loaders.TypeOf(type));
+        }
+
+        public void EmitEncode(IEmittingContext emittingContext)
+        {
+            typeCodec.EmitEncode(emittingContext, Loaders.TypeOf(type));
+        }
     }
 }

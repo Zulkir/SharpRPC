@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.Serialization;
 
 namespace SharpRpc.Reflection
@@ -54,9 +55,43 @@ namespace SharpRpc.Reflection
                 return genericArgumentMap[type.Name];
             if (type.IsGenericType)
                 return type.GetGenericTypeDefinition().MakeGenericType(type.GetGenericArguments().Select(x => DeepSubstituteGenerics(x, genericArgumentMap)).ToArray());
-            if (type.IsArray)
+            if (type.HasElementType)
                 return DeepSubstituteGenerics(type.GetElementType(), genericArgumentMap).MakeArrayType();
             return type;
         }
+
+        public static bool ContainsTypeBuilders(this Type type)
+        {
+            if (type is GenericTypeParameterBuilder)
+                return true;
+            if (type.IsGenericType)
+                return type.GenericTypeArguments.Any(ContainsTypeBuilders);
+            if (type.HasElementType)
+                return ContainsTypeBuilders(type.GetElementType());
+            return false;
+        }
+
+        public static MethodInfo GetMethodSmart(this Type type, string methodName)
+        {
+            if (type.IsGenericType && type.ContainsTypeBuilders())
+            {
+                var genericDefinition = type.GetGenericTypeDefinition();
+                var methodInfo = genericDefinition.GetMethod(methodName);
+                return TypeBuilder.GetMethod(type, methodInfo);
+            }
+            return type.GetMethod(methodName);
+        }
+
+        public static ConstructorInfo GetConstructorSmart(this Type type, Type[] parameterTypes)
+        {
+            if (type.IsGenericType && type.ContainsTypeBuilders())
+            {
+                var genericDefinition = type.GetGenericTypeDefinition();
+                var constructorInfo = genericDefinition.GetConstructor(parameterTypes);
+                return TypeBuilder.GetConstructor(type, constructorInfo);
+            }
+            return type.GetConstructor(parameterTypes);
+        }
     }
 }
+

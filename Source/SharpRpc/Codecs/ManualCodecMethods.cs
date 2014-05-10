@@ -1,4 +1,5 @@
 ﻿#region License
+
 /*
 Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -20,17 +21,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #endregion
 
 using System;
 using System.Reflection;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.Codecs
 {
     public static class ManualCodecMethods
     {
-         public static MethodInfo CalculateSize(Type type) { return typeof(IManualCodec<>).MakeGenericType(type).GetMethod("CalculateSize");}
-         public static MethodInfo Encode(Type type) { return typeof(IManualCodec<>).MakeGenericType(type).GetMethod("Encode");}
-         public static MethodInfo Decode(Type type) { return typeof(IManualCodec<>).MakeGenericType(type).GetMethod("Decode");}
+        public static MethodInfo CalculateSize(Type type)
+        {
+            return typeof(IManualCodec<>).MakeGenericType(type).GetMethodSmart("CalculateSize");
+        }
+
+        public static MethodInfo Encode(Type type)
+        {
+            return typeof(IManualCodec<>).MakeGenericType(type).GetMethodSmart("Encode");
+        }
+
+        public static MethodInfo Decode(Type type)
+        {
+            return typeof(IManualCodec<>).MakeGenericType(type).GetMethodSmart("Decode");
+        }
     }
 }

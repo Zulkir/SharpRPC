@@ -22,38 +22,16 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Utility;
+using System.Reflection;
 
 namespace SharpRpc.ClientSide
 {
-    public class OutServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
+    public static class OutgoingMethodCallProcessorMethods
     {
-        private readonly int argIndex;
-        private readonly Type type;
+        private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
+        public static MethodInfo Process { get { return ProcessMethod; } }
 
-        public OutServiceProxyMethodParameterAccessor(int argIndex, Type type)
-        {
-            this.argIndex = argIndex;
-            this.type = type;
-        }
-
-        public void EmitLoad(MyILGenerator il)
-        {
-            throw new InvalidOperationException("Trying to emit Load for an Out parameter");
-        }
-
-        public void EmitBeginStore(MyILGenerator il)
-        {
-            il.Ldarg(argIndex);
-        }
-
-        public void EmitEndStore(MyILGenerator il)
-        {
-            if (type.IsValueType)
-                il.Stobj(type);
-            else
-                il.Stind_Ref();
-        }
+        private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("ProcessAsync");
+        public static MethodInfo ProcessAsync { get { return ProcessAsyncMethod; } }
     }
 }

@@ -23,51 +23,23 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Reflection.Emit;
-using SharpRpc.Codecs;
 
 namespace SharpRpc.ClientSide
 {
-    public class ServiceProxyClassBuildingContext : IServiceProxyClassBuildingContext
+    public class ServiceProxyClassBuildingContext
     {
-        public TypeBuilder Builder { get; private set; }
         public Type InterfaceType { get; private set; }
-        public FieldBuilder ProcessorField { get; private set; }
-        public FieldBuilder ScopeField { get; private set; }
-        public FieldBuilder TimeoutSettingsField { get; private set; }
-        public FieldBuilder CodecContainerField { get; private set; }
-        public FieldBuilder ManualCodecsField { get; private set; }
+        public string Path { get; private set; }
+        public TypeBuilder Builder { get; private set; }
+        public ServiceProxyClassFieldCache Fields { get; private set; }
 
-        private readonly List<Type> manualCodecTypes; 
-
-        public ServiceProxyClassBuildingContext(TypeBuilder builder, Type interfaceType)
+        public ServiceProxyClassBuildingContext(Type interfaceType, string path, TypeBuilder builder, ServiceProxyClassFieldCache fields)
         {
-            InterfaceType = interfaceType;
+            Fields = fields;
             Builder = builder;
-
-            manualCodecTypes = new List<Type>();
-
-            ProcessorField = Builder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor), FieldAttributes.Private | FieldAttributes.InitOnly);
-            ScopeField = Builder.DefineField("scope", typeof(string), FieldAttributes.Private | FieldAttributes.InitOnly);
-            TimeoutSettingsField = Builder.DefineField("timeoutSettings", typeof(TimeoutSettings), FieldAttributes.Private | FieldAttributes.InitOnly);
-            CodecContainerField = Builder.DefineField("codecContainer", typeof(ICodecContainer), FieldAttributes.Private | FieldAttributes.InitOnly);
-            ManualCodecsField = Builder.DefineField("manualCodecs", typeof(IManualCodec[]), FieldAttributes.Private | FieldAttributes.InitOnly);
-        }
-
-        public int GetManualCodecIndex(Type type)
-        {
-            int index = manualCodecTypes.IndexOf(type);
-            if (index != -1)
-                return index;
-            manualCodecTypes.Add(type);
-            return manualCodecTypes.Count - 1;
-        }
-
-        public Type[] GetAllManualCodecTypes()
-        {
-            return manualCodecTypes.ToArray();
-        }
+            Path = path;
+            InterfaceType = interfaceType;
+        }        
     }
 }

@@ -22,12 +22,18 @@ THE SOFTWARE.
 */
 #endregion
 
-using SharpRpc.Codecs;
+using System;
+using System.Reflection;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.Codecs
 {
-    public interface IServiceProxyMethodRetvalCodec
+    public static class TypeMethods
     {
-        void EmitDecode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext); 
+        public static MethodInfo GetTypeFromHandle { get; private set; }
+
+        static TypeMethods()
+        {
+            GetTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
+        }
     }
 }

@@ -23,22 +23,15 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection.Emit;
+using System.Reflection;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.Codecs
 {
-    public interface IServiceProxyClassBuildingContext
+    public static class FuncMethods
     {
-        TypeBuilder Builder { get; }
-        Type InterfaceType { get; }
+        private static readonly Type[] ConstructorParameterTypes = { typeof(object), typeof(IntPtr) };
 
-        FieldBuilder ProcessorField { get; }
-        FieldBuilder ScopeField { get; }
-        FieldBuilder TimeoutSettingsField { get; }
-        FieldBuilder CodecContainerField { get; }
-        FieldBuilder ManualCodecsField { get; }
-
-        int GetManualCodecIndex(Type type);
-        Type[] GetAllManualCodecTypes();
+        public static ConstructorInfo Constructor(Type genericArgument1, Type genericArgument2) { return typeof(Func<,>).MakeGenericType(new[] { genericArgument1, genericArgument2 }).GetConstructorSmart(ConstructorParameterTypes); }
     }
 }

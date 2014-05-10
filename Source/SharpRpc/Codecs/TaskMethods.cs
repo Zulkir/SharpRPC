@@ -23,40 +23,40 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using SharpRpc.Codecs;
-using SharpRpc.Utility;
+using System.Threading.Tasks;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.Codecs
 {
-    public class ServiceProxyMethodGenericTypeParameterCodec : IServiceProxyMethodGenericTypeParameterCodec
+    public static class TaskMethods
     {
-        private readonly GenericTypeParameterBuilder typeParameterBuilder;
-        private readonly IEmittingCodec typeCodec;
+        public static MethodInfo GetResult(Type resultType) { return typeof(Task<>).MakeGenericType(resultType).GetMethod("get_Result"); }
 
-        public ServiceProxyMethodGenericTypeParameterCodec(GenericTypeParameterBuilder typeParameterBuilder, IEmittingCodec typeCodec)
+        public static MethodInfo ContinueWith(Type originalResultType, Type continuationResultType)
         {
-            this.typeParameterBuilder = typeParameterBuilder;
-            this.typeCodec = typeCodec;
+            return typeof(Task<>).MakeGenericType(originalResultType).GetMethods().Where(IsCorrectContinueWith).Single().MakeGenericMethod(continuationResultType);
         }
 
-        private static readonly MethodInfo GetTypeFromHandleMethod = typeof(Type).GetMethod("GetTypeFromHandle");
-
-        public void EmitCalculateSize(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
+        private static bool IsCorrectContinueWith(MethodInfo methodInfo)
         {
-            typeCodec.EmitCalculateSize(emittingContext, EmitLoad);
-        }
+            if (methodInfo.Name != "ContinueWith")
+                return false;
 
-        public void EmitEncode(IServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext)
-        {
-            typeCodec.EmitEncode(emittingContext, EmitLoad);
-        }
+            var genericArguments = methodInfo.GetGenericArguments();
+            if (genericArguments.Length != 1)
+                return false;
 
-        private void EmitLoad(MyILGenerator il)
-        {
-            il.Ldtoken(typeParameterBuilder);
-            il.Call(GetTypeFromHandleMethod);
+            var parameters = methodInfo.GetParameters();
+            if (parameters.Length != 1)
+                return false;
+
+            var parameterType = parameters[0].ParameterType;
+            var expectedParameterType = typeof(Func<,>).MakeGenericType(typeof(Task<byte[]>), genericArguments[0]);
+            if (parameterType != expectedParameterType)
+                return false;
+
+            return true;
         }
     }
 }

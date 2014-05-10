@@ -22,10 +22,32 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
+using SharpRpc.Codecs;
+
 namespace SharpRpc.ClientSide
 {
-    public interface IServiceProxyMethodIoCodec : IServiceProxyMethodParameterCodec, IServiceProxyMethodRetvalCodec
+    public abstract class ServiceProxyMethodIoCodecBase
     {
-         
+        private const int MaxInlinableComplexity = 16;
+
+        protected IEmittingCodec Codec { get; private set; }
+
+        protected ServiceProxyMethodIoCodecBase(Type type, ICodecContainer codecContainer)
+        {
+            Codec = CreateCodec(type, codecContainer);
+        }
+
+        private IEmittingCodec CreateCodec(Type type, ICodecContainer codecContainer)
+        {
+            if (type.ContainsGenericParameters)
+                return new IndirectCodec(type);
+
+            var directCodec = codecContainer.GetEmittingCodecFor(type);
+            if (directCodec.CanBeInlined && directCodec.EncodingComplexity <= MaxInlinableComplexity)
+                return directCodec;
+
+            return new IndirectCodec(type);
+        } 
     }
 }

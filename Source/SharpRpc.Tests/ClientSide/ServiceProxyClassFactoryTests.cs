@@ -42,7 +42,6 @@ namespace SharpRpc.Tests.ClientSide
         private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private ICodecContainer codecContainer;
         private IOutgoingMethodCallProcessor methodCallProcessor;
-        private ServiceProxyMethodIoCodecFactory serviceProxyMethodIoCodecFactory;
         private ServiceProxyClassFactory factory;
 
         [SetUp]
@@ -51,8 +50,7 @@ namespace SharpRpc.Tests.ClientSide
             serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
             codecContainer = new CodecContainer();
             methodCallProcessor = Substitute.For<IOutgoingMethodCallProcessor>();
-            serviceProxyMethodIoCodecFactory = new ServiceProxyMethodIoCodecFactory(codecContainer);
-            factory = new ServiceProxyClassFactory(serviceDescriptionBuilder, codecContainer, serviceProxyMethodIoCodecFactory);
+            factory = new ServiceProxyClassFactory(serviceDescriptionBuilder, codecContainer);
         }
 
         public interface ITrivialService

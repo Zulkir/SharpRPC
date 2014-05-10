@@ -1,4 +1,5 @@
 ﻿#region License
+
 /*
 Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -20,18 +21,37 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #endregion
 
 using System;
-using System.Reflection.Emit;
-using SharpRpc.Reflection;
+using SharpRpc.Utility;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.Codecs
 {
-    public interface IServiceProxyMethodIoCodecFactory
+    public static class Loaders
     {
-        IServiceProxyMethodGenericTypeParameterCodec CreateGenericTypeParameterCodec(GenericTypeParameterBuilder typeParameterBuilder);
-        IServiceProxyMethodParameterCodec CreateParameterCodec(MethodParameterDescription substitutedDescription);
-        IServiceProxyMethodRetvalCodec CreateRetvalCodec(Type substitutedType);
+        public static Action<MyILGenerator> Argument(int index)
+        {
+            return il => il.Ldarg(index);
+        }
+
+        public static Action<MyILGenerator> ArgumentRef(int index, Type type)
+        {
+            return il =>
+            {
+                il.Ldarg(index);
+                il.Ldobj(type);
+            };
+        }
+
+        public static Action<MyILGenerator> TypeOf(Type type)
+        {
+            return il =>
+            {
+                il.Ldtoken(type);
+                il.Call(TypeMethods.GetTypeFromHandle);
+            };
+        }
     }
 }

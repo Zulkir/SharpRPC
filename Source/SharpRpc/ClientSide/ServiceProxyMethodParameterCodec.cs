@@ -23,34 +23,48 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Codecs;
+using SharpRpc.Reflection;
 using SharpRpc.Utility;
 
 namespace SharpRpc.ClientSide
 {
-    public class RefServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
+    public class ServiceProxyMethodParameterCodec : ServiceProxyMethodIoCodecBase
     {
-        private readonly int argIndex;
         private readonly Type type;
+        private readonly MethodParameterWay way;
+        private readonly int argIndex;
+        private readonly Action<MyILGenerator> emitLoad;
 
-        public RefServiceProxyMethodParameterAccessor(int argIndex, Type type)
+        public ServiceProxyMethodParameterCodec(MethodParameterDescription description, ICodecContainer codecContainer) 
+            : base(description.Type, codecContainer)
         {
-            this.argIndex = argIndex;
-            this.type = type;
+            type = description.Type;
+            way = description.Way;
+            argIndex = description.Index + 1;
+            emitLoad = description.Way == MethodParameterWay.Val
+                ? Loaders.Argument(argIndex)
+                : Loaders.ArgumentRef(argIndex, description.Type);
         }
 
-        public void EmitLoad(MyILGenerator il)
+        public bool IsRequestParameter { get { return way == MethodParameterWay.Val || way == MethodParameterWay.Ref; } }
+        public bool IsResponseParameter { get { return way == MethodParameterWay.Ref || way == MethodParameterWay.Out; } }
+
+        public void EmitCalculateSize(IEmittingContext emittingContext)
         {
+            Codec.EmitCalculateSize(emittingContext, emitLoad);
+        }
+
+        public void EmitEncode(IEmittingContext emittingContext)
+        {
+            Codec.EmitEncode(emittingContext, emitLoad);
+        }
+
+        public void EmitDecodeAndStore(IEmittingContext emittingContext)
+        {
+            var il = emittingContext.IL;
             il.Ldarg(argIndex);
-            il.Ldobj(type);
-        }
-
-        public void EmitBeginStore(MyILGenerator il)
-        {
-            il.Ldarg(argIndex);
-        }
-
-        public void EmitEndStore(MyILGenerator il)
-        {
+            Codec.EmitDecode(emittingContext, false);
             if (type.IsValueType)
                 il.Stobj(type);
             else
