@@ -30,14 +30,27 @@ namespace SharpRpc.ServerSide
 {
     public class ServiceMethodDelegateEmittingContext : EmittingContextBase
     {
-        public ServiceMethodDelegateEmittingContext(MyILGenerator il)
+        private readonly HandlerClassFieldCache fieldCache;
+
+        public ServiceMethodDelegateEmittingContext(MyILGenerator il, HandlerClassFieldCache fieldCache)
             : base(il)
         {
+            this.fieldCache = fieldCache;
         }
 
         public override void EmitLoadManualCodecFor(Type type)
         {
-            throw new NotImplementedException();
+            if (type.ContainsGenericParameters)
+            {
+                IL.Ldarg(0);
+                IL.Ldfld(fieldCache.CodecContainer);
+                IL.Call(CodecContainerMethods.GetManualCodecFor(type));
+            }
+            else
+            {
+                IL.Ldarg(0);
+                IL.Ldfld(fieldCache.GetOrCreateManualCodec(type));
+            }
         }
     }
 }

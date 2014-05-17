@@ -22,15 +22,28 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Codecs;
-using SharpRpc.Interaction;
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
-    public interface IServiceMethodDelegateFactory
+    public class HandlerClassBuildingContext
     {
-        ServiceMethodDelegate CreateMethodDelegate(ICodecContainer codecContainer, ServiceDescription serviceDescription, ServicePath servicePath, Type[] genericArguments);
+        public IReadOnlyList<ServiceDescription> ServiceDescriptionChain { get; private set; }
+        public MethodDescription MethodDescription { get; private set; }
+        public TypeBuilder Builder { get; private set; }
+        public GenericTypeParameterBuilder[] GenericTypeParameterBuilders { get; private set; }
+        public HandlerClassFieldCache Fields { get; private set; }
+
+        public HandlerClassBuildingContext(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, 
+            TypeBuilder builder, GenericTypeParameterBuilder[] genericTypeParameterBuilders, HandlerClassFieldCache fields)
+        {
+            ServiceDescriptionChain = serviceDescriptionChain;
+            MethodDescription = methodDescription;
+            Builder = builder;
+            GenericTypeParameterBuilders = genericTypeParameterBuilders;
+            Fields = fields;
+        } 
     }
 }

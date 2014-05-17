@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
@@ -33,43 +34,35 @@ namespace SharpRpc.ServerSide
 {
     public class GenericServiceMethodHandler : IServiceMethodHandler
     {
-        private readonly ICodecContainer codecContainer;
-        private readonly IServiceMethodDelegateFactory delegateFactory;
-        private readonly ServiceDescription serviceDescription;
-        private readonly ServicePath servicePath;
+        private readonly ConcurrentDictionary<TypesKey, IServiceMethodHandler> genericHandlers;
+        private readonly Func<Type[], IServiceMethodHandler> createGenericHandler;
         private readonly int genericParameterCount;
         private readonly IManualCodec<Type> typeCodec;
-        private readonly ConcurrentDictionary<TypesKey, ServiceMethodDelegate> methodDelegates;
 
-        public GenericServiceMethodHandler(ICodecContainer codecContainer, IServiceMethodDelegateFactory delegateFactory, ServiceDescription serviceDescription, ServicePath servicePath, int genericParameterCount)
+        public GenericServiceMethodHandler(ICodecContainer codecContainer, IRawHandlerFactory delegateFactory, IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath servicePath)
         {
-            this.codecContainer = codecContainer;
-            this.delegateFactory = delegateFactory;
-            this.serviceDescription = serviceDescription;
-            this.servicePath = servicePath;
-            this.genericParameterCount = genericParameterCount;
+            genericHandlers = new ConcurrentDictionary<TypesKey, IServiceMethodHandler>();
+            createGenericHandler = delegateFactory.CreateGenericClass(serviceDescriptionChain, methodDescription, servicePath);
+            genericParameterCount = methodDescription.GenericParameters.Count;
             typeCodec = codecContainer.GetManualCodecFor<Type>();
-            methodDelegates = new ConcurrentDictionary<TypesKey, ServiceMethodDelegate>();
         }
 
-        public async Task<byte[]> Handle(object serviceImplementation, byte[] data)
+        public async Task<byte[]> Handle(object serviceImplementation, byte[] data, int offset)
         {
-            int offset;
-            var genericArguments = DecodeGenericArguments(data, out offset);
+            var genericArguments = DecodeGenericArguments(data, ref offset);
             var genericArgumentsKey = new TypesKey(genericArguments);
-            var methodDelegate = methodDelegates.GetOrAdd(genericArgumentsKey,
-                    k => delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, k.Types));
+            var genericHandler = genericHandlers.GetOrAdd(genericArgumentsKey, k => createGenericHandler(k.Types));
 
-            return await methodDelegate(codecContainer, serviceImplementation, data, offset);
+            return await genericHandler.Handle(serviceImplementation, data, offset);
         }
 
-        private unsafe Type[] DecodeGenericArguments(byte[] data, out int offset)
+        private unsafe Type[] DecodeGenericArguments(byte[] data, ref int offset)
         {
             var genericArguments = new Type[genericParameterCount];
             int remainingBytes = data.Length;
             fixed (byte* pData = data)
             {
-                var p = pData;
+                var p = pData + offset;
                 for (int i = 0; i < genericArguments.Length; i++)
                     genericArguments[i] = typeCodec.Decode(ref p, ref remainingBytes, false);
             }

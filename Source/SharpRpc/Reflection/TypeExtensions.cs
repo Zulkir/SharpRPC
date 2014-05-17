@@ -82,6 +82,17 @@ namespace SharpRpc.Reflection
             return type.GetMethod(methodName);
         }
 
+        public static MethodInfo GetMethodSmart(this Type type, Func<MethodInfo, bool> isCorrectMethod)
+        {
+            if (type.IsGenericType && type.ContainsTypeBuilders())
+            {
+                var genericDefinition = type.GetGenericTypeDefinition();
+                var methodInfo = genericDefinition.GetMethods().Single(isCorrectMethod);
+                return TypeBuilder.GetMethod(type, methodInfo);
+            }
+            return type.GetMethods().Single(isCorrectMethod);
+        }
+
         public static ConstructorInfo GetConstructorSmart(this Type type, Type[] parameterTypes)
         {
             if (type.IsGenericType && type.ContainsTypeBuilders())

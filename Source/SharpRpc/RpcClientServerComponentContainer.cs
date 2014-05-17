@@ -35,7 +35,7 @@ namespace SharpRpc
         private ILogger logger;
         private IServiceImplementationContainer serviceImplementationContainer;
         private IServiceImplementationFactory serviceImplementationFactory;
-        private IServiceMethodDelegateFactory serviceMethodDelegateFactory;
+        private IRawHandlerFactory rawHandlerFactory;
         private IServiceMethodHandlerFactory serviceMethodHandlerFactory;
         private IServiceMethodHandlerContainer serviceMethodHandlerContainer;
         private IIncomingRequestProcessor incomingRequestProcessor;
@@ -74,12 +74,12 @@ namespace SharpRpc
                                                           : new ServiceImplementationFactory(GetServiceDescriptionBuilder(), ClientServer, ClientServer.Settings.GetInterfaceImplementationsPairs()));
         }
         
-        public IServiceMethodDelegateFactory GetServiceMethodDelegateFactory()
+        public IRawHandlerFactory GetServiceMethodDelegateFactory()
         {
-            return serviceMethodDelegateFactory ?? (serviceMethodDelegateFactory =
+            return rawHandlerFactory ?? (rawHandlerFactory =
                                                     overrides.ServiceMethodDelegateFactory != null
                                                         ? overrides.ServiceMethodDelegateFactory(this)
-                                                        : new ServiceMethodDelegateFactory());
+                                                        : new RawHandlerFactory(GetCodecContainer()));
         }
 
         public IServiceMethodHandlerFactory GetServiceMethodHandlerFactory()

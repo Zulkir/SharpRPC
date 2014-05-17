@@ -22,6 +22,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Collections.Generic;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
@@ -32,30 +33,41 @@ namespace SharpRpc.ServerSide
     public class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
     {
         private readonly ICodecContainer codecContainer;
-        private readonly IServiceMethodDelegateFactory delegateFactory;
+        private readonly IRawHandlerFactory rawHandlerFactory;
 
-        public ServiceMethodHandlerFactory(ICodecContainer codecContainer, IServiceMethodDelegateFactory delegateFactory)
+        public ServiceMethodHandlerFactory(ICodecContainer codecContainer, IRawHandlerFactory rawHandlerFactory)
         {
             this.codecContainer = codecContainer;
-            this.delegateFactory = delegateFactory;
+            this.rawHandlerFactory = rawHandlerFactory;
         }
 
-        public IServiceMethodHandler CreateMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
+        public IServiceMethodHandler CreateMethodHandler(ServiceDescription rootDescription, ServicePath path)
         {
-            var methodDescription = GetMethodDescription(serviceDescription, servicePath);
-            if (methodDescription.GenericParameters.Any())
-                return new GenericServiceMethodHandler(codecContainer, delegateFactory, serviceDescription, servicePath, methodDescription.GenericParameters.Count);
-            return new PlainServiceMethodHandler(codecContainer, delegateFactory, serviceDescription, servicePath);
+            var serviceDescriptionChain = CreateServiceDescriptionChain(rootDescription, path);
+            var methodDescription = GetMethodDescription(serviceDescriptionChain, path);
+            return methodDescription.GenericParameters.Any() 
+                ? new GenericServiceMethodHandler(codecContainer, rawHandlerFactory, serviceDescriptionChain, methodDescription, path) 
+                : rawHandlerFactory.CreateGenericClass(serviceDescriptionChain, methodDescription, path)(null);
         }
 
-        private static MethodDescription GetMethodDescription(ServiceDescription serviceDescription, ServicePath servicePath)
+        private static List<ServiceDescription> CreateServiceDescriptionChain(ServiceDescription rootDescription, ServicePath path)
         {
-            for (int i = 1; i < servicePath.Length - 1; i++)
-                if (!serviceDescription.TryGetSubservice(servicePath[i], out serviceDescription))
+            var chain = new List<ServiceDescription>(path.Length - 1);
+            var currentDescription = rootDescription;
+            chain.Add(currentDescription);
+            for (int i = 1; i < path.Length - 1; i++)
+            {
+                if (!currentDescription.TryGetSubservice(path[i], out currentDescription))
                     throw new InvalidPathException();
+                chain.Add(currentDescription);
+            }
+            return chain;
+        }
 
+        private static MethodDescription GetMethodDescription(IEnumerable<ServiceDescription> serviceDescriptionChain, ServicePath path)
+        {
             MethodDescription methodDescription;
-            if (!serviceDescription.TryGetMethod(servicePath.MethodName, out methodDescription))
+            if (!serviceDescriptionChain.Last().TryGetMethod(path.MethodName, out methodDescription))
                 throw new InvalidPathException();
             return methodDescription;
         }

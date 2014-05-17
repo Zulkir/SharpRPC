@@ -28,6 +28,6 @@ namespace SharpRpc.ServerSide
 {
     public interface IServiceMethodHandler
     {
-        Task<byte[]> Handle(object serviceImplementation, byte[] data);
+        Task<byte[]> Handle(object serviceImplementation, byte[] data, int offset);
     }
 }

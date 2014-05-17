@@ -73,6 +73,10 @@
     <Compile Include="Codecs\ManualCodecMethods.cs" />
     <Compile Include="Codecs\TaskMethods.cs" />
     <Compile Include="Codecs\TypeMethods.cs" />
+    <Compile Include="ServerSide\HandlerClassBuildingContext.cs" />
+    <Compile Include="ServerSide\HandlerClassFieldCache.cs" />
+    <Compile Include="ServerSide\HandlerParameterCodec.cs" />
+    <Compile Include="ServerSide\HandlerRetvalCodec.cs" />
     <Compile Include="ServerSide\ServiceMethodDelegateEmittingContext.cs" />
     <Compile Include="Utility\IForLoopEmitter.cs" />
     <Compile Include="Codecs\EmittingContextExtensions.cs" />
@@ -90,7 +94,6 @@
     <Compile Include="ServerSide\GenericServiceMethodHandler.cs" />
     <Compile Include="ServerSide\IServiceMethodHandler.cs" />
     <Compile Include="ServerSide\IServiceMethodHandlerFactory.cs" />
-    <Compile Include="ServerSide\PlainServiceMethodHandler.cs" />
     <Compile Include="ServerSide\ServiceMethodHandlerFactory.cs" />
     <Compile Include="ServerSide\TypesKey.cs" />
     <Compile Include="ServiceNotReadyException.cs" />
@@ -146,9 +149,9 @@
     <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="ServerSide\InvalidImplementationException.cs" />
     <Compile Include="ServerSide\IRequestReceiverContainer.cs" />
-    <Compile Include="ServerSide\IServiceMethodDelegateFactory.cs" />
+    <Compile Include="ServerSide\IRawHandlerFactory.cs" />
     <Compile Include="ServerSide\RequestReceiverContainer.cs" />
-    <Compile Include="ServerSide\ServiceMethodDelegateFactory.cs" />
+    <Compile Include="ServerSide\RawHandlerFactory.cs" />
     <Compile Include="Topology\SingleHostServiceTopology.cs" />
     <Compile Include="Logs\ConsoleLogger.cs" />
     <Compile Include="Topology\TopologyExtensions.cs" />
@@ -166,7 +169,6 @@
     <Compile Include="ServerSide\HttpRequestReceiver.cs" />
     <Compile Include="ClientSide\HttpRequestSender.cs" />
     <Compile Include="Interaction\ServicePath.cs" />
-    <Compile Include="ServerSide\Delegates.cs" />
     <Compile Include="ServerSide\IServiceMethodHandlerContainer.cs" />
     <Compile Include="ServerSide\IRequestReceiver.cs" />
     <Compile Include="ClientSide\IRequestSender.cs" />

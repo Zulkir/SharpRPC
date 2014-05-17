@@ -40,6 +40,6 @@ namespace SharpRpc.ClientSide
             Builder = builder;
             Path = path;
             InterfaceType = interfaceType;
-        }        
+        }
     }
 }

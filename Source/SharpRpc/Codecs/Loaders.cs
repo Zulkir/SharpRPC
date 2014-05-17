@@ -25,6 +25,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Reflection.Emit;
 using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
@@ -43,6 +44,11 @@ namespace SharpRpc.Codecs
                 il.Ldarg(index);
                 il.Ldobj(type);
             };
+        }
+
+        public static Action<MyILGenerator> Local(LocalBuilder local)
+        {
+            return il => il.Ldloc(local);
         }
 
         public static Action<MyILGenerator> TypeOf(Type type)

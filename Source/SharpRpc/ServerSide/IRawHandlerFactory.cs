@@ -22,10 +22,15 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Threading.Tasks;
-using SharpRpc.Codecs;
+using System;
+using System.Collections.Generic;
+using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
-    public delegate Task<byte[]> ServiceMethodDelegate(ICodecContainer codecContainer, object implementation, byte[] data, int offset);
+    public interface IRawHandlerFactory
+    {
+        Func<Type[], IServiceMethodHandler> CreateGenericClass(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path);
+    }
 }

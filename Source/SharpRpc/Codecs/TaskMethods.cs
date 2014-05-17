@@ -23,19 +23,20 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using SharpRpc.Reflection;
 
 namespace SharpRpc.Codecs
 {
     public static class TaskMethods
     {
-        public static MethodInfo GetResult(Type resultType) { return typeof(Task<>).MakeGenericType(resultType).GetMethod("get_Result"); }
+        public static MethodInfo GetResult(Type resultType) { return typeof(Task<>).MakeGenericType(resultType).GetMethodSmart("get_Result"); }
+        public static MethodInfo FromResult(Type resultType) { return typeof(Task).GetMethod("FromResult").MakeGenericMethod(resultType); }
 
         public static MethodInfo ContinueWith(Type originalResultType, Type continuationResultType)
         {
-            return typeof(Task<>).MakeGenericType(originalResultType).GetMethods().Where(IsCorrectContinueWith).Single().MakeGenericMethod(continuationResultType);
+            return typeof(Task<>).MakeGenericType(originalResultType).GetMethodSmart(IsCorrectContinueWith).MakeGenericMethod(continuationResultType);
         }
 
         private static bool IsCorrectContinueWith(MethodInfo methodInfo)
@@ -43,17 +44,15 @@ namespace SharpRpc.Codecs
             if (methodInfo.Name != "ContinueWith")
                 return false;
 
-            var genericArguments = methodInfo.GetGenericArguments();
-            if (genericArguments.Length != 1)
-                return false;
-
             var parameters = methodInfo.GetParameters();
             if (parameters.Length != 1)
                 return false;
 
             var parameterType = parameters[0].ParameterType;
-            var expectedParameterType = typeof(Func<,>).MakeGenericType(typeof(Task<byte[]>), genericArguments[0]);
-            if (parameterType != expectedParameterType)
+            if (parameterType.GetGenericTypeDefinition() != typeof(Func<,>))
+                return false;
+
+            if (!parameterType.GetGenericArguments()[0].IsGenericType)
                 return false;
 
             return true;

@@ -23,27 +23,37 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Threading.Tasks;
+using System.Reflection.Emit;
 using SharpRpc.Codecs;
-using SharpRpc.Interaction;
-using SharpRpc.Reflection;
 
 namespace SharpRpc.ServerSide
 {
-    public class PlainServiceMethodHandler : IServiceMethodHandler
+    public class HandlerRetvalCodec
     {
-        private readonly ICodecContainer codecContainer;
-        private readonly ServiceMethodDelegate methodDelegate;
+        private readonly IEmittingContext emittingContext;
+        private readonly IEmittingCodec codec;
+        private readonly LocalBuilder local;
 
-        public PlainServiceMethodHandler(ICodecContainer codecContainer, IServiceMethodDelegateFactory delegateFactory, ServiceDescription serviceDescription, ServicePath servicePath)
+        public HandlerRetvalCodec(IEmittingContext emittingContext, Type type)
         {
-            this.codecContainer = codecContainer;
-            methodDelegate = delegateFactory.CreateMethodDelegate(codecContainer, serviceDescription, servicePath, Type.EmptyTypes);
+            this.emittingContext = emittingContext;
+            codec = new IndirectCodec(type);
+            local = emittingContext.IL.DeclareLocal(type);
         }
 
-        public async Task<byte[]> Handle(object serviceImplementation, byte[] data)
+        public void EmitStore()
         {
-            return await methodDelegate(codecContainer, serviceImplementation, data, 0);
+            emittingContext.IL.Stloc(local);
+        }
+
+        public void EmitCalculateSize()
+        {
+            codec.EmitCalculateSize(emittingContext, Loaders.Local(local));
+        }
+
+        public void EmitEncode()
+        {
+            codec.EmitEncode(emittingContext, Loaders.Local(local));
         }
     }
 }
