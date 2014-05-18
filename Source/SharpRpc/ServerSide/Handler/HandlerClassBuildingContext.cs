@@ -22,26 +22,28 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Concurrent;
-using SharpRpc.Interaction;
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using SharpRpc.Reflection;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class ServiceMethodHandlerContainer : IServiceMethodHandlerContainer 
+    public class HandlerClassBuildingContext
     {
-        private readonly IServiceMethodHandlerFactory factory;
-        private readonly ConcurrentDictionary<ServicePath, IServiceMethodHandler> handlers; 
+        public IReadOnlyList<ServiceDescription> ServiceDescriptionChain { get; private set; }
+        public MethodDescription MethodDescription { get; private set; }
+        public TypeBuilder Builder { get; private set; }
+        public GenericTypeParameterBuilder[] GenericTypeParameterBuilders { get; private set; }
+        public HandlerClassFieldCache Fields { get; private set; }
 
-        public ServiceMethodHandlerContainer(IServiceMethodHandlerFactory factory)
+        public HandlerClassBuildingContext(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, 
+            TypeBuilder builder, GenericTypeParameterBuilder[] genericTypeParameterBuilders, HandlerClassFieldCache fields)
         {
-            this.factory = factory;
-            handlers = new ConcurrentDictionary<ServicePath, IServiceMethodHandler>();
-        }
-
-        public IServiceMethodHandler GetMethodHandler(ServiceDescription serviceDescription, ServicePath servicePath)
-        {
-            return handlers.GetOrAdd(servicePath, p => factory.CreateMethodHandler(serviceDescription, p));
-        }
+            ServiceDescriptionChain = serviceDescriptionChain;
+            MethodDescription = methodDescription;
+            Builder = builder;
+            GenericTypeParameterBuilders = genericTypeParameterBuilders;
+            Fields = fields;
+        } 
     }
 }

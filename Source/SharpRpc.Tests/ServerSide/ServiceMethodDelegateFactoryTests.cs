@@ -31,8 +31,8 @@ using NUnit.Framework;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
-using SharpRpc.ServerSide;
 using System.Linq;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc.Tests.ServerSide
 {
@@ -93,7 +93,7 @@ namespace SharpRpc.Tests.ServerSide
             globalServiceDescription = serviceDescriptionBuilder.Build(typeof(IGlobalService));
         }
 
-        private Func<Type[], IServiceMethodHandler> CreateClass(params string[] path)
+        private Func<Type[], IHandler> CreateClass(params string[] path)
         {
             var serviceDescriptionChain = new List<ServiceDescription> { globalServiceDescription };
             for (int i = 1; i < path.Length - 1; i++)

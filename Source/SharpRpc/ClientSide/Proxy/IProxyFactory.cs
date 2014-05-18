@@ -24,10 +24,10 @@ THE SOFTWARE.
 
 using System;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public interface IServiceProxyClassFactory
+    public interface IProxyFactory
     {
-        Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>();
+        Func<IOutgoingRequestProcessor, string, TimeoutSettings, T> CreateProxy<T>();
     }
 }

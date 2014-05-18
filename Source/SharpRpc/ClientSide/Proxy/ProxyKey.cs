@@ -23,31 +23,38 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using SharpRpc.Codecs;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public abstract class ServiceProxyMethodIoCodecBase
+    public struct ProxyKey : IEquatable<ProxyKey>
     {
-        private const int MaxInlinableComplexity = 16;
+        public string Scope;
+        public TimeoutSettings TimeoutSettings;
 
-        protected IEmittingCodec Codec { get; private set; }
-
-        protected ServiceProxyMethodIoCodecBase(Type type, ICodecContainer codecContainer)
+        public ProxyKey(string scope, TimeoutSettings timeoutSettings)
         {
-            Codec = CreateCodec(type, codecContainer);
+            Scope = scope;
+            TimeoutSettings = timeoutSettings;
         }
 
-        private IEmittingCodec CreateCodec(Type type, ICodecContainer codecContainer)
+        public bool Equals(ProxyKey other)
         {
-            if (type.ContainsGenericParameters)
-                return new IndirectCodec(type);
+            return Scope == other.Scope && TimeoutSettings == other.TimeoutSettings;
+        }
 
-            var directCodec = codecContainer.GetEmittingCodecFor(type);
-            if (directCodec.CanBeInlined && directCodec.EncodingComplexity <= MaxInlinableComplexity)
-                return directCodec;
+        public override bool Equals(object obj)
+        {
+            return obj is ProxyKey && Equals((ProxyKey)obj);
+        }
 
-            return new IndirectCodec(type);
-        } 
+        public override int GetHashCode()
+        {
+            return (TimeoutSettings != null ? TimeoutSettings.GetHashCode() : 0) ^ (Scope != null ? Scope.GetHashCode() : 0);
+        }
+
+        public override string ToString()
+        {
+            return string.Format(@"{{""{0}""; {1}}}", Scope, TimeoutSettings);
+        }
     }
 }

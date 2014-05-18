@@ -33,16 +33,16 @@ using SharpRpc.Reflection;
 using System.Linq;
 using SharpRpc.Utility;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public class ServiceProxyClassFactory : IServiceProxyClassFactory
+    public class ProxyFactory : IProxyFactory
     {
         private readonly IServiceDescriptionBuilder serviceDescriptionBuilder;
         private readonly ICodecContainer codecContainer;
         private readonly ModuleBuilder moduleBuilder;
         private int classNameDisambiguator;
 
-        public ServiceProxyClassFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, ICodecContainer codecContainer)
+        public ProxyFactory(IServiceDescriptionBuilder serviceDescriptionBuilder, ICodecContainer codecContainer)
         {
             this.serviceDescriptionBuilder = serviceDescriptionBuilder;
             this.codecContainer = codecContainer;
@@ -51,10 +51,10 @@ namespace SharpRpc.ClientSide
             moduleBuilder = assemblyBuilder.DefineDynamicModule("SharpRpcServiceProxyModule");
         }
 
-        private static readonly Type[] ConstructorParameterTypes = { typeof(IOutgoingMethodCallProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
+        private static readonly Type[] ConstructorParameterTypes = { typeof(IOutgoingRequestProcessor), typeof(string), typeof(TimeoutSettings), typeof(ICodecContainer) };
         private static readonly Type[] DecodeDeferredParameterTypes = { typeof(Task<byte[]>) };
 
-        public Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> CreateProxyClass<T>()
+        public Func<IOutgoingRequestProcessor, string, TimeoutSettings, T> CreateProxy<T>()
         {
             var proxyClass = CreateProxyClass(typeof(T), typeof(T), null);
             return (p, s, t) => (T) Activator.CreateInstance(proxyClass, p, s, t, codecContainer);
@@ -66,8 +66,8 @@ namespace SharpRpc.ClientSide
             path = path ?? serviceDescription.Name;
 
             var typeBuilder = DeclareType(interfaceType);
-            var fieldCache = new ServiceProxyClassFieldCache(typeBuilder);
-            var classContext = new ServiceProxyClassBuildingContext(rootInterfaceType, path, typeBuilder, fieldCache);
+            var fieldCache = new ProxyClassFieldCache(typeBuilder);
+            var classContext = new ProxyClassBuildingContext(rootInterfaceType, path, typeBuilder, fieldCache);
             foreach (var methodDesc in serviceDescription.Methods)
                 CreateMethod(classContext, path, methodDesc);
             CreateConstructor(classContext, path, serviceDescription);
@@ -82,7 +82,7 @@ namespace SharpRpc.ClientSide
                                             typeof(object), new[] { serviceInterface });
         }
 
-        private void CreateMethod(ServiceProxyClassBuildingContext classContext, string path, MethodDescription methodDesc)
+        private void CreateMethod(ProxyClassBuildingContext classContext, string path, MethodDescription methodDesc)
         {
             var methodBuilder = classContext.Builder.DefineMethod(methodDesc.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |
@@ -91,12 +91,12 @@ namespace SharpRpc.ClientSide
             var genericTypeParameterBuilders = methodDesc.GenericParameters.Any()
                 ? methodBuilder.DefineGenericParameters(methodDesc.GenericParameters.Select(x => x.Name).ToArray())
                 : new GenericTypeParameterBuilder[0];
-            var genericTypeParameterCodecs = genericTypeParameterBuilders.Select(x => new ServiceProxyMethodGenericArgumentCodec(x)).ToArray();
+            var genericTypeParameterCodecs = genericTypeParameterBuilders.Select(x => new ProxyMethodGenericArgumentCodec(x)).ToArray();
             var genericArgumentMap = genericTypeParameterBuilders.ToDictionary(x => x.Name, x => (Type)x);
 
             var parameterDescriptions = methodDesc.Parameters.Select(x => x.DeepSubstituteGenerics(genericArgumentMap)).ToArray();
             var parameterTypesAdjustedForRefs = parameterDescriptions.Select(x => x.Way == MethodParameterWay.Val ? x.Type : x.Type.MakeByRefType()).ToArray();
-            var allParameterCodecs = parameterDescriptions.Select(x => new ServiceProxyMethodParameterCodec(x, codecContainer)).ToArray();
+            var allParameterCodecs = parameterDescriptions.Select(x => new ProxyMethodParameterCodec(x)).ToArray();
 
             var retvalType = methodDesc.ReturnType.DeepSubstituteGenerics(genericArgumentMap);
             
@@ -105,7 +105,7 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new ServiceProxyMethodEmittingContext(il, classContext.Fields);
+            var emittingContext = new ProxyMethodEmittingContext(il, classContext.Fields);
 
             var requestDataArrayVar = il.DeclareLocal(typeof(byte[]));                      // byte[] dataArray
 
@@ -184,11 +184,11 @@ namespace SharpRpc.ClientSide
                 haveSizeOnStack = true;
         }
 
-        private void EmitProcessDirect(IEmittingContext emittingContext, ServiceProxyMethodParameterCodec[] responseParameterCodecs, Type retvalType)
+        private void EmitProcessDirect(IEmittingContext emittingContext, ProxyMethodParameterCodec[] responseParameterCodecs, Type retvalType)
         {
             bool hasRetval = retvalType != typeof(void);
             var il = emittingContext.IL;
-            il.Callvirt(OutgoingMethodCallProcessorMethods.Process);                // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
+            il.Callvirt(OutgoingRequestProcessorMethods.Process);                // stack_0 = stack_0.Process(stack_1, stack_2, stack_3, stack_4, stack_5)
 
             if (responseParameterCodecs.Any() || hasRetval)
             {
@@ -199,7 +199,7 @@ namespace SharpRpc.ClientSide
 
                 if (hasRetval)
                 {
-                    var retvalCodec = new ServiceProxyMethodRetvalCodec(retvalType, codecContainer);
+                    var retvalCodec = new ProxyMethodRetvalCodec(retvalType);
                     retvalCodec.EmitDecode(emittingContext);                        // stack_0 = Decode(data, remainingBytes, false)
                 }
             }
@@ -211,10 +211,10 @@ namespace SharpRpc.ClientSide
 
         private static void EmitProcessAsyncVoid(MyILGenerator il)
         {
-            il.Callvirt(OutgoingMethodCallProcessorMethods.ProcessAsync);           // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
+            il.Callvirt(OutgoingRequestProcessorMethods.ProcessAsync);           // stack_0 = stack_0.ProcessAsync(stack_1, stack_2, stack_3, stack_4, stack_5)
         }
 
-        private void EmitProcessAsyncWithRetval(ServiceProxyClassBuildingContext classContext, IEmittingContext emittingContext, string parameterMethodName, IReadOnlyList<Type> genericTypeArguments, Type retvalType)
+        private void EmitProcessAsyncWithRetval(ProxyClassBuildingContext classContext, IEmittingContext emittingContext, string parameterMethodName, IReadOnlyList<Type> genericTypeArguments, Type retvalType)
         {
             var pureRetvalType = retvalType.GetGenericArguments().Single();
             var decodeDeferredMethod = CreateDecodeDeferredMethod(classContext, parameterMethodName, genericTypeArguments, pureRetvalType);
@@ -224,14 +224,14 @@ namespace SharpRpc.ClientSide
             var continueWithMethod = TaskMethods.ContinueWith(typeof(byte[]), pureRetvalType);
 
             var il = emittingContext.IL;
-            il.Callvirt(OutgoingMethodCallProcessorMethods.ProcessAsync);
+            il.Callvirt(OutgoingRequestProcessorMethods.ProcessAsync);
             il.Ldarg(0);
             il.Ldftn(decodeDeferredMethod);
             il.Newobj(funcConstructor);
             il.Callvirt(continueWithMethod);
         }
 
-        private MethodInfo CreateDecodeDeferredMethod(ServiceProxyClassBuildingContext classContext, string parentMethodName, IReadOnlyList<Type> genericTypeArguments, Type pureRetvalType)
+        private MethodInfo CreateDecodeDeferredMethod(ProxyClassBuildingContext classContext, string parentMethodName, IReadOnlyList<Type> genericTypeArguments, Type pureRetvalType)
         {
             var methodBuilder = classContext.Builder.DefineMethod("__rpc_decode_deferred_" + parentMethodName,
                     MethodAttributes.Private | MethodAttributes.HideBySig);
@@ -248,13 +248,13 @@ namespace SharpRpc.ClientSide
             methodBuilder.SetImplementationFlags(MethodImplAttributes.Managed);
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new ServiceProxyMethodEmittingContext(il, classContext.Fields);
+            var emittingContext = new ProxyMethodEmittingContext(il, classContext.Fields);
 
             il.Ldarg(1);
             il.Call(TaskMethods.GetResult(typeof(byte[])));
             EmitPrepareToDecode(emittingContext);
 
-            var retvalCodec = new ServiceProxyMethodRetvalCodec(retvalType, codecContainer);
+            var retvalCodec = new ProxyMethodRetvalCodec(retvalType);
             retvalCodec.EmitDecode(emittingContext);
             il.Ret();
 
@@ -274,7 +274,7 @@ namespace SharpRpc.ClientSide
             il.Stloc(emittingContext.DataPointerVar);
         }
 
-        private void CreateConstructor(ServiceProxyClassBuildingContext classContext, string path, ServiceDescription serviceDescription)
+        private void CreateConstructor(ProxyClassBuildingContext classContext, string path, ServiceDescription serviceDescription)
         {
             const int thisArgIndex = 0;
             const int processorArgIndex = 1;
@@ -304,9 +304,12 @@ namespace SharpRpc.ClientSide
 
             foreach (var manualCodecField in classContext.Fields.GetAllManualCodecFields())
             {
+                var type = manualCodecField.FieldType.GenericTypeArguments[0];
+                ValidateManualCodecType(type);
+
                 il.Ldarg(thisArgIndex);
                 il.Ldarg(codecContainerArgIndex);
-                il.Call(CodecContainerMethods.GetManualCodecFor(manualCodecField.FieldType.GenericTypeArguments[0]));
+                il.Call(CodecContainerMethods.GetManualCodecFor(type));
                 il.Stfld(manualCodecField);
             }
 
@@ -328,13 +331,18 @@ namespace SharpRpc.ClientSide
             il.Ret();
         }
 
-        private static FieldBuilder CreateSubserviceField(ServiceProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, Type proxyClass)
+        private void ValidateManualCodecType(Type type)
+        {
+            codecContainer.GetEmittingCodecFor(type);
+        }
+
+        private static FieldBuilder CreateSubserviceField(ProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, Type proxyClass)
         {
             return classContext.Builder.DefineField("_" + subserviceDescription.Name, proxyClass,
                     FieldAttributes.Private | FieldAttributes.InitOnly);
         }
 
-        private static void CreateSubserviceProperty(ServiceProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, FieldBuilder fieldBuilder)
+        private static void CreateSubserviceProperty(ProxyClassBuildingContext classContext, ServiceDescription subserviceDescription, FieldBuilder fieldBuilder)
         {
             var methodBuilder = classContext.Builder.DefineMethod("get_" + subserviceDescription.Name,
                     MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig |

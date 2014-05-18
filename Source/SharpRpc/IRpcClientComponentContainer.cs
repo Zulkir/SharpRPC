@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 
@@ -34,8 +35,8 @@ namespace SharpRpc
         IServiceDescriptionBuilder GetServiceDescriptionBuilder();
         ICodecContainer GetCodecContainer();
         IRequestSenderContainer GetRequestSenderContainer();
-        IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor();
-        IServiceProxyClassFactory GetServiceProxyClassFactory();
-        IServiceProxyContainer GetIServiceProxyContainer();
+        IOutgoingRequestProcessor GetOutgoingMethodCallProcessor();
+        IProxyFactory GetServiceProxyClassFactory();
+        IProxyContainer GetIServiceProxyContainer();
     }
 }

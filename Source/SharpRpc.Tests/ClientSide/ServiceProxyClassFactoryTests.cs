@@ -31,6 +31,7 @@ using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;
 using System.Linq;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 
@@ -41,16 +42,16 @@ namespace SharpRpc.Tests.ClientSide
     {
         private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private ICodecContainer codecContainer;
-        private IOutgoingMethodCallProcessor methodCallProcessor;
-        private ServiceProxyClassFactory factory;
+        private IOutgoingRequestProcessor requestProcessor;
+        private ProxyFactory factory;
 
         [SetUp]
         public void Setup()
         {
             serviceDescriptionBuilder = new ServiceDescriptionBuilder(new MethodDescriptionBuilder());
             codecContainer = new CodecContainer();
-            methodCallProcessor = Substitute.For<IOutgoingMethodCallProcessor>();
-            factory = new ServiceProxyClassFactory(serviceDescriptionBuilder, codecContainer);
+            requestProcessor = Substitute.For<IOutgoingRequestProcessor>();
+            factory = new ProxyFactory(serviceDescriptionBuilder, codecContainer);
         }
 
         public interface ITrivialService
@@ -61,12 +62,12 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Trivial()
         {
-            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<ITrivialService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomething();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(ITrivialService)));
             Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
             Assert.That(arguments[2], Is.Null);
@@ -77,12 +78,12 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void TrivialScoped()
         {
-            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, "my scope", null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<ITrivialService>()(requestProcessor, "my scope", null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomething();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(ITrivialService)));
             Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
             Assert.That(arguments[2], Is.EqualTo("my scope"));
@@ -94,12 +95,12 @@ namespace SharpRpc.Tests.ClientSide
         public void TrivialWithScopeAndTimeout()
         {
             var timeoutSettings = new TimeoutSettings();
-            var proxy = factory.CreateProxyClass<ITrivialService>()(methodCallProcessor, "my scope", timeoutSettings);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<ITrivialService>()(requestProcessor, "my scope", timeoutSettings);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomething();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(ITrivialService)));
             Assert.That(arguments[1], Is.EqualTo("TrivialService/DoSomething"));
             Assert.That(arguments[2], Is.EqualTo("my scope"));
@@ -116,8 +117,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Arguments()
         {
-            var proxy = factory.CreateProxyClass<IArgumentsService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IArgumentsService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.MethodWithArgs(123, 234.567);
 
@@ -128,7 +129,7 @@ namespace SharpRpc.Tests.ClientSide
                 *(double*)(pData + 4) = 234.567;
             }
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(IArgumentsService)));
             Assert.That(arguments[1], Is.EqualTo("ArgumentsService/MethodWithArgs"));
             Assert.That(arguments[2], Is.Null);
@@ -149,12 +150,12 @@ namespace SharpRpc.Tests.ClientSide
                 *(double*)pData = 123.456;
             }
 
-            var proxy = factory.CreateProxyClass<IRetvalService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(retvalData);
+            var proxy = factory.CreateProxy<IRetvalService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(retvalData);
 
             var retval = proxy.MethodWithRetval();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(IRetvalService)));
             Assert.That(arguments[1], Is.EqualTo("RetvalService/MethodWithRetval"));
             Assert.That(arguments[2], Is.Null);
@@ -170,12 +171,12 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void Subservice()
         {
-            var proxy = factory.CreateProxyClass<ISuperService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<ISuperService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.Trivial.DoSomething();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[0], Is.EqualTo(typeof(ISuperService)));
             Assert.That(arguments[1], Is.EqualTo("SuperService/Trivial/DoSomething"));
             Assert.That(arguments[2], Is.Null);
@@ -205,14 +206,14 @@ namespace SharpRpc.Tests.ClientSide
                 *(double*)(pData + 6) = 123.456;
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithMixedParameters>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxy<IServiceWithMixedParameters>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             bool b = false;
             ushort c;
             var result = proxy.DoSomethingAwesome(123, ref b, out c);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(b, Is.EqualTo(true));
             Assert.That(c, Is.EqualTo(246));
@@ -237,13 +238,13 @@ namespace SharpRpc.Tests.ClientSide
                 *(char*) (pData + 6) = 'K';
             }
 
-            var proxy = factory.CreateProxyClass<IReferenceInRefService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxy<IReferenceInRefService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             string s = "";
             proxy.ReferenceInRef(ref s);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(s, Is.EqualTo("OK"));
         }
@@ -275,12 +276,12 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)(pData + 4) = 123;
             }
 
-            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IUninlineableStuffService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoWithArg(new MyUninlineableContract(123));
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
         }
 
@@ -294,12 +295,12 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)(pData + 4) = 123;
             }
 
-            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxy<IUninlineableStuffService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             var result = proxy.GetRetval();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.Null);
             Assert.That(result.A, Is.EqualTo(123));
         }
@@ -314,8 +315,8 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)(pData + 4) = 123;
             }
 
-            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxy<IUninlineableStuffService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             var result = proxy.Modify(new MyUninlineableContract(123));
         }
@@ -344,14 +345,14 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)(pData + 20) = 678;
             }
 
-            var proxy = factory.CreateProxyClass<IUninlineableStuffService>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
+            var proxy = factory.CreateProxy<IUninlineableStuffService>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(returnData);
 
             var c = new MyUninlineableContract(345);
             MyUninlineableContract d;
             var result = proxy.DoComplexStuff(123, new MyUninlineableContract(234), ref c, out d);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(c.A, Is.EqualTo(456));
             Assert.That(d.A, Is.EqualTo(567));
@@ -372,8 +373,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void ExceptionConsistency()
         {
-            Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
-            Assert.Throws<NotSupportedException>(() => factory.CreateProxyClass<IBadService>());   
+            Assert.Throws<NotSupportedException>(() => factory.CreateProxy<IBadService>()(null, null, null));
+            Assert.Throws<NotSupportedException>(() => factory.CreateProxy<IBadService>()(null, null, null));
         }
 
         public interface IServiceWithEmptyGenerics
@@ -400,12 +401,12 @@ namespace SharpRpc.Tests.ClientSide
                 typeCodec.Encode(ref p, typeof(T));
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithEmptyGenerics>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IServiceWithEmptyGenerics>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoTypedNothing<T>();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
         }
 
@@ -436,12 +437,12 @@ namespace SharpRpc.Tests.ClientSide
                 argCodec.Encode(ref p, argValue);            
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithSimpleGenerics>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IServiceWithSimpleGenerics>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
 
             proxy.DoSomethingSimple(argValue);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
         }
 
@@ -476,12 +477,12 @@ namespace SharpRpc.Tests.ClientSide
                 retvalCodec.Encode(ref p, expectedRetval);
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithGenericRetval>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
+            var proxy = factory.CreateProxy<IServiceWithGenericRetval>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
 
             var retval = proxy.GetSomething<T>();
 
-            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
 
             Assert.That(retval, Is.EqualTo(expectedRetval));
@@ -534,13 +535,13 @@ namespace SharpRpc.Tests.ClientSide
                 firstCodec.Encode(ref p, expectedRetval);
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithMixedGenerics>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
+            var proxy = factory.CreateProxy<IServiceWithMixedGenerics>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
 
             TSecond d;
             var retval = proxy.DoSomethingMixed(a, b, ref c, out d);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
 
             Assert.That(c, Is.EqualTo(expectedC));
@@ -556,8 +557,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void SimpleGenericConstraint()
         {
-            var proxy = factory.CreateProxyClass<IServiceWithSimpleGenericConstraint>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IServiceWithSimpleGenericConstraint>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
             proxy.DoNothing<int>();
         }
 
@@ -575,8 +576,8 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void ComplexGenericConstraints()
         {
-            var proxy = factory.CreateProxyClass<IServiceWithComplexGenericConstraints>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
+            var proxy = factory.CreateProxy<IServiceWithComplexGenericConstraints>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs((byte[])null);
             proxy.DoNothing<ClassMeetingConstraints>();
         }
 
@@ -616,12 +617,12 @@ namespace SharpRpc.Tests.ClientSide
                 retvalCodec.Encode(ref p, expectedRetval);
             }
 
-            var proxy = factory.CreateProxyClass<IServiceWithNestedGenerics>()(methodCallProcessor, null, null);
-            methodCallProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
+            var proxy = factory.CreateProxy<IServiceWithNestedGenerics>()(requestProcessor, null, null);
+            requestProcessor.Process(null, null, null, null, null).ReturnsForAnyArgs(responseData);
 
             var retval = proxy.DoSomething<TKey, TValue>(arg);
 
-            var arguments = methodCallProcessor.ReceivedCalls().Last().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Last().GetArguments();
             Assert.That(arguments[3], Is.EquivalentTo(expectedArgsData));
             Assert.That(retval, Is.EquivalentTo(expectedRetval));
         }
@@ -634,9 +635,9 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void EmptyVoidAsync()
         {
-            var proxy = factory.CreateProxyClass<IAsyncVoidService>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncVoidService>()(requestProcessor, null, null);
             var task = Task.FromResult(new byte[0]);
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
 
             var resultingTask = proxy.DoSomethingAsync();
 
@@ -651,9 +652,9 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void VoidAsyncWithArguments()
         {
-            var proxy = factory.CreateProxyClass<IAsyncServiceWithArgumets>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncServiceWithArgumets>()(requestProcessor, null, null);
             var task = Task.FromResult(new byte[0]);
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
 
             var expectedArgsData = new byte[12];
             fixed (byte* pData = expectedArgsData)
@@ -665,7 +666,7 @@ namespace SharpRpc.Tests.ClientSide
             var resultingTask = proxy.DoSomethingWithArgsAsync(123, 234.567);
 
             Assert.That(resultingTask, Is.EqualTo(task));
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EqualTo(expectedArgsData));
         }
 
@@ -677,7 +678,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void EmptyAsyncWithRetval()
         {
-            var proxy = factory.CreateProxyClass<IAsyncServiceWithRetval>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncServiceWithRetval>()(requestProcessor, null, null);
 
             var responseData = new byte[sizeof(int)];
             fixed (byte* pData = responseData)
@@ -692,7 +693,7 @@ namespace SharpRpc.Tests.ClientSide
                 return responseData;
             });
 
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(task);
 
             var resultingTask = proxy.GetSomethingAsync();
 
@@ -710,7 +711,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void AsyncWithRetvalAndArguments()
         {
-            var proxy = factory.CreateProxyClass<IAsyncServiceWithRetvalAndArguments>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncServiceWithRetvalAndArguments>()(requestProcessor, null, null);
 
             var expectedArgsData = new byte[12];
             fixed (byte* pData = expectedArgsData)
@@ -725,12 +726,12 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)pData = 345;
             }
 
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
 
             var resultingTask = proxy.GetSomethingAsync(123, 234.567);
 
             Assert.That(resultingTask.Result, Is.EqualTo(345));
-            var arguments = methodCallProcessor.ReceivedCalls().Single().GetArguments();
+            var arguments = requestProcessor.ReceivedCalls().Single().GetArguments();
             Assert.That(arguments[3], Is.EqualTo(expectedArgsData));
         }
 
@@ -742,7 +743,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void GenericAsyncWithRetval()
         {
-            var proxy = factory.CreateProxyClass<IAsyncServiceWithGenericArguments>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncServiceWithGenericArguments>()(requestProcessor, null, null);
 
             var responseData = new byte[sizeof(int)];
             fixed (byte* pData = responseData)
@@ -750,7 +751,7 @@ namespace SharpRpc.Tests.ClientSide
                 *(int*)pData = 345;
             }
 
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
 
             var resultingTask = proxy.GetSomething("asd");
 
@@ -765,7 +766,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void AsyncWithGenericRetval()
         {
-            var proxy = factory.CreateProxyClass<IAsyncServiceWithGenricRetval>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncServiceWithGenricRetval>()(requestProcessor, null, null);
 
             const string retval = "asd";
             var stringCodec = codecContainer.GetManualCodecFor<string>();
@@ -776,7 +777,7 @@ namespace SharpRpc.Tests.ClientSide
                 stringCodec.Encode(ref p, retval);
             }
 
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
 
             var resultingTask = proxy.GetSomethingGenrciAsync<string>();
 
@@ -791,7 +792,7 @@ namespace SharpRpc.Tests.ClientSide
         [Test]
         public void AsyncWithIndirectGenericRetval()
         {
-            var proxy = factory.CreateProxyClass<IAsyncWithIndirectGenericRetval>()(methodCallProcessor, null, null);
+            var proxy = factory.CreateProxy<IAsyncWithIndirectGenericRetval>()(requestProcessor, null, null);
 
             var retval = new Dictionary<int, string[]>
             {
@@ -808,7 +809,7 @@ namespace SharpRpc.Tests.ClientSide
                 retvalCodec.Encode(ref p, retval);
             }
 
-            methodCallProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
+            requestProcessor.ProcessAsync(null, null, null, null, null).ReturnsForAnyArgs(Task.FromResult(responseData));
 
             var resultingTask = proxy.DoMixedStuffAsync<string, double>();
 

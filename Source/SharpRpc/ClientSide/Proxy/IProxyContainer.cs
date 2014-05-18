@@ -22,12 +22,10 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Threading.Tasks;
-
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public interface IServiceMethodHandler
+    public interface IProxyContainer
     {
-        Task<byte[]> Handle(object serviceImplementation, byte[] data, int offset);
+        T GetProxy<T>(string scope, TimeoutSettings timeoutSettings) where T : class;
     }
 }

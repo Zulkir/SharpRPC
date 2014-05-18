@@ -22,34 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Codecs;
-using SharpRpc.Utility;
+using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class ServiceProxyMethodEmittingContext : EmittingContextBase
+    public interface IHandlerFactory
     {
-        private readonly ServiceProxyClassFieldCache fieldCache;
-
-        public ServiceProxyMethodEmittingContext(MyILGenerator il, ServiceProxyClassFieldCache fieldCache) : base(il)
-        {
-            this.fieldCache = fieldCache;
-        }
-
-        public override void EmitLoadManualCodecFor(Type type)
-        {
-            if (type.ContainsGenericParameters)
-            {
-                IL.Ldarg(0);
-                IL.Ldfld(fieldCache.CodecContainer);
-                IL.Call(CodecContainerMethods.GetManualCodecFor(type));
-            }
-            else
-            {
-                IL.Ldarg(0);
-                IL.Ldfld(fieldCache.GetOrCreateManualCodec(type));
-            }
-        }
+        IHandler CreateHandler(ServiceDescription rootDescription, ServicePath path);
     }
 }

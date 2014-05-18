@@ -25,6 +25,7 @@ THE SOFTWARE.
 using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 
 namespace SharpRpc.Tests.ClientSide
 {
@@ -43,11 +44,11 @@ namespace SharpRpc.Tests.ClientSide
 
         public class MyServiceProxy : IMyService, IMyOtherService
         {
-            public IOutgoingMethodCallProcessor Processor { get; private set; }
+            public IOutgoingRequestProcessor Processor { get; private set; }
             public string Scope { get; private set; }
             public TimeoutSettings TimeoutSettings { get; private set; }
 
-            public MyServiceProxy(IOutgoingMethodCallProcessor processor, string scope, TimeoutSettings timeoutSettings)
+            public MyServiceProxy(IOutgoingRequestProcessor processor, string scope, TimeoutSettings timeoutSettings)
             {
                 Processor = processor;
                 Scope = scope;
@@ -55,17 +56,17 @@ namespace SharpRpc.Tests.ClientSide
             }
         }
 
-        private IOutgoingMethodCallProcessor processor;
-        private IServiceProxyClassFactory factory; 
-        private ServiceProxyContainer container;
+        private IOutgoingRequestProcessor processor;
+        private IProxyFactory factory; 
+        private ProxyContainer container;
 
         [SetUp]
         public void Setup()
         {
-            processor = Substitute.For<IOutgoingMethodCallProcessor>();
-            factory = Substitute.For<IServiceProxyClassFactory>();
-            factory.CreateProxyClass<IMyService>().Returns((p, s, t) => new MyServiceProxy(p, s, t));
-            container = new ServiceProxyContainer(processor, factory);
+            processor = Substitute.For<IOutgoingRequestProcessor>();
+            factory = Substitute.For<IProxyFactory>();
+            factory.CreateProxy<IMyService>().Returns((p, s, t) => new MyServiceProxy(p, s, t));
+            container = new ProxyContainer(processor, factory);
         }
 
         [Test]

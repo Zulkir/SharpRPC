@@ -32,13 +32,13 @@ using SharpRpc.Topology;
 
 namespace SharpRpc.ClientSide
 {
-    public class OutgoingMethodCallProcessor : IOutgoingMethodCallProcessor
+    public class OutgoingRequestProcessor : IOutgoingRequestProcessor
     {
         private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
         private readonly IRequestSenderContainer requestSenderContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
 
-        public OutgoingMethodCallProcessor(IReadOnlyDictionary<string, IServiceTopology> topology, IRequestSenderContainer requestSenderContainer, ICodecContainer codecContainer)
+        public OutgoingRequestProcessor(IReadOnlyDictionary<string, IServiceTopology> topology, IRequestSenderContainer requestSenderContainer, ICodecContainer codecContainer)
         {
             this.topology = topology;
             this.requestSenderContainer = requestSenderContainer;

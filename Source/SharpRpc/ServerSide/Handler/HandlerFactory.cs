@@ -28,25 +28,25 @@ using SharpRpc.Interaction;
 using SharpRpc.Reflection;
 using System.Linq;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class ServiceMethodHandlerFactory : IServiceMethodHandlerFactory
+    public class HandlerFactory : IHandlerFactory
     {
         private readonly ICodecContainer codecContainer;
         private readonly IRawHandlerFactory rawHandlerFactory;
 
-        public ServiceMethodHandlerFactory(ICodecContainer codecContainer, IRawHandlerFactory rawHandlerFactory)
+        public HandlerFactory(ICodecContainer codecContainer, IRawHandlerFactory rawHandlerFactory)
         {
             this.codecContainer = codecContainer;
             this.rawHandlerFactory = rawHandlerFactory;
         }
 
-        public IServiceMethodHandler CreateMethodHandler(ServiceDescription rootDescription, ServicePath path)
+        public IHandler CreateHandler(ServiceDescription rootDescription, ServicePath path)
         {
             var serviceDescriptionChain = CreateServiceDescriptionChain(rootDescription, path);
             var methodDescription = GetMethodDescription(serviceDescriptionChain, path);
             return methodDescription.GenericParameters.Any() 
-                ? new GenericServiceMethodHandler(codecContainer, rawHandlerFactory, serviceDescriptionChain, methodDescription, path) 
+                ? new GenericHandler(codecContainer, rawHandlerFactory, serviceDescriptionChain, methodDescription, path) 
                 : rawHandlerFactory.CreateGenericClass(serviceDescriptionChain, methodDescription, path)(null);
         }
 

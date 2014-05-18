@@ -26,21 +26,21 @@ using NSubstitute;
 using NUnit.Framework;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
-using SharpRpc.ServerSide;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc.Tests.ServerSide
 {
     [TestFixture]
     public class ServiceMethodHandlerContainerTests
     {
-        private IServiceMethodHandlerFactory factory;
-        private IServiceMethodHandlerContainer container;
+        private IHandlerFactory factory;
+        private IHandlerContainer container;
 
         [SetUp]
         public void Setup()
         {
-            factory = Substitute.For<IServiceMethodHandlerFactory>();
-            container = new ServiceMethodHandlerContainer(factory);
+            factory = Substitute.For<IHandlerFactory>();
+            container = new HandlerContainer(factory);
         }
 
         public interface ITrivialService
@@ -53,11 +53,11 @@ namespace SharpRpc.Tests.ServerSide
         {
             var serviceDescription = new ServiceDescriptionBuilder(new MethodDescriptionBuilder()).Build(typeof(ITrivialService));
             var path = new ServicePath("MyService", "MyMethod");
-            var handler = Substitute.For<IServiceMethodHandler>();
-            factory.CreateMethodHandler(serviceDescription, path).Returns(handler);
+            var handler = Substitute.For<IHandler>();
+            factory.CreateHandler(serviceDescription, path).Returns(handler);
 
-            var handler1 = container.GetMethodHandler(serviceDescription, path);
-            var handler2 = container.GetMethodHandler(serviceDescription, path);
+            var handler1 = container.GetHandler(serviceDescription, path);
+            var handler2 = container.GetHandler(serviceDescription, path);
 
             Assert.That(handler1, Is.EqualTo(handler2));
         }

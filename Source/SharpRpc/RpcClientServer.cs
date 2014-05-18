@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
-using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Logs;
 using SharpRpc.ServerSide;
 using SharpRpc.Reflection;
@@ -42,7 +42,7 @@ namespace SharpRpc
         private readonly IServiceImplementationContainer serviceImplementationContainer;
         private readonly ILogger logger;
         private readonly IRequestReceiver requestReceiver;
-        private readonly IServiceProxyContainer serviceProxyContainer;
+        private readonly IProxyContainer proxyContainer;
 
         public RpcClientServer(ITopologyLoader topologyLoader, TimeoutSettings defaultTimeout, ISettingsLoader settingsLoader, RpcComponentOverrides componentOverrides = null)
         {
@@ -53,7 +53,7 @@ namespace SharpRpc
             logger = componentContainer.GetLogger();
             serviceImplementationContainer = componentContainer.GetServiceImplementationContainer();
             requestReceiver = componentContainer.GetRequestReceiverContainer().GetReceiver(settings.EndPoint.Protocol);
-            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
+            proxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
         public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
@@ -70,7 +70,7 @@ namespace SharpRpc
                 // todo: notready timeouts
                 return (T)implementation;
             }
-            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
+            return proxyContainer.GetProxy<T>(scope, timeoutSettings);
         }
 
         public void StartHost()

@@ -22,35 +22,16 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Codecs;
-using SharpRpc.Utility;
+using System.Reflection;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ClientSide
 {
-    public class ServiceMethodDelegateEmittingContext : EmittingContextBase
+    public static class OutgoingRequestProcessorMethods
     {
-        private readonly HandlerClassFieldCache fieldCache;
+        private static readonly MethodInfo ProcessMethod = typeof(IOutgoingRequestProcessor).GetMethod("Process");
+        public static MethodInfo Process { get { return ProcessMethod; } }
 
-        public ServiceMethodDelegateEmittingContext(MyILGenerator il, HandlerClassFieldCache fieldCache)
-            : base(il)
-        {
-            this.fieldCache = fieldCache;
-        }
-
-        public override void EmitLoadManualCodecFor(Type type)
-        {
-            if (type.ContainsGenericParameters)
-            {
-                IL.Ldarg(0);
-                IL.Ldfld(fieldCache.CodecContainer);
-                IL.Call(CodecContainerMethods.GetManualCodecFor(type));
-            }
-            else
-            {
-                IL.Ldarg(0);
-                IL.Ldfld(fieldCache.GetOrCreateManualCodec(type));
-            }
-        }
+        private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingRequestProcessor).GetMethod("ProcessAsync");
+        public static MethodInfo ProcessAsync { get { return ProcessAsyncMethod; } }
     }
 }

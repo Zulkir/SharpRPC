@@ -30,19 +30,19 @@ using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class GenericServiceMethodHandler : IServiceMethodHandler
+    public class GenericHandler : IHandler
     {
-        private readonly ConcurrentDictionary<TypesKey, IServiceMethodHandler> genericHandlers;
-        private readonly Func<Type[], IServiceMethodHandler> createGenericHandler;
+        private readonly ConcurrentDictionary<TypesKey, IHandler> rawHandlers;
+        private readonly Func<Type[], IHandler> createRawHandler;
         private readonly int genericParameterCount;
         private readonly IManualCodec<Type> typeCodec;
 
-        public GenericServiceMethodHandler(ICodecContainer codecContainer, IRawHandlerFactory delegateFactory, IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath servicePath)
+        public GenericHandler(ICodecContainer codecContainer, IRawHandlerFactory delegateFactory, IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath servicePath)
         {
-            genericHandlers = new ConcurrentDictionary<TypesKey, IServiceMethodHandler>();
-            createGenericHandler = delegateFactory.CreateGenericClass(serviceDescriptionChain, methodDescription, servicePath);
+            rawHandlers = new ConcurrentDictionary<TypesKey, IHandler>();
+            createRawHandler = delegateFactory.CreateGenericClass(serviceDescriptionChain, methodDescription, servicePath);
             genericParameterCount = methodDescription.GenericParameters.Count;
             typeCodec = codecContainer.GetManualCodecFor<Type>();
         }
@@ -51,9 +51,9 @@ namespace SharpRpc.ServerSide
         {
             var genericArguments = DecodeGenericArguments(data, ref offset);
             var genericArgumentsKey = new TypesKey(genericArguments);
-            var genericHandler = genericHandlers.GetOrAdd(genericArgumentsKey, k => createGenericHandler(k.Types));
+            var rawHandler = rawHandlers.GetOrAdd(genericArgumentsKey, k => createRawHandler(k.Types));
 
-            return await genericHandler.Handle(serviceImplementation, data, offset);
+            return await rawHandler.Handle(serviceImplementation, data, offset);
         }
 
         private unsafe Type[] DecodeGenericArguments(byte[] data, ref int offset)

@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using SharpRpc.Logs;
 using SharpRpc.ServerSide;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc
 {
@@ -33,8 +34,8 @@ namespace SharpRpc
         ILogger GetLogger();
         IServiceImplementationContainer GetServiceImplementationContainer();
         IServiceImplementationFactory GetServiceImplementationFactory();
-        IServiceMethodHandlerFactory GetServiceMethodHandlerFactory();
-        IServiceMethodHandlerContainer GetServiceMethodHandlerContainer();
+        IHandlerFactory GetServiceMethodHandlerFactory();
+        IHandlerContainer GetServiceMethodHandlerContainer();
         IIncomingRequestProcessor GetIncomingRequestProcessor();
         IRequestReceiverContainer GetRequestReceiverContainer();
     }

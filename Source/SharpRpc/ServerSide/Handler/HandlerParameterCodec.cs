@@ -1,4 +1,5 @@
 ﻿#region License
+
 /*
 Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -20,31 +21,36 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 #endregion
 
 using System;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class HandlerRetvalCodec
+    public class HandlerParameterCodec
     {
         private readonly IEmittingContext emittingContext;
+        private readonly Type type;
+        private readonly MethodParameterWay way;
         private readonly IEmittingCodec codec;
         private readonly LocalBuilder local;
 
-        public HandlerRetvalCodec(IEmittingContext emittingContext, Type type)
+        public HandlerParameterCodec(IEmittingContext emittingContext, MethodParameterDescription description)
         {
             this.emittingContext = emittingContext;
+            type = description.Type;
+            way = description.Way;
             codec = new IndirectCodec(type);
-            local = emittingContext.IL.DeclareLocal(type);
+            if (IsResponseParameter)
+                local = emittingContext.IL.DeclareLocal(type);
         }
 
-        public void EmitStore()
-        {
-            emittingContext.IL.Stloc(local);
-        }
+        public bool IsRequestParameter { get { return way == MethodParameterWay.Val || way == MethodParameterWay.Ref; } }
+        public bool IsResponseParameter { get { return way == MethodParameterWay.Ref || way == MethodParameterWay.Out; } }
 
         public void EmitCalculateSize()
         {
@@ -54,6 +60,27 @@ namespace SharpRpc.ServerSide
         public void EmitEncode()
         {
             codec.EmitEncode(emittingContext, Loaders.Local(local));
+        }
+
+        public void EmitDecodeAndPrepare()
+        {
+            var il = emittingContext.IL;
+            switch (way)
+            {
+                case MethodParameterWay.Val:
+                    codec.EmitDecode(emittingContext, false);
+                    break;
+                case MethodParameterWay.Ref:
+                    codec.EmitDecode(emittingContext, false);
+                    il.Stloc(local);
+                    il.Ldloca(local);
+                    break;
+                case MethodParameterWay.Out:
+                    il.Ldloca(local);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
     }
 }

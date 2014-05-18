@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 
@@ -36,9 +37,9 @@ namespace SharpRpc
         private IServiceDescriptionBuilder serviceDescriptionBuilder;
         private ICodecContainer codecContainer;
         private IRequestSenderContainer requestSenderContainer;
-        private IOutgoingMethodCallProcessor outgoingMethodCallProcessor;
-        private IServiceProxyClassFactory serviceProxyClassFactory;
-        private IServiceProxyContainer serviceProxyContainer;
+        private IOutgoingRequestProcessor outgoingRequestProcessor;
+        private IProxyFactory proxyFactory;
+        private IProxyContainer proxyContainer;
 
         public RpcClientComponentContainer(IRpcClient client, RpcClientComponentOverrides overrides)
         {
@@ -69,28 +70,28 @@ namespace SharpRpc
                                                   : new RequestSenderContainer());
         }
 
-        public IOutgoingMethodCallProcessor GetOutgoingMethodCallProcessor()
+        public IOutgoingRequestProcessor GetOutgoingMethodCallProcessor()
         {
-            return outgoingMethodCallProcessor ?? (outgoingMethodCallProcessor =
+            return outgoingRequestProcessor ?? (outgoingRequestProcessor =
                                                    overrides.OutgoingMethodCallProcessor != null
                                                        ? overrides.OutgoingMethodCallProcessor(this)
-                                                       : new OutgoingMethodCallProcessor(client.Topology, GetRequestSenderContainer(), GetCodecContainer()));
+                                                       : new OutgoingRequestProcessor(client.Topology, GetRequestSenderContainer(), GetCodecContainer()));
         }
 
-        public IServiceProxyClassFactory GetServiceProxyClassFactory()
+        public IProxyFactory GetServiceProxyClassFactory()
         {
-            return serviceProxyClassFactory ?? (serviceProxyClassFactory =
+            return proxyFactory ?? (proxyFactory =
                                                 overrides.ServiceProxyClassFactory != null
                                                     ? overrides.ServiceProxyClassFactory(this)
-                                                    : new ServiceProxyClassFactory(GetServiceDescriptionBuilder(), GetCodecContainer()));
+                                                    : new ProxyFactory(GetServiceDescriptionBuilder(), GetCodecContainer()));
         }
 
-        public IServiceProxyContainer GetIServiceProxyContainer()
+        public IProxyContainer GetIServiceProxyContainer()
         {
-            return serviceProxyContainer ?? (serviceProxyContainer =
+            return proxyContainer ?? (proxyContainer =
                                              overrides.ServiceProxyContainer != null
                                                  ? overrides.ServiceProxyContainer(this)
-                                                 : new ServiceProxyContainer(GetOutgoingMethodCallProcessor(), GetServiceProxyClassFactory()));
+                                                 : new ProxyContainer(GetOutgoingMethodCallProcessor(), GetServiceProxyClassFactory()));
         }
     }
 }

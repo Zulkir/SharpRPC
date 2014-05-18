@@ -25,19 +25,20 @@ THE SOFTWARE.
 using System;
 using SharpRpc.Codecs;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public class ServiceProxyMethodRetvalCodec : ServiceProxyMethodIoCodecBase
+    public class ProxyMethodRetvalCodec
     {
-        public ServiceProxyMethodRetvalCodec(Type type, ICodecContainer codecContainer)
-            : base(type, codecContainer)
+        private readonly IEmittingCodec codec;
+
+        public ProxyMethodRetvalCodec(Type type)
         {
-            
+            codec = new IndirectCodec(type);
         }
 
         public void EmitDecode(IEmittingContext emittingContext)
         {
-            Codec.EmitDecode(emittingContext, false);
+            codec.EmitDecode(emittingContext, false);
         }
     }
 }

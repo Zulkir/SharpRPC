@@ -1,4 +1,4 @@
-#region License
+﻿#region License
 /*
 Copyright (c) 2013-2014 Daniil Rodin of Buhgalteria.Kontur team of SKB Kontur
 
@@ -23,25 +23,33 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using SharpRpc.Codecs;
 using SharpRpc.Utility;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public class RetvalServiceProxyMethodParameterAccessor : IServiceProxyMethodParameterAccessor
+    public class ProxyMethodEmittingContext : EmittingContextBase
     {
-        public void EmitLoad(MyILGenerator il)
+        private readonly ProxyClassFieldCache fieldCache;
+
+        public ProxyMethodEmittingContext(MyILGenerator il, ProxyClassFieldCache fieldCache) : base(il)
         {
-            throw new InvalidOperationException("Trying to emit Load for retval");
+            this.fieldCache = fieldCache;
         }
 
-        public void EmitBeginStore(MyILGenerator il)
+        public override void EmitLoadManualCodecFor(Type type)
         {
-            throw new InvalidOperationException("Trying to emit Store for retval");
-        }
-
-        public void EmitEndStore(MyILGenerator il)
-        {
-            throw new InvalidOperationException("Trying to emit Store for retval");
+            if (type.ContainsGenericParameters)
+            {
+                IL.Ldarg(0);
+                IL.Ldfld(fieldCache.CodecContainer);
+                IL.Call(CodecContainerMethods.GetManualCodecFor(type));
+            }
+            else
+            {
+                IL.Ldarg(0);
+                IL.Ldfld(fieldCache.GetOrCreateManualCodec(type));
+            }
         }
     }
 }

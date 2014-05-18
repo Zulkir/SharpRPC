@@ -23,38 +23,14 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
+using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public struct ProxyKey : IEquatable<ProxyKey>
+    public interface IRawHandlerFactory
     {
-        public string Scope;
-        public TimeoutSettings TimeoutSettings;
-
-        public ProxyKey(string scope, TimeoutSettings timeoutSettings)
-        {
-            Scope = scope;
-            TimeoutSettings = timeoutSettings;
-        }
-
-        public bool Equals(ProxyKey other)
-        {
-            return Scope == other.Scope && TimeoutSettings == other.TimeoutSettings;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is ProxyKey && Equals((ProxyKey)obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return (TimeoutSettings != null ? TimeoutSettings.GetHashCode() : 0) ^ (Scope != null ? Scope.GetHashCode() : 0);
-        }
-
-        public override string ToString()
-        {
-            return string.Format(@"{{""{0}""; {1}}}", Scope, TimeoutSettings);
-        }
+        Func<Type[], IHandler> CreateGenericClass(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path);
     }
 }

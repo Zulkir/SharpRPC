@@ -22,16 +22,30 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Reflection;
+using System;
+using SharpRpc.Codecs;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public static class OutgoingMethodCallProcessorMethods
+    public class ProxyMethodGenericArgumentCodec
     {
-        private static readonly MethodInfo ProcessMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("Process");
-        public static MethodInfo Process { get { return ProcessMethod; } }
+        private readonly Type type;
+        private readonly IEmittingCodec typeCodec;
 
-        private static readonly MethodInfo ProcessAsyncMethod = typeof(IOutgoingMethodCallProcessor).GetMethod("ProcessAsync");
-        public static MethodInfo ProcessAsync { get { return ProcessAsyncMethod; } }
+        public ProxyMethodGenericArgumentCodec(Type type)
+        {
+            this.type = type;
+            typeCodec = new IndirectCodec(typeof(Type));
+        }
+
+        public void EmitCalculateSize(IEmittingContext emittingContext)
+        {
+            typeCodec.EmitCalculateSize(emittingContext, Loaders.TypeOf(type));
+        }
+
+        public void EmitEncode(IEmittingContext emittingContext)
+        {
+            typeCodec.EmitEncode(emittingContext, Loaders.TypeOf(type));
+        }
     }
 }

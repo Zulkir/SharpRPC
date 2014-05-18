@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using SharpRpc.Logs;
 using SharpRpc.ServerSide;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc
 {
@@ -34,8 +35,8 @@ namespace SharpRpc
         public Func<IRpcClientServerComponentContainer, IServiceImplementationContainer> ServiceImplementationContainer { get; set; }
         public Func<IRpcClientServerComponentContainer, IServiceImplementationFactory> ServiceImplementationFactory { get; set; }
         public Func<IRpcClientServerComponentContainer, IRawHandlerFactory> ServiceMethodDelegateFactory { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerFactory> ServiceMethodHandlerFactory { get; set; }
-        public Func<IRpcClientServerComponentContainer, IServiceMethodHandlerContainer> ServiceMethodHandlerContainer { get; set; }
+        public Func<IRpcClientServerComponentContainer, IHandlerFactory> ServiceMethodHandlerFactory { get; set; }
+        public Func<IRpcClientServerComponentContainer, IHandlerContainer> ServiceMethodHandlerContainer { get; set; }
         public Func<IRpcClientServerComponentContainer, IIncomingRequestProcessor> IncomingRequestProcessor { get; set; }
         public Func<IRpcClientServerComponentContainer, IRequestReceiverContainer> RequestReceiverContainer { get; set; }
     }

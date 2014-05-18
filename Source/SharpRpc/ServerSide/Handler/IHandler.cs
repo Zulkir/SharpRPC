@@ -22,13 +22,12 @@ THE SOFTWARE.
 */
 #endregion
 
-using SharpRpc.Interaction;
-using SharpRpc.Reflection;
+using System.Threading.Tasks;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public interface IServiceMethodHandlerFactory
+    public interface IHandler
     {
-        IServiceMethodHandler CreateMethodHandler(ServiceDescription rootDescription, ServicePath path);
+        Task<byte[]> Handle(object serviceImplementation, byte[] data, int offset);
     }
 }

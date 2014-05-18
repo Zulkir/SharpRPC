@@ -25,18 +25,18 @@ THE SOFTWARE.
 using System;
 using System.Collections.Concurrent;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public class ServiceProxyContainer : IServiceProxyContainer
+    public class ProxyContainer : IProxyContainer
     {
         #region Proxy Set
         private class ProxySet<T> where T : class
         {
-            private readonly IOutgoingMethodCallProcessor processor;
-            private readonly Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> constructor;
+            private readonly IOutgoingRequestProcessor processor;
+            private readonly Func<IOutgoingRequestProcessor, string, TimeoutSettings, T> constructor;
             private readonly ConcurrentDictionary<ProxyKey, T> scopedProxies;
 
-            public ProxySet(IOutgoingMethodCallProcessor processor, Func<IOutgoingMethodCallProcessor, string, TimeoutSettings, T> constructor)
+            public ProxySet(IOutgoingRequestProcessor processor, Func<IOutgoingRequestProcessor, string, TimeoutSettings, T> constructor)
             {
                 this.processor = processor;
                 this.constructor = constructor;
@@ -50,11 +50,11 @@ namespace SharpRpc.ClientSide
         }
         #endregion
 
-        private readonly IOutgoingMethodCallProcessor processor;
-        private readonly IServiceProxyClassFactory factory;
+        private readonly IOutgoingRequestProcessor processor;
+        private readonly IProxyFactory factory;
         private readonly ConcurrentDictionary<Type, object> proxySets; 
 
-        public ServiceProxyContainer(IOutgoingMethodCallProcessor processor, IServiceProxyClassFactory factory)
+        public ProxyContainer(IOutgoingRequestProcessor processor, IProxyFactory factory)
         {
             this.processor = processor;
             this.factory = factory;
@@ -63,7 +63,7 @@ namespace SharpRpc.ClientSide
 
         public T GetProxy<T>(string scope, TimeoutSettings timeoutSettings) where T : class
         {
-            var set = (ProxySet<T>)proxySets.GetOrAdd(typeof(T), t => new ProxySet<T>(processor, factory.CreateProxyClass<T>()));
+            var set = (ProxySet<T>)proxySets.GetOrAdd(typeof(T), t => new ProxySet<T>(processor, factory.CreateProxy<T>()));
             return set.GetForScope(scope, timeoutSettings);
         }
     }

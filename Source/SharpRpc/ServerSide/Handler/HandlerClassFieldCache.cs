@@ -28,27 +28,20 @@ using System.Reflection;
 using System.Reflection.Emit;
 using SharpRpc.Codecs;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class ServiceProxyClassFieldCache
+    public class HandlerClassFieldCache
     {
         private readonly TypeBuilder typeBuilder;
         private readonly Dictionary<Type, FieldBuilder> manualCodecFields;
         private int manualCodecFieldNameDisambiguator = 0;
 
-        public FieldBuilder Processor { get; private set; }
-        public FieldBuilder Scope { get; private set; }
-        public FieldBuilder TimeoutSettings { get; private set; }
         public FieldBuilder CodecContainer { get; private set; }
 
-        public ServiceProxyClassFieldCache(TypeBuilder typeBuilder)
+        public HandlerClassFieldCache(TypeBuilder typeBuilder)
         {
             this.typeBuilder = typeBuilder;
             manualCodecFields = new Dictionary<Type, FieldBuilder>();
-
-            Processor = typeBuilder.DefineField("methodCallProcessor", typeof(IOutgoingMethodCallProcessor), FieldAttributes.Private | FieldAttributes.InitOnly);
-            Scope = typeBuilder.DefineField("scope", typeof(string), FieldAttributes.Private | FieldAttributes.InitOnly);
-            TimeoutSettings = typeBuilder.DefineField("timeoutSettings", typeof(TimeoutSettings), FieldAttributes.Private | FieldAttributes.InitOnly);
             CodecContainer = typeBuilder.DefineField("codecContainer", typeof(ICodecContainer), FieldAttributes.Private | FieldAttributes.InitOnly);
         }
 
@@ -67,6 +60,6 @@ namespace SharpRpc.ClientSide
         public IEnumerable<FieldBuilder> GetAllManualCodecFields()
         {
             return manualCodecFields.Values;
-        } 
+        }  
     }
 }

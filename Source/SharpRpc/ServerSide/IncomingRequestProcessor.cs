@@ -27,22 +27,23 @@ using System.Threading.Tasks;
 using SharpRpc.Codecs;
 using SharpRpc.Interaction;
 using SharpRpc.Logs;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc.ServerSide
 {
     public class IncomingRequestProcessor : IIncomingRequestProcessor
     {
         private readonly IServiceImplementationContainer serviceImplementationContainer;
-        private readonly IServiceMethodHandlerContainer serviceMethodHandlerContainer;
+        private readonly IHandlerContainer handlerContainer;
         private readonly IManualCodec<Exception> exceptionCodec;
         private readonly ILogger logger;
 
         public IncomingRequestProcessor(ILogger logger, IServiceImplementationContainer serviceImplementationContainer, 
-            IServiceMethodHandlerContainer serviceMethodHandlerContainer, ICodecContainer codecContainer)
+            IHandlerContainer handlerContainer, ICodecContainer codecContainer)
         {
             this.logger = logger;
             this.serviceImplementationContainer = serviceImplementationContainer;
-            this.serviceMethodHandlerContainer = serviceMethodHandlerContainer;
+            this.handlerContainer = handlerContainer;
             exceptionCodec = codecContainer.GetManualCodecFor<Exception>();
         }
 
@@ -55,7 +56,7 @@ namespace SharpRpc.ServerSide
 
                 var implementationInfo = serviceImplementationContainer.GetImplementation(request.Path.ServiceName, request.ServiceScope);
 
-                var methodHandler = serviceMethodHandlerContainer.GetMethodHandler(implementationInfo.Description, request.Path);
+                var methodHandler = handlerContainer.GetHandler(implementationInfo.Description, request.Path);
 
                 var responseData = await methodHandler.Handle(implementationInfo.Implementation, request.Data, 0);
 

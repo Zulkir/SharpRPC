@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using SharpRpc.Logs;
 using SharpRpc.ServerSide;
+using SharpRpc.ServerSide.Handler;
 
 namespace SharpRpc
 {
@@ -36,8 +37,8 @@ namespace SharpRpc
         private IServiceImplementationContainer serviceImplementationContainer;
         private IServiceImplementationFactory serviceImplementationFactory;
         private IRawHandlerFactory rawHandlerFactory;
-        private IServiceMethodHandlerFactory serviceMethodHandlerFactory;
-        private IServiceMethodHandlerContainer serviceMethodHandlerContainer;
+        private IHandlerFactory handlerFactory;
+        private IHandlerContainer handlerContainer;
         private IIncomingRequestProcessor incomingRequestProcessor;
         private IRequestReceiverContainer requestReceiverContainer;
 
@@ -82,20 +83,20 @@ namespace SharpRpc
                                                         : new RawHandlerFactory(GetCodecContainer()));
         }
 
-        public IServiceMethodHandlerFactory GetServiceMethodHandlerFactory()
+        public IHandlerFactory GetServiceMethodHandlerFactory()
         {
-            return serviceMethodHandlerFactory ?? (serviceMethodHandlerFactory =
+            return handlerFactory ?? (handlerFactory =
                                                    overrides.ServiceMethodHandlerFactory != null
                                                        ? overrides.ServiceMethodHandlerFactory(this)
-                                                       : new ServiceMethodHandlerFactory(GetCodecContainer(), GetServiceMethodDelegateFactory()));
+                                                       : new HandlerFactory(GetCodecContainer(), GetServiceMethodDelegateFactory()));
         }
 
-        public IServiceMethodHandlerContainer GetServiceMethodHandlerContainer()
+        public IHandlerContainer GetServiceMethodHandlerContainer()
         {
-            return serviceMethodHandlerContainer ?? (serviceMethodHandlerContainer =
+            return handlerContainer ?? (handlerContainer =
                                                      overrides.ServiceMethodHandlerContainer != null
                                                          ? overrides.ServiceMethodHandlerContainer(this)
-                                                         : new ServiceMethodHandlerContainer(GetServiceMethodHandlerFactory()));
+                                                         : new HandlerContainer(GetServiceMethodHandlerFactory()));
         }
 
         public IIncomingRequestProcessor GetIncomingRequestProcessor()

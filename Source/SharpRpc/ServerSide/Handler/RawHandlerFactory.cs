@@ -34,7 +34,7 @@ using SharpRpc.Reflection;
 using System.Linq;
 using SharpRpc.Utility;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
     public class RawHandlerFactory : IRawHandlerFactory
     {
@@ -59,12 +59,12 @@ namespace SharpRpc.ServerSide
 
         private static readonly MethodInfo ToEmptyByteArrayTaskMethod = typeof(RawHandlerFactory).GetMethod("ToEmptyByteArrayTask");
 
-        public Func<Type[], IServiceMethodHandler> CreateGenericClass(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path)
+        public Func<Type[], IHandler> CreateGenericClass(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path)
         {
             var type = CreateType(serviceDescriptionChain, methodDescription, path);
             if (type.IsGenericType)
-                return t => (IServiceMethodHandler)Activator.CreateInstance(type.MakeGenericType(t), codecContainer);
-            return t => (IServiceMethodHandler)Activator.CreateInstance(type, codecContainer);
+                return t => (IHandler)Activator.CreateInstance(type.MakeGenericType(t), codecContainer);
+            return t => (IHandler)Activator.CreateInstance(type, codecContainer);
         }
 
         private Type CreateType(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path)
@@ -72,7 +72,7 @@ namespace SharpRpc.ServerSide
             int disambiguator = Interlocked.Increment(ref classNameDisambiguator);
             var typeBuilder = moduleBuilder.DefineType("__rpc_handler_" + string.Join(".", path) + "_" + disambiguator,
                                             TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
-                                            typeof(object), new[] { typeof(IServiceMethodHandler) });
+                                            typeof(object), new[] { typeof(IHandler) });
 
             var genericTypeParameterBuilders = methodDescription.GenericParameters.Any()
                 ? typeBuilder.DefineGenericParameters(methodDescription.GenericParameters.Select(x => x.Name).ToArray())
@@ -99,7 +99,7 @@ namespace SharpRpc.ServerSide
                     typeof(Task<byte[]>), new[] { typeof(object), typeof(byte[]), typeof(int) });
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new ServiceMethodDelegateEmittingContext(il, classContext.Fields);
+            var emittingContext = new HandlerMethodEmittingContext(il, classContext.Fields);
 
             var serviceDescriptionChain = classContext.ServiceDescriptionChain;
 
@@ -202,7 +202,7 @@ namespace SharpRpc.ServerSide
                 typeof(byte[]), new[] {typeof(Task<>).MakeGenericType(pureRetvalType)});
 
             var il = new MyILGenerator(methodBuilder.GetILGenerator());
-            var emittingContext = new ServiceMethodDelegateEmittingContext(il, classContext.Fields);
+            var emittingContext = new HandlerMethodEmittingContext(il, classContext.Fields);
 
             il.Ldarg(taskArgIndex);
             il.Call(TaskMethods.GetResult(pureRetvalType));

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System.Collections.Generic;
-using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Topology;
 
 namespace SharpRpc
@@ -32,14 +32,14 @@ namespace SharpRpc
     {
         private readonly IReadOnlyDictionary<string, IServiceTopology> topology;
         private readonly TimeoutSettings defaultTimeout;
-        private readonly IServiceProxyContainer serviceProxyContainer;
+        private readonly IProxyContainer proxyContainer;
 
         public RpcClient(ITopologyLoader topologyLoader, TimeoutSettings defaultTimeout, RpcClientComponentOverrides componentOverrides = null)
         {
             topology = topologyLoader.Load();
             this.defaultTimeout = defaultTimeout;
             var componentContainer = new RpcClientComponentContainer(this, componentOverrides ?? new RpcClientComponentOverrides());
-            serviceProxyContainer = componentContainer.GetIServiceProxyContainer();
+            proxyContainer = componentContainer.GetIServiceProxyContainer();
         }
 
         public IReadOnlyDictionary<string, IServiceTopology> Topology { get { return topology; } }
@@ -47,7 +47,7 @@ namespace SharpRpc
 
         public T GetService<T>(string scope, TimeoutSettings timeoutSettings) where T : class
         {
-            return serviceProxyContainer.GetProxy<T>(scope, timeoutSettings);
+            return proxyContainer.GetProxy<T>(scope, timeoutSettings);
         }
     }
 }

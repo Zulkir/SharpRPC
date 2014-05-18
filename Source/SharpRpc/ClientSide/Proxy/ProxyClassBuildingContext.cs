@@ -23,14 +23,23 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Threading.Tasks;
+using System.Reflection.Emit;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public interface IOutgoingMethodCallProcessor
+    public class ProxyClassBuildingContext
     {
-        byte[] Process(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings);
-        Task<byte[]> ProcessAsync(Type serviceInterface, string pathSeparatedBySlashes, string serviceScope, byte[] data, TimeoutSettings timeoutSettings);
+        public Type InterfaceType { get; private set; }
+        public string Path { get; private set; }
+        public TypeBuilder Builder { get; private set; }
+        public ProxyClassFieldCache Fields { get; private set; }
 
+        public ProxyClassBuildingContext(Type interfaceType, string path, TypeBuilder builder, ProxyClassFieldCache fields)
+        {
+            Fields = fields;
+            Builder = builder;
+            Path = path;
+            InterfaceType = interfaceType;
+        }
     }
 }

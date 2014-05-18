@@ -22,28 +22,38 @@ THE SOFTWARE.
 */
 #endregion
 
-using System.Collections.Generic;
+using System;
 using System.Reflection.Emit;
-using SharpRpc.Reflection;
+using SharpRpc.Codecs;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class HandlerClassBuildingContext
+    public class HandlerRetvalCodec
     {
-        public IReadOnlyList<ServiceDescription> ServiceDescriptionChain { get; private set; }
-        public MethodDescription MethodDescription { get; private set; }
-        public TypeBuilder Builder { get; private set; }
-        public GenericTypeParameterBuilder[] GenericTypeParameterBuilders { get; private set; }
-        public HandlerClassFieldCache Fields { get; private set; }
+        private readonly IEmittingContext emittingContext;
+        private readonly IEmittingCodec codec;
+        private readonly LocalBuilder local;
 
-        public HandlerClassBuildingContext(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, 
-            TypeBuilder builder, GenericTypeParameterBuilder[] genericTypeParameterBuilders, HandlerClassFieldCache fields)
+        public HandlerRetvalCodec(IEmittingContext emittingContext, Type type)
         {
-            ServiceDescriptionChain = serviceDescriptionChain;
-            MethodDescription = methodDescription;
-            Builder = builder;
-            GenericTypeParameterBuilders = genericTypeParameterBuilders;
-            Fields = fields;
-        } 
+            this.emittingContext = emittingContext;
+            codec = new IndirectCodec(type);
+            local = emittingContext.IL.DeclareLocal(type);
+        }
+
+        public void EmitStore()
+        {
+            emittingContext.IL.Stloc(local);
+        }
+
+        public void EmitCalculateSize()
+        {
+            codec.EmitCalculateSize(emittingContext, Loaders.Local(local));
+        }
+
+        public void EmitEncode()
+        {
+            codec.EmitEncode(emittingContext, Loaders.Local(local));
+        }
     }
 }

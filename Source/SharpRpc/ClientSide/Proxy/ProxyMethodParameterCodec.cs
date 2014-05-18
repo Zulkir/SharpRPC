@@ -27,21 +27,22 @@ using SharpRpc.Codecs;
 using SharpRpc.Reflection;
 using SharpRpc.Utility;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ClientSide.Proxy
 {
-    public class ServiceProxyMethodParameterCodec : ServiceProxyMethodIoCodecBase
+    public class ProxyMethodParameterCodec
     {
         private readonly Type type;
         private readonly MethodParameterWay way;
         private readonly int argIndex;
+        private readonly IEmittingCodec codec;
         private readonly Action<MyILGenerator> emitLoad;
 
-        public ServiceProxyMethodParameterCodec(MethodParameterDescription description, ICodecContainer codecContainer) 
-            : base(description.Type, codecContainer)
+        public ProxyMethodParameterCodec(MethodParameterDescription description)
         {
             type = description.Type;
             way = description.Way;
             argIndex = description.Index + 1;
+            codec = new IndirectCodec(type);
             emitLoad = description.Way == MethodParameterWay.Val
                 ? Loaders.Argument(argIndex)
                 : Loaders.ArgumentRef(argIndex, description.Type);
@@ -52,19 +53,19 @@ namespace SharpRpc.ClientSide
 
         public void EmitCalculateSize(IEmittingContext emittingContext)
         {
-            Codec.EmitCalculateSize(emittingContext, emitLoad);
+            codec.EmitCalculateSize(emittingContext, emitLoad);
         }
 
         public void EmitEncode(IEmittingContext emittingContext)
         {
-            Codec.EmitEncode(emittingContext, emitLoad);
+            codec.EmitEncode(emittingContext, emitLoad);
         }
 
         public void EmitDecodeAndStore(IEmittingContext emittingContext)
         {
             var il = emittingContext.IL;
             il.Ldarg(argIndex);
-            Codec.EmitDecode(emittingContext, false);
+            codec.EmitDecode(emittingContext, false);
             if (type.IsValueType)
                 il.Stobj(type);
             else

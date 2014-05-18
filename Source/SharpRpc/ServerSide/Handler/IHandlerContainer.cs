@@ -22,15 +22,13 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
 using SharpRpc.Interaction;
 using SharpRpc.Reflection;
 
-namespace SharpRpc.ServerSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public interface IRawHandlerFactory
+    public interface IHandlerContainer
     {
-        Func<Type[], IServiceMethodHandler> CreateGenericClass(IReadOnlyList<ServiceDescription> serviceDescriptionChain, MethodDescription methodDescription, ServicePath path);
+        IHandler GetHandler(ServiceDescription serviceDescription, ServicePath path);
     }
 }

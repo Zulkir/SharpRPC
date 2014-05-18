@@ -22,30 +22,26 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using SharpRpc.Codecs;
+using System.Collections.Concurrent;
+using SharpRpc.Interaction;
+using SharpRpc.Reflection;
 
-namespace SharpRpc.ClientSide
+namespace SharpRpc.ServerSide.Handler
 {
-    public class ServiceProxyMethodGenericArgumentCodec
+    public class HandlerContainer : IHandlerContainer 
     {
-        private readonly Type type;
-        private readonly IEmittingCodec typeCodec;
+        private readonly IHandlerFactory factory;
+        private readonly ConcurrentDictionary<ServicePath, IHandler> handlers; 
 
-        public ServiceProxyMethodGenericArgumentCodec(Type type)
+        public HandlerContainer(IHandlerFactory factory)
         {
-            this.type = type;
-            typeCodec = new IndirectCodec(typeof(Type));
+            this.factory = factory;
+            handlers = new ConcurrentDictionary<ServicePath, IHandler>();
         }
 
-        public void EmitCalculateSize(IEmittingContext emittingContext)
+        public IHandler GetHandler(ServiceDescription serviceDescription, ServicePath path)
         {
-            typeCodec.EmitCalculateSize(emittingContext, Loaders.TypeOf(type));
-        }
-
-        public void EmitEncode(IEmittingContext emittingContext)
-        {
-            typeCodec.EmitEncode(emittingContext, Loaders.TypeOf(type));
+            return handlers.GetOrAdd(path, p => factory.CreateHandler(serviceDescription, p));
         }
     }
 }

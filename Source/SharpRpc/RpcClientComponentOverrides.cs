@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using SharpRpc.ClientSide;
+using SharpRpc.ClientSide.Proxy;
 using SharpRpc.Codecs;
 
 namespace SharpRpc
@@ -32,8 +33,8 @@ namespace SharpRpc
     {
         public Func<IRpcClientComponentContainer, ICodecContainer> CodecContainer { get; set; }
         public Func<IRpcClientComponentContainer, IRequestSenderContainer> RequestSenderContainer { get; set; }
-        public Func<IRpcClientComponentContainer, IOutgoingMethodCallProcessor> OutgoingMethodCallProcessor { get; set; }
-        public Func<IRpcClientComponentContainer, IServiceProxyClassFactory> ServiceProxyClassFactory { get; set; }
-        public Func<IRpcClientComponentContainer, IServiceProxyContainer> ServiceProxyContainer { get; set; }
+        public Func<IRpcClientComponentContainer, IOutgoingRequestProcessor> OutgoingMethodCallProcessor { get; set; }
+        public Func<IRpcClientComponentContainer, IProxyFactory> ServiceProxyClassFactory { get; set; }
+        public Func<IRpcClientComponentContainer, IProxyContainer> ServiceProxyContainer { get; set; }
     }
 }
