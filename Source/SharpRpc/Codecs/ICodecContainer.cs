@@ -30,5 +30,6 @@ namespace SharpRpc.Codecs
     {
         IEmittingCodec GetEmittingCodecFor(Type type);
         IManualCodec<T> GetManualCodecFor<T>();
+        IManualCodec<object> GetAbstractManualCodecFor(Type type);
     }
 }

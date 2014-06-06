@@ -26,15 +26,21 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
+using SharpRpc.Codecs.Expressions;
 using SharpRpc.Reflection;
+using SharpRpc.Utility;
 
 namespace SharpRpc.Codecs
 {
     public class CodecContainer : ICodecContainer
     {
+        private static readonly MethodInfo CreateAbstractManualCodecMethod = typeof(CodecContainer).GetMethod("CreateAbstractManualCodec", BindingFlags.NonPublic | BindingFlags.Instance);
+
         private readonly ConcurrentDictionary<Type, IEmittingCodec> emittingCodecs = new ConcurrentDictionary<Type, IEmittingCodec>();
         private readonly ConcurrentDictionary<Type, IManualCodec> manualCodecs = new ConcurrentDictionary<Type, IManualCodec>();
+        private readonly ConcurrentDictionary<Type, IManualCodec<object>> abstractManualCodecs = new ConcurrentDictionary<Type, IManualCodec<object>>(); 
 
         public IEmittingCodec GetEmittingCodecFor(Type type)
         {
@@ -46,15 +52,37 @@ namespace SharpRpc.Codecs
             return (IManualCodec<T>)manualCodecs.GetOrAdd(typeof(T), x => CreateManualCodec<T>());
         }
 
+        public IManualCodec<object> GetAbstractManualCodecFor(Type type)
+        {
+            return abstractManualCodecs.GetOrAdd(type, x => (IManualCodec<object>)CreateAbstractManualCodecMethod.MakeGenericMethod(x).Invoke(this, CommonImmutables.EmptyObjects));
+        }
+
+        // ReSharper disable once UnusedMember.Local
+        private IManualCodec<object> CreateAbstractManualCodec<T>()
+        {
+            return new AbstractManualCodecWrapper<T>(GetManualCodecFor<T>());
+        }
+
         private IManualCodec<T> CreateManualCodec<T>()
         {
             if (typeof(T) == typeof(Exception))
                 return (IManualCodec<T>)new ExceptionCodec(this);
+            if (typeof(T) == typeof(MethodInfo))
+                return (IManualCodec<T>)new MethodInfoCodec(this);
+            if (typeof(T) == typeof(Expression))
+                return (IManualCodec<T>)new ExpressionCodec(this);
             return new ManualCodec<T>(this, GetEmittingCodecFor(typeof(T)));
         }
 
         private IEmittingCodec CreateCodec(Type type)
         {
+            if (type == typeof(Exception))
+                return new IndirectCodec(type);
+            if (type == typeof(MethodInfo))
+                return new IndirectCodec(type);
+            if (type == typeof(Expression))
+                return new IndirectCodec(type);
+
             if (TypeIsNativeStructure(type))
                 return new NativeStructCodec(type);
             if (type == typeof (string))

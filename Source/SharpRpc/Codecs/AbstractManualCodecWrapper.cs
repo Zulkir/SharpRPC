@@ -23,17 +23,40 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Reflection;
 
 namespace SharpRpc.Codecs
 {
-    public static class CodecContainerMethods
+    public unsafe class AbstractManualCodecWrapper<T> : IManualCodec<object>
     {
-        private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor", Type.EmptyTypes);
+        private readonly IManualCodec<T> realCodec;
 
-        public static MethodInfo GetManualCodecFor(Type type)
+        public AbstractManualCodecWrapper(IManualCodec<T> realCodec)
         {
-            return GetManualCodecForMethod.MakeGenericMethod(type);
+            this.realCodec = realCodec;
+        }
+
+        public Type Type { get { return realCodec.Type; } }
+        public int? FixedSize { get { return realCodec.FixedSize; } }
+        public int? MaxSize { get { return realCodec.MaxSize; } }
+
+        public IManualCodec<object> AsAbstract()
+        {
+            return this;
+        }
+
+        public int CalculateSize(object value)
+        {
+            return realCodec.CalculateSize((T)value);
+        }
+
+        public void Encode(ref byte* data, object value)
+        {
+            realCodec.Encode(ref data, (T)value);
+        }
+
+        public object Decode(ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
+        {
+            return realCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
         }
     }
 }

@@ -22,18 +22,14 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Reflection;
+using System.Linq.Expressions;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Codecs.Expressions
 {
-    public static class CodecContainerMethods
+    public unsafe interface IExpressionSubcodec
     {
-        private static readonly MethodInfo GetManualCodecForMethod = typeof(ICodecContainer).GetMethod("GetManualCodecFor", Type.EmptyTypes);
-
-        public static MethodInfo GetManualCodecFor(Type type)
-        {
-            return GetManualCodecForMethod.MakeGenericMethod(type);
-        }
+        int CalculateSize(Expression value);
+        void Encode(ref byte* data, Expression value);
+        Expression Decode(ExpressionType expressionType, ref byte* data, ref int remainingBytes, bool doNotCheckBounds); 
     }
 }

@@ -26,7 +26,6 @@ namespace SharpRpc.Codecs
 {
     public interface IManualCodec : ICodec
     {
-        
     }
 
     public unsafe interface IManualCodec<T> : IManualCodec
