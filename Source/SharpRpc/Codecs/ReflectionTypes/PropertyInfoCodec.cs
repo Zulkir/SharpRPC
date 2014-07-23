@@ -24,58 +24,19 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
-using SharpRpc.Codecs.ReflectionTypes;
+using System.Reflection;
 
-namespace SharpRpc.Tests.Codecs
+namespace SharpRpc.Codecs.ReflectionTypes
 {
-    public class TypeCodecTests : CodecTestsBase
+    public class PropertyInfoCodec : MemberInfoCodecBase<PropertyInfo>
     {
-        private void DoTest(Type value)
+        public PropertyInfoCodec(ICodecContainer codecContainer) : base(codecContainer)
         {
-            DoTest(new TypeCodec(), value);
         }
 
-        private void DoTest<T>()
+        protected override IEnumerable<PropertyInfo> GetMembers(Type type)
         {
-            DoTest(typeof(T));
-        }
-
-        [Test]
-        public void Null()
-        {
-            DoTest(null);
-        }
-
-        [Test]
-        public void Void()
-        {
-            DoTest(typeof(void));
-        }
-
-        [Test]
-        public void System()
-        {
-            DoTest<int>();
-            DoTest<string>();
-            DoTest<DateTime>();
-            DoTest<ArgumentOutOfRangeException>();
-        }
-
-        public class MyCustomType { public int A { get; set; } public string B { get; set; } }
-
-        [Test]
-        public void Custom()
-        {
-            DoTest<MyCustomType>();
-        }
-
-        [Test]
-        public void Generic()
-        {
-            DoTest(typeof(Dictionary<,>));
-            DoTest(typeof(Dictionary<int, string>));
-            DoTest(typeof(Dictionary<MyCustomType, MyCustomType>));
+            return type.GetProperties();
         }
     }
 }

@@ -29,7 +29,8 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    public unsafe class CodecTestsBase
+    [TestFixture]
+    public abstract unsafe class CodecTestsBase
     {
         protected ICodecContainer CodecContainer { get; private set; }
 

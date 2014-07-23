@@ -29,6 +29,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using SharpRpc.Codecs.Expressions;
+using SharpRpc.Codecs.ReflectionTypes;
 using SharpRpc.Reflection;
 using SharpRpc.Utility;
 
@@ -69,6 +70,8 @@ namespace SharpRpc.Codecs
                 return (IManualCodec<T>)new ExceptionCodec(this);
             if (typeof(T) == typeof(MethodInfo))
                 return (IManualCodec<T>)new MethodInfoCodec(this);
+            if (typeof(T) == typeof(ConstructorInfo))
+                return (IManualCodec<T>)new ConstructorInfoCodec(this);
             if (typeof(T) == typeof(Expression))
                 return (IManualCodec<T>)new ExpressionCodec(this);
             return new ManualCodec<T>(this, GetEmittingCodecFor(typeof(T)));
@@ -79,6 +82,8 @@ namespace SharpRpc.Codecs
             if (type == typeof(Exception))
                 return new IndirectCodec(type);
             if (type == typeof(MethodInfo))
+                return new IndirectCodec(type);
+            if (type == typeof(ConstructorInfo))
                 return new IndirectCodec(type);
             if (type == typeof(Expression))
                 return new IndirectCodec(type);

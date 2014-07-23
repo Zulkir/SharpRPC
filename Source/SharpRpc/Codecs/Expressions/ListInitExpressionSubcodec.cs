@@ -22,60 +22,31 @@ THE SOFTWARE.
 */
 #endregion
 
-using System;
-using System.Collections.Generic;
-using NUnit.Framework;
-using SharpRpc.Codecs.ReflectionTypes;
+using System.Linq.Expressions;
 
-namespace SharpRpc.Tests.Codecs
+namespace SharpRpc.Codecs.Expressions
 {
-    public class TypeCodecTests : CodecTestsBase
+    public class ListInitExpressionSubcodec : ExpressionSubcodecBase<ListInitExpression>
     {
-        private void DoTest(Type value)
+        public ListInitExpressionSubcodec(ExpressionCodec commonCodec, ICodecContainer codecContainer) : 
+            base(commonCodec, codecContainer)
         {
-            DoTest(new TypeCodec(), value);
         }
 
-        private void DoTest<T>()
+        protected override unsafe int CalculateSizeTyped(ListInitExpression expression)
         {
-            DoTest(typeof(T));
+            throw new System.NotImplementedException();
         }
 
-        [Test]
-        public void Null()
+        protected override unsafe void EncodeTyped(ref byte* data, ListInitExpression expression)
         {
-            DoTest(null);
+            throw new System.NotImplementedException();
         }
 
-        [Test]
-        public void Void()
+        protected override unsafe ListInitExpression DecodeTyped(ExpressionType expressionType, ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
         {
-            DoTest(typeof(void));
-        }
-
-        [Test]
-        public void System()
-        {
-            DoTest<int>();
-            DoTest<string>();
-            DoTest<DateTime>();
-            DoTest<ArgumentOutOfRangeException>();
-        }
-
-        public class MyCustomType { public int A { get; set; } public string B { get; set; } }
-
-        [Test]
-        public void Custom()
-        {
-            DoTest<MyCustomType>();
-        }
-
-        [Test]
-        public void Generic()
-        {
-            DoTest(typeof(Dictionary<,>));
-            DoTest(typeof(Dictionary<int, string>));
-            DoTest(typeof(Dictionary<MyCustomType, MyCustomType>));
+            //return Expression.ListInit()
+            throw new System.NotImplementedException();
         }
     }
 }

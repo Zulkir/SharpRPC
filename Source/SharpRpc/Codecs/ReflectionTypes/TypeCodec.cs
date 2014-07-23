@@ -23,59 +23,34 @@ THE SOFTWARE.
 #endregion
 
 using System;
-using System.Collections.Generic;
-using NUnit.Framework;
-using SharpRpc.Codecs.ReflectionTypes;
+using System.Reflection;
+using SharpRpc.Utility;
 
-namespace SharpRpc.Tests.Codecs
+namespace SharpRpc.Codecs.ReflectionTypes
 {
-    public class TypeCodecTests : CodecTestsBase
+    public class TypeCodec : StringCodecBase
     {
-        private void DoTest(Type value)
+        public TypeCodec() : base(true)
         {
-            DoTest(new TypeCodec(), value);
+            
         }
 
-        private void DoTest<T>()
+        private static readonly MethodInfo GetTypeMethod = typeof(Type).GetMethod("GetType", new[] { typeof(string) });
+        private static readonly MethodInfo GetAssemblyQualifiedNameMethod = typeof(Type).GetMethod("get_AssemblyQualifiedName");
+
+        public override Type Type { get { return typeof(Type); } }
+        public override bool CanBeInlined { get { return true; } }
+        public override int EncodingComplexity { get { return 1; } }
+
+        protected override void EmitLoadAsString(MyILGenerator il, Action<MyILGenerator> emitLoad)
         {
-            DoTest(typeof(T));
+            emitLoad(il);
+            il.Callvirt(GetAssemblyQualifiedNameMethod);
         }
 
-        [Test]
-        public void Null()
+        protected override void EmitParseFromString(MyILGenerator il)
         {
-            DoTest(null);
-        }
-
-        [Test]
-        public void Void()
-        {
-            DoTest(typeof(void));
-        }
-
-        [Test]
-        public void System()
-        {
-            DoTest<int>();
-            DoTest<string>();
-            DoTest<DateTime>();
-            DoTest<ArgumentOutOfRangeException>();
-        }
-
-        public class MyCustomType { public int A { get; set; } public string B { get; set; } }
-
-        [Test]
-        public void Custom()
-        {
-            DoTest<MyCustomType>();
-        }
-
-        [Test]
-        public void Generic()
-        {
-            DoTest(typeof(Dictionary<,>));
-            DoTest(typeof(Dictionary<int, string>));
-            DoTest(typeof(Dictionary<MyCustomType, MyCustomType>));
+            il.Call(GetTypeMethod);
         }
     }
 }

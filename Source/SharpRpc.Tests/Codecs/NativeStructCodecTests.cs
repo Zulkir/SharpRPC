@@ -28,8 +28,7 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
-    public unsafe class NativeStructCodecTests : CodecTestsBase
+    public class NativeStructCodecTests : CodecTestsBase
     {
         private void DoTest<T>(T value)
         {

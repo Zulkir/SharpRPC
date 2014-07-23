@@ -34,8 +34,11 @@ namespace SharpRpc.Codecs.Expressions
         private readonly IManualCodec<ExpressionType> expressionTypeCodec;
 
         private readonly BinaryExpressionSubcodec binarySubcodec;
+        private readonly ConditionalExpressionSubcodec conditionalSubcodec;
         private readonly ConstantExpressionSubcodec constantSubcodec;
+        private readonly InvocationExpressionSubcodec invocationSubcodec;
         private readonly LambdaExpressionSubcodec lambdaSubcodec;
+        private readonly MethodCallExpressionSubcodec methodCallSubcodec;
         private readonly ParameterExpressionSubcodec parameterSubcodec;
         private readonly UnaryExpressionSubcodec unarySubcodec;
 
@@ -44,8 +47,11 @@ namespace SharpRpc.Codecs.Expressions
             expressionTypeCodec = codecContainer.GetManualCodecFor<ExpressionType>();
 
             binarySubcodec = new BinaryExpressionSubcodec(this, codecContainer);
+            conditionalSubcodec = new ConditionalExpressionSubcodec(this, codecContainer);
             constantSubcodec = new ConstantExpressionSubcodec(this, codecContainer);
+            invocationSubcodec= new InvocationExpressionSubcodec(this, codecContainer);
             lambdaSubcodec = new LambdaExpressionSubcodec(this, codecContainer);
+            methodCallSubcodec = new MethodCallExpressionSubcodec(this, codecContainer);
             parameterSubcodec = new ParameterExpressionSubcodec(this, codecContainer);
             unarySubcodec= new UnaryExpressionSubcodec(this, codecContainer);
         }
@@ -145,17 +151,13 @@ namespace SharpRpc.Codecs.Expressions
                 case ExpressionType.IsFalse:
                     return unarySubcodec;
                 case ExpressionType.Call:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitMethodCall((MethodCallExpression)expression);
-                    break;
+                    return methodCallSubcodec;
                 case ExpressionType.Conditional:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitConditional((ConditionalExpression)expression);
+                    return conditionalSubcodec;
                 case ExpressionType.Constant:
                     return constantSubcodec;
                 case ExpressionType.Invoke:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitInvocation((InvocationExpression)expression);
+                    return invocationSubcodec;
                 case ExpressionType.Lambda:
                     return lambdaSubcodec;
                 case ExpressionType.ListInit:

@@ -24,21 +24,38 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Threading.Tasks;
 using NUnit.Framework;
-using SharpRpc.Codecs.ReflectionTypes;
+using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    public class TypeCodecTests : CodecTestsBase
+    public abstract class MemberInfoCodecTestsBase<TMemberInfo> : CodecTestsBase where TMemberInfo : MemberInfo
     {
-        private void DoTest(Type value)
+        private IManualCodec<TMemberInfo> codec;
+
+        protected abstract IManualCodec<TMemberInfo> CreateCodec();
+        protected abstract IEnumerable<TMemberInfo> GetMembers(Type type);
+
+        public override void Setup()
         {
-            DoTest(new TypeCodec(), value);
+            base.Setup();
+            codec = CreateCodec();
         }
 
         private void DoTest<T>()
         {
-            DoTest(typeof(T));
+            foreach (var info in GetMembers(typeof(T)))
+                DoTest(info);
+        }
+
+        protected void DoTest(TMemberInfo info)
+        {
+            var data = codec.EncodeSingle(info);
+            var decoded = codec.DecodeSingle(data);
+            Assert.That(decoded, Is.EqualTo(info));
         }
 
         [Test]
@@ -48,34 +65,14 @@ namespace SharpRpc.Tests.Codecs
         }
 
         [Test]
-        public void Void()
+        public void Omni()
         {
-            DoTest(typeof(void));
-        }
-
-        [Test]
-        public void System()
-        {
+            DoTest<object>();
             DoTest<int>();
             DoTest<string>();
-            DoTest<DateTime>();
-            DoTest<ArgumentOutOfRangeException>();
-        }
-
-        public class MyCustomType { public int A { get; set; } public string B { get; set; } }
-
-        [Test]
-        public void Custom()
-        {
-            DoTest<MyCustomType>();
-        }
-
-        [Test]
-        public void Generic()
-        {
-            DoTest(typeof(Dictionary<,>));
-            DoTest(typeof(Dictionary<int, string>));
-            DoTest(typeof(Dictionary<MyCustomType, MyCustomType>));
+            DoTest<Expression<Func<int, string>>>();
+            DoTest<Dictionary<string, int>>();
+            DoTest<Task<string>>();
         }
     }
 }

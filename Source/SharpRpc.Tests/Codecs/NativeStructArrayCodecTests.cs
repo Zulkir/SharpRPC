@@ -29,7 +29,6 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
     public class NativeStructArrayCodecTests : CodecTestsBase
     {
         private void DoTest<T>(T[] value) where T : struct

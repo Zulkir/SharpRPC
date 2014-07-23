@@ -27,7 +27,6 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
     public class StringCodecTests : CodecTestsBase
     {
         private void DoTest(string value)

@@ -23,34 +23,20 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
-using SharpRpc.Utility;
 
-namespace SharpRpc.Codecs
+namespace SharpRpc.Codecs.ReflectionTypes
 {
-    public class TypeCodec : StringCodecBase
+    public class FieldInfoCodec : MemberInfoCodecBase<FieldInfo>
     {
-        public TypeCodec() : base(true)
+        public FieldInfoCodec(ICodecContainer codecContainer) : base(codecContainer)
         {
-            
         }
 
-        private static readonly MethodInfo GetTypeMethod = typeof(Type).GetMethod("GetType", new[] { typeof(string) });
-        private static readonly MethodInfo GetAssemblyQualifiedNameMethod = typeof(Type).GetMethod("get_AssemblyQualifiedName");
-
-        public override Type Type { get { return typeof(Type); } }
-        public override bool CanBeInlined { get { return true; } }
-        public override int EncodingComplexity { get { return 1; } }
-
-        protected override void EmitLoadAsString(MyILGenerator il, Action<MyILGenerator> emitLoad)
+        protected override IEnumerable<FieldInfo> GetMembers(Type type)
         {
-            emitLoad(il);
-            il.Callvirt(GetAssemblyQualifiedNameMethod);
-        }
-
-        protected override void EmitParseFromString(MyILGenerator il)
-        {
-            il.Call(GetTypeMethod);
+            return type.GetFields();
         }
     }
 }

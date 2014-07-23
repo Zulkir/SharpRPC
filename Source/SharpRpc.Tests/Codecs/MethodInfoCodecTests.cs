@@ -27,46 +27,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using SharpRpc.Codecs;
+using SharpRpc.Codecs.ReflectionTypes;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
-    public class MethodInfoCodecTests : CodecTestsBase
+    public class MethodInfoCodecTests : MemberInfoCodecTestsBase<MethodInfo>
     {
-        private MethodInfoCodec codec;
-
-        public override void Setup()
+        protected override IManualCodec<MethodInfo> CreateCodec()
         {
-            base.Setup();
-            codec = new MethodInfoCodec(CodecContainer);
+            return new MethodInfoCodec(CodecContainer);
         }
 
-        private void DoTest<T>()
+        protected override IEnumerable<MethodInfo> GetMembers(Type type)
         {
-            foreach (var methodInfo in typeof(T).GetMethods().Where(x => !x.ContainsGenericParameters))
-                DoTest(methodInfo);
+            return type.GetMethods().Where(x => !x.ContainsGenericParameters);
         }
 
         private void DoTest<T>(string methodName)
         {
-            foreach (var methodInfo in typeof(T).GetMethods().Where(x => !x.ContainsGenericParameters).Where(x => x.Name == methodName))
+            foreach (var methodInfo in GetMembers(typeof(T)).Where(x => x.Name == methodName))
                 DoTest(methodInfo);
-        }
-
-        private void DoTest(MethodInfo methodInfo)
-        {
-            var data = codec.EncodeSingle(methodInfo);
-            var decoded = codec.DecodeSingle(data);
-            Assert.That(decoded, Is.EqualTo(methodInfo));
-        }
-
-        [Test]
-        public void Null()
-        {
-            DoTest(null);
         }
 
         [Test]
@@ -106,17 +88,6 @@ namespace SharpRpc.Tests.Codecs
         public void Generic()
         {
             DoTest(typeof(IGenericMock<int, string>).GetMethod("Do").MakeGenericMethod(typeof(int[]), typeof(decimal)));
-        }
-
-        [Test]
-        public void Omni()
-        {
-            DoTest<object>();
-            DoTest<int>();
-            DoTest<string>();
-            DoTest<Expression<Func<int, string>>>();
-            DoTest<Dictionary<string, int>>();
-            DoTest<Task<string>>();
         }
     }
 }

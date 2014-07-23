@@ -30,7 +30,6 @@ using SharpRpc.Codecs.Expressions;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
     public class ExpressionCodecTests : CodecTestsBase
     {
         private ExpressionCodec codec;
@@ -79,6 +78,28 @@ namespace SharpRpc.Tests.Codecs
         {
             DoTest<int, int>(x => x + 1);
             DoTest<double, double>(x => 123.234 * x);
+        }
+
+        [Test]
+        public void MethodCall()
+        {
+            DoTest(() => int.Parse("123"));
+            DoTest<int, string>(x => x.ToString());
+            DoTest<int, bool>(x => x.Equals(123));
+        }
+
+        [Test]
+        public void Conditional()
+        {
+            DoTest(() => double.IsNaN(123) ? "strange" : "fine");
+            DoTest<int, int>(x => x >= 0 ? x : -x);
+        }
+
+        [Test]
+        public void Invocation()
+        {
+            DoTest<Func<bool>, bool>(x => !x());
+            DoTest<Func<int>, string>(x => x().ToString());
         }
     }
 }

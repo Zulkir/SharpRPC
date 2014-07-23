@@ -38,11 +38,13 @@ namespace SharpRpc.ServerSide
         private readonly ILogger logger;
         private HttpListener listener;
         private Thread listenerThread;
+        private readonly SemaphoreSlim semaphore;
 
         public HttpRequestReceiver(IIncomingRequestProcessor requestProcessor, ILogger logger)
         {
             this.requestProcessor = requestProcessor;
             this.logger = logger;
+            semaphore = new SemaphoreSlim(Environment.ProcessorCount);
         }
 
         private void DoListen()
@@ -55,8 +57,8 @@ namespace SharpRpc.ServerSide
                 {
                     try
                     {
-                        var context = listener.GetContext();
-                        Task.Run(() => DoWork(context));
+                        semaphore.Wait();
+                        listener.GetContextAsync().ContinueWith(t => DoWork(t.Result));
                     }
                     catch (Exception ex)
                     {
@@ -76,6 +78,7 @@ namespace SharpRpc.ServerSide
 
         private async Task DoWork(HttpListenerContext context)
         {
+            semaphore.Release();
             try
             {
                 Request request;

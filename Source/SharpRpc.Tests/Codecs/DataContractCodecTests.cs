@@ -29,7 +29,6 @@ using SharpRpc.Codecs;
 
 namespace SharpRpc.Tests.Codecs
 {
-    [TestFixture]
     public class DataContractCodecTests : CodecTestsBase
     {
         #region Contracts
