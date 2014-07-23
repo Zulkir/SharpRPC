@@ -25,6 +25,7 @@ THE SOFTWARE.
 using System;
 using System.Text;
 using SharpRpc.Settings;
+using SharpRpc.TestCommon;
 using SharpRpc.Topology;
 
 namespace SharpRpc.TestHost
@@ -36,7 +37,10 @@ namespace SharpRpc.TestHost
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
             var settingsLoader = new SettingsLoader("../Settings/Host.txt",
                 Encoding.UTF8, new HostSettingsParser());
-            var kernel = new RpcClientServer(topologyLoader, new TimeoutSettings(5000), settingsLoader);
+            var kernel = new RpcClientServer(topologyLoader, new TimeoutSettings(5000), settingsLoader, new RpcComponentOverrides
+            {
+                Logger = c => new FileLogger("hostlog.txt")
+            });
 
             kernel.StartHost();
 

@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 using System;
 using System.Text;
+using SharpRpc.Logs;
 using SharpRpc.TestCommon;
 using SharpRpc.Topology;
 
@@ -34,9 +35,11 @@ namespace SharpRpc.TestClient
         static void Main(string[] args)
         {
             var topologyLoader = new TopologyLoader("../Topology/topology.txt", Encoding.UTF8, new TopologyParser());
-            var client = new RpcClient(topologyLoader, new TimeoutSettings(500));
+            var client = new RpcClient(topologyLoader, new TimeoutSettings(1, 100));
 
             var myService = client.GetService<IMyService>();
+
+            var clientLog = new FileLogger("clientlog.txt");
 
             string line;
             while ((line = Console.ReadLine()) != "exit")
@@ -49,8 +52,8 @@ namespace SharpRpc.TestClient
                         var name = Console.ReadLine();
                         var greeting = myService.Greet(name);
                         Console.WriteLine(greeting);
+                        break;
                     }
-                    break;
                     case "add":
                     {
                         Console.Write("Enter a: ");
@@ -59,8 +62,8 @@ namespace SharpRpc.TestClient
                         var b = int.Parse(Console.ReadLine());
                         var sum = myService.Add(a, b);
                         Console.WriteLine(sum);
+                        break;
                     }
-                    break;
                     case "aadd":
                     {
                         Console.Write("Enter a: ");
@@ -69,8 +72,8 @@ namespace SharpRpc.TestClient
                         var b = int.Parse(Console.ReadLine());
                         var sum = myService.AddAsync(a, b).Result;
                         Console.WriteLine(sum);
+                        break;
                     }
-                    break;
                     case "throw":
                     {
                         try
@@ -81,8 +84,8 @@ namespace SharpRpc.TestClient
                         {
                             Console.WriteLine(ex);
                         }
+                        break;
                     }
-                    break;
                     case "sleep":
                     {
                         try
@@ -93,13 +96,25 @@ namespace SharpRpc.TestClient
                         {
                             Console.WriteLine(ex);
                         }
+                        break;
                     }
-                    break;
+                    case "stress":
+                    {
+                        var globalStart = DateTime.Now;
+                        for (int i = 0; i < 10000; i++)
+                        {
+                            int iLoc = i;
+                            var start = DateTime.Now;
+                            clientLog.Info(string.Format("{0}:\t{1} start", iLoc, DateTime.Now - globalStart));
+                            myService.AddAsync(i, 2 * i).ContinueWith(t => clientLog.Info(string.Format("{0}:\t{1}\t{2}", iLoc, DateTime.Now - globalStart, DateTime.Now - start)));
+                        }
+                        break;
+                    }
                     default:
                     {
-                        Console.WriteLine("Unkown command");    
+                        Console.WriteLine("Unkown command");
+                        break;
                     }
-                    break;
                 }
             }
         }
