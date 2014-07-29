@@ -22,31 +22,40 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace SharpRpc.Codecs.Expressions
 {
-    public class ListInitExpressionSubcodec : ExpressionSubcodecBase<ListInitExpression>
+    public unsafe class ListInitExpressionSubcodec : ExpressionSubcodecBase<ListInitExpression>
     {
+        private readonly IManualCodec<ElementInit[]> elementInitArrayCodec;
+
         public ListInitExpressionSubcodec(ExpressionCodec commonCodec, ICodecContainer codecContainer) : 
             base(commonCodec, codecContainer)
         {
+            elementInitArrayCodec = codecContainer.GetManualCodecFor<ElementInit[]>();
         }
 
-        protected override unsafe int CalculateSizeTyped(ListInitExpression expression)
+        protected override int CalculateSizeTyped(ListInitExpression expression)
         {
-            throw new System.NotImplementedException();
+            int result = 0;
+            result += CommonCodec.CalculateSize(expression.NewExpression);
+            result += elementInitArrayCodec.CalculateSize(expression.Initializers.ToArray());
+            return result;
         }
 
-        protected override unsafe void EncodeTyped(ref byte* data, ListInitExpression expression)
+        protected override void EncodeTyped(ref byte* data, ListInitExpression expression)
         {
-            throw new System.NotImplementedException();
+            CommonCodec.Encode(ref data, expression.NewExpression);
+            elementInitArrayCodec.Encode(ref data, expression.Initializers.ToArray());
         }
 
-        protected override unsafe ListInitExpression DecodeTyped(ExpressionType expressionType, ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
+        protected override ListInitExpression DecodeTyped(ExpressionType expressionType, ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
         {
-            //return Expression.ListInit()
-            throw new System.NotImplementedException();
+            var newExpression = (NewExpression)CommonCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            var initializers = elementInitArrayCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            return Expression.ListInit(newExpression, initializers);
         }
     }
 }

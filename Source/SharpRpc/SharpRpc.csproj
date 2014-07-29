@@ -65,6 +65,8 @@
     <Compile Include="Codecs\CodecContainerMethods.cs" />
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
+    <Compile Include="Codecs\DynamicCodec.cs" />
+    <Compile Include="Codecs\Expressions\ElementInitCodec.cs" />
     <Compile Include="Codecs\ReflectionTypes\ConstructorInfoCodec.cs" />
     <Compile Include="Codecs\Expressions\BinaryExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\ConditionalExpressionSubcodec.cs" />

@@ -22,31 +22,50 @@ THE SOFTWARE.
 */
 #endregion
 
+using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace SharpRpc.Codecs.Expressions
 {
     public unsafe class NewExpressionSubcodec : ExpressionSubcodecBase<NewExpression>
     {
+        private readonly IManualCodec<ConstructorInfo> constructorInfoCodec;
+        private readonly IManualCodec<Expression[]> expressionArrayCodec;
+        private readonly IManualCodec<MemberInfo[]> memberInfoArrayCodec;
+
         public NewExpressionSubcodec(ExpressionCodec commonCodec, ICodecContainer codecContainer) 
             : base(commonCodec, codecContainer)
         {
+            constructorInfoCodec = codecContainer.GetManualCodecFor<ConstructorInfo>();
+            expressionArrayCodec = codecContainer.GetManualCodecFor<Expression[]>();
+            memberInfoArrayCodec = codecContainer.GetManualCodecFor<MemberInfo[]>();
         }
 
         protected override int CalculateSizeTyped(NewExpression expression)
         {
-            throw new System.NotImplementedException();
+            int result = 0;
+            result += constructorInfoCodec.CalculateSize(expression.Constructor);
+            result += expressionArrayCodec.CalculateSize(expression.Arguments.ToArray());
+            result += memberInfoArrayCodec.CalculateSize(expression.Members != null ? expression.Members.ToArray() : null);
+            return result;
         }
 
         protected override void EncodeTyped(ref byte* data, NewExpression expression)
         {
-            throw new System.NotImplementedException();
+            constructorInfoCodec.Encode(ref data, expression.Constructor);
+            expressionArrayCodec.Encode(ref data, expression.Arguments.ToArray());
+            memberInfoArrayCodec.Encode(ref data, expression.Members != null ? expression.Members.ToArray() : null);
         }
 
         protected override NewExpression DecodeTyped(ExpressionType expressionType, ref byte* data, ref int remainingBytes, bool doNotCheckBounds)
         {
-            //return Expression.New()
-            throw new System.NotImplementedException();
+            var constructor = constructorInfoCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            var arguments = expressionArrayCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            var members = memberInfoArrayCodec.Decode(ref data, ref remainingBytes, doNotCheckBounds);
+            return members != null 
+                ? Expression.New(constructor, arguments, members)
+                : Expression.New(constructor, arguments);
         }
     }
 }

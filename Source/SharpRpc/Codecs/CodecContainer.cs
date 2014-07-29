@@ -41,7 +41,7 @@ namespace SharpRpc.Codecs
 
         private readonly ConcurrentDictionary<Type, IEmittingCodec> emittingCodecs = new ConcurrentDictionary<Type, IEmittingCodec>();
         private readonly ConcurrentDictionary<Type, IManualCodec> manualCodecs = new ConcurrentDictionary<Type, IManualCodec>();
-        private readonly ConcurrentDictionary<Type, IManualCodec<object>> abstractManualCodecs = new ConcurrentDictionary<Type, IManualCodec<object>>(); 
+        private readonly ConcurrentDictionary<Type, IManualCodec<object>> abstractManualCodecs = new ConcurrentDictionary<Type, IManualCodec<object>>();
 
         public IEmittingCodec GetEmittingCodecFor(Type type)
         {
@@ -68,10 +68,22 @@ namespace SharpRpc.Codecs
         {
             if (typeof(T) == typeof(Exception))
                 return (IManualCodec<T>)new ExceptionCodec(this);
+            if (typeof(T) == typeof(ElementInit))
+                return (IManualCodec<T>)new ElementInitCodec(this);
+
+            if (typeof(T) == typeof(MemberInfo))
+                return new DynamicCodec<T>(this);
+            if (typeof(T) == typeof(FieldInfo))
+                return (IManualCodec<T>)new FieldInfoCodec(this);
+            if (typeof(T) == typeof(PropertyInfo))
+                return (IManualCodec<T>)new PropertyInfoCodec(this);
+            if (typeof(T) == typeof(EventInfo))
+                return (IManualCodec<T>)new EventInfoCodec(this);
             if (typeof(T) == typeof(MethodInfo))
                 return (IManualCodec<T>)new MethodInfoCodec(this);
             if (typeof(T) == typeof(ConstructorInfo))
                 return (IManualCodec<T>)new ConstructorInfoCodec(this);
+
             if (typeof(T) == typeof(Expression))
                 return (IManualCodec<T>)new ExpressionCodec(this);
             return new ManualCodec<T>(this, GetEmittingCodecFor(typeof(T)));
@@ -81,10 +93,22 @@ namespace SharpRpc.Codecs
         {
             if (type == typeof(Exception))
                 return new IndirectCodec(type);
+            if (type == typeof(ElementInit))
+                return new IndirectCodec(type);
+
+            if (type == typeof(MemberInfo))
+                return new IndirectCodec(type); 
+            if (type == typeof(FieldInfo))
+                return new IndirectCodec(type);
+            if (type == typeof(PropertyInfo))
+                return new IndirectCodec(type);
+            if (type == typeof(EventInfo))
+                return new IndirectCodec(type);
             if (type == typeof(MethodInfo))
                 return new IndirectCodec(type);
             if (type == typeof(ConstructorInfo))
                 return new IndirectCodec(type);
+
             if (type == typeof(Expression))
                 return new IndirectCodec(type);
 

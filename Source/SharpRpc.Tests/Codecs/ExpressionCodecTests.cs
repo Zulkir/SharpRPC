@@ -32,6 +32,18 @@ namespace SharpRpc.Tests.Codecs
 {
     public class ExpressionCodecTests : CodecTestsBase
     {
+        public class MyClass
+        {
+            public MyClass(int a, string b)
+            {
+                A = a;
+                B = b;
+            }
+
+            public int A { get; set; } 
+            public string B { get; set; } 
+        }
+
         private ExpressionCodec codec;
 
         public override void Setup()
@@ -100,6 +112,14 @@ namespace SharpRpc.Tests.Codecs
         {
             DoTest<Func<bool>, bool>(x => !x());
             DoTest<Func<int>, string>(x => x().ToString());
+        }
+
+        [Test]
+        public void New()
+        {
+            DoTest(() => new object());
+            DoTest(() => new Random(123));
+            DoTest(() => new MyClass(123, "asdasd"));
         }
     }
 }
