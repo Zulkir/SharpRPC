@@ -72,7 +72,7 @@ namespace SharpRpc.Codecs
                 return (IManualCodec<T>)new ElementInitCodec(this);
 
             if (typeof(T) == typeof(MemberInfo))
-                return new DynamicCodec<T>(this);
+                return (IManualCodec<T>)new MemberInfoCodec(this);
             if (typeof(T) == typeof(FieldInfo))
                 return (IManualCodec<T>)new FieldInfoCodec(this);
             if (typeof(T) == typeof(PropertyInfo))

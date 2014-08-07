@@ -34,6 +34,11 @@ namespace SharpRpc.Tests.Codecs
     {
         public class MyClass
         {
+            public MyClass()
+            {
+                
+            }
+
             public MyClass(int a, string b)
             {
                 A = a;
@@ -41,7 +46,8 @@ namespace SharpRpc.Tests.Codecs
             }
 
             public int A { get; set; } 
-            public string B { get; set; } 
+            public string B { get; set; }
+            public MyClass Next { get; set; } 
         }
 
         private ExpressionCodec codec;
@@ -120,6 +126,13 @@ namespace SharpRpc.Tests.Codecs
             DoTest(() => new object());
             DoTest(() => new Random(123));
             DoTest(() => new MyClass(123, "asdasd"));
+        }
+
+        [Test]
+        public void MemberInit()
+        {
+            DoTest(() => new MyClass { A = 123, B = "asd" });
+            DoTest(() => new MyClass { A = 123, B = "asd", Next = new MyClass { A = 234, B = "qwe"}});
         }
     }
 }

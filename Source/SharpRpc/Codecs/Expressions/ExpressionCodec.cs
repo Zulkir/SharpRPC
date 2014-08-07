@@ -39,6 +39,7 @@ namespace SharpRpc.Codecs.Expressions
         private readonly InvocationExpressionSubcodec invocationSubcodec;
         private readonly LambdaExpressionSubcodec lambdaSubcodec;
         private readonly ListInitExpressionSubcodec listInitSubcodec;
+        private readonly MemberInitExpressionSubcodec memberInitSubcodec;
         private readonly MethodCallExpressionSubcodec methodCallSubcodec;
         private readonly NewExpressionSubcodec newSubcodec;
         private readonly ParameterExpressionSubcodec parameterSubcodec;
@@ -54,6 +55,8 @@ namespace SharpRpc.Codecs.Expressions
             invocationSubcodec= new InvocationExpressionSubcodec(this, codecContainer);
             lambdaSubcodec = new LambdaExpressionSubcodec(this, codecContainer);
             listInitSubcodec = new ListInitExpressionSubcodec(this, codecContainer);
+            var memberBindingCollectionCodec = new MemberBindingCollectionCodec(this, codecContainer);
+            memberInitSubcodec = new MemberInitExpressionSubcodec(this, memberBindingCollectionCodec, codecContainer);
             methodCallSubcodec = new MethodCallExpressionSubcodec(this, codecContainer);
             newSubcodec = new NewExpressionSubcodec(this, codecContainer);
             parameterSubcodec = new ParameterExpressionSubcodec(this, codecContainer);
@@ -134,6 +137,7 @@ namespace SharpRpc.Codecs.Expressions
                 case ExpressionType.AddAssignChecked:
                 case ExpressionType.MultiplyAssignChecked:
                 case ExpressionType.SubtractAssignChecked:
+                case ExpressionType.AndAssign:
                     return binarySubcodec;
                 case ExpressionType.ArrayLength:
                 case ExpressionType.Convert:
@@ -170,8 +174,7 @@ namespace SharpRpc.Codecs.Expressions
                     throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
                     //VisitMember((MemberExpression)expression);
                 case ExpressionType.MemberInit:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitMemberInit((MemberInitExpression)expression);
+                    return memberInitSubcodec;
                 case ExpressionType.New:
                     return newSubcodec;
                 case ExpressionType.NewArrayInit:
