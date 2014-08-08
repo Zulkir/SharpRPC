@@ -83,18 +83,21 @@ namespace SharpRpc.ServerSide
                 {
                     var response = await requestProcessor.Process(request);
                     context.Response.StatusCode = (int)response.Status;
+                    context.Response.ContentLength64 = response.Data.Length;
                     context.Response.OutputStream.Write(response.Data, 0, response.Data.Length);
                 }
                 else
                 {
                     logger.Error(string.Format("Failed to decode request '{0}'", context.Request.Url));
                     context.Response.StatusCode = (int)ResponseStatus.BadRequest;
+                    context.Response.ContentLength64 = 0;
                 }
             }
             catch (Exception ex)
             {
                 logger.NetworkingException("Processing a request failed unexpectedly", ex);
                 context.Response.StatusCode = (int)ResponseStatus.InternalServerError;
+                context.Response.ContentLength64 = 0;
             }
             finally
             {

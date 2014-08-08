@@ -30,6 +30,11 @@ namespace SharpRpc.TestCommon
 {
     public class MyService : IMyService
     {
+        public void Void()
+        {
+            Console.WriteLine("Void");
+        }
+
         public int Add(int a, int b)
         {
             return a + b;

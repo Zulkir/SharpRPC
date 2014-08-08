@@ -28,6 +28,7 @@ namespace SharpRpc.TestCommon
 {
     public interface IMyService
     {
+        void Void();
         int Add(int a, int b);
         Task<int> AddAsync(int a, int b);
         string Greet(string name);

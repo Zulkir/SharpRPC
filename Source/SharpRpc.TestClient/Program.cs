@@ -46,6 +46,12 @@ namespace SharpRpc.TestClient
             {
                 switch (line)
                 {
+                    case "void":
+                    {
+                        myService.Void();
+                        Console.WriteLine("Void Complete");
+                        break;
+                    }
                     case "greet":
                     {
                         Console.Write("Enter a name: ");
