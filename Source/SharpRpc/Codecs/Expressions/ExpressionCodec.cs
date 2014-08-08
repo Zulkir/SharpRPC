@@ -39,8 +39,11 @@ namespace SharpRpc.Codecs.Expressions
         private readonly InvocationExpressionSubcodec invocationSubcodec;
         private readonly LambdaExpressionSubcodec lambdaSubcodec;
         private readonly ListInitExpressionSubcodec listInitSubcodec;
+        private readonly MemberExpressionSubcodec memberSubcodec;
         private readonly MemberInitExpressionSubcodec memberInitSubcodec;
         private readonly MethodCallExpressionSubcodec methodCallSubcodec;
+        private readonly NewArrayBoundsExpressionSubcodec newArrayBoundsSubcodec;
+        private readonly NewArrayInitExpressionSubcodec newArrayInitSubcodec;
         private readonly NewExpressionSubcodec newSubcodec;
         private readonly ParameterExpressionSubcodec parameterSubcodec;
         private readonly UnaryExpressionSubcodec unarySubcodec;
@@ -55,9 +58,12 @@ namespace SharpRpc.Codecs.Expressions
             invocationSubcodec= new InvocationExpressionSubcodec(this, codecContainer);
             lambdaSubcodec = new LambdaExpressionSubcodec(this, codecContainer);
             listInitSubcodec = new ListInitExpressionSubcodec(this, codecContainer);
+            memberSubcodec = new MemberExpressionSubcodec(this, codecContainer);
             var memberBindingCollectionCodec = new MemberBindingCollectionCodec(this, codecContainer);
             memberInitSubcodec = new MemberInitExpressionSubcodec(this, memberBindingCollectionCodec, codecContainer);
             methodCallSubcodec = new MethodCallExpressionSubcodec(this, codecContainer);
+            newArrayBoundsSubcodec = new NewArrayBoundsExpressionSubcodec(this, codecContainer);
+            newArrayInitSubcodec = new NewArrayInitExpressionSubcodec(this, codecContainer);
             newSubcodec = new NewExpressionSubcodec(this, codecContainer);
             parameterSubcodec = new ParameterExpressionSubcodec(this, codecContainer);
             unarySubcodec = new UnaryExpressionSubcodec(this, codecContainer);
@@ -171,16 +177,15 @@ namespace SharpRpc.Codecs.Expressions
                 case ExpressionType.ListInit:
                     return listInitSubcodec;
                 case ExpressionType.MemberAccess:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitMember((MemberExpression)expression);
+                    return memberSubcodec;
                 case ExpressionType.MemberInit:
                     return memberInitSubcodec;
                 case ExpressionType.New:
                     return newSubcodec;
                 case ExpressionType.NewArrayInit:
+                    return newArrayInitSubcodec;
                 case ExpressionType.NewArrayBounds:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitNewArray((NewArrayExpression)expression);
+                    return newArrayBoundsSubcodec;
                 case ExpressionType.Parameter:
                     return parameterSubcodec;
                 case ExpressionType.TypeIs:

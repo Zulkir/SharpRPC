@@ -66,13 +66,16 @@
     <Compile Include="Codecs\CollectionCodec.cs" />
     <Compile Include="Codecs\CollectionCodecBase.cs" />
     <Compile Include="Codecs\DynamicCodec.cs" />
+    <Compile Include="Codecs\Expressions\NewArrayInitExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\ElementInitCodec.cs" />
+    <Compile Include="Codecs\Expressions\MemberExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\MemberAssignmentCodec.cs" />
     <Compile Include="Codecs\Expressions\MemberBindingCollectionCodec.cs" />
     <Compile Include="Codecs\Expressions\MemberBindingCodec.cs" />
     <Compile Include="Codecs\Expressions\MemberInitExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\MemberListBindingCodec.cs" />
     <Compile Include="Codecs\Expressions\MemberMemberBindingCodec.cs" />
+    <Compile Include="Codecs\Expressions\NewArrayBoundsExpressionSubcodec.cs" />
     <Compile Include="Codecs\ReflectionTypes\ConstructorInfoCodec.cs" />
     <Compile Include="Codecs\Expressions\BinaryExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\ConditionalExpressionSubcodec.cs" />

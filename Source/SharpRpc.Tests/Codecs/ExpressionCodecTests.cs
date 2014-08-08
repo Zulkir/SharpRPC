@@ -134,5 +134,27 @@ namespace SharpRpc.Tests.Codecs
             DoTest(() => new MyClass { A = 123, B = "asd" });
             DoTest(() => new MyClass { A = 123, B = "asd", Next = new MyClass { A = 234, B = "qwe"}});
         }
+
+        [Test]
+        public void MemberAccess()
+        {
+            DoTest(() => IntPtr.Size);
+            DoTest<MyClass, int>(x => x.A);
+        }
+
+        [Test]
+        public void NewArrayBounds()
+        {
+            DoTest(() => new int[123]);
+            DoTest(() => new int[123, 234]);
+        }
+
+        [Test]
+        public void NewArrayinit()
+        {
+            DoTest(() => new[] { 1, 2, 3 });
+            DoTest(() => new byte[] { 1, 2, 3 });
+            DoTest(() => new [] { new MyClass(123, "asd") });
+        }
     }
 }
