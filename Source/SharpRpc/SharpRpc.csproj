@@ -76,6 +76,7 @@
     <Compile Include="Codecs\Expressions\MemberListBindingCodec.cs" />
     <Compile Include="Codecs\Expressions\MemberMemberBindingCodec.cs" />
     <Compile Include="Codecs\Expressions\NewArrayBoundsExpressionSubcodec.cs" />
+    <Compile Include="Codecs\Expressions\TypeEqualExpressionSubcodec.cs" />
     <Compile Include="Codecs\Expressions\TypeIsExpressionSubcodec.cs" />
     <Compile Include="Codecs\ReflectionTypes\ConstructorInfoCodec.cs" />
     <Compile Include="Codecs\Expressions\BinaryExpressionSubcodec.cs" />

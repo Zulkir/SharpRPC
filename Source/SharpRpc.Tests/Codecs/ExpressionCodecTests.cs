@@ -164,5 +164,11 @@ namespace SharpRpc.Tests.Codecs
             DoTest<object, bool>(x => x is MyClass);
             DoTest<Expression, bool>(x => x is TypeBinaryExpression);
         }
+
+        [Test]
+        public void TypeEqual()
+        {
+            DoTest(Expression.TypeEqual(Expression.Constant(123), typeof(int)));
+        }
     }
 }
