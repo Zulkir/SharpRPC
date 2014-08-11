@@ -156,5 +156,13 @@ namespace SharpRpc.Tests.Codecs
             DoTest(() => new byte[] { 1, 2, 3 });
             DoTest(() => new [] { new MyClass(123, "asd") });
         }
+
+        [Test]
+        public void TypeIs()
+        {
+            DoTest<object, bool>(x => x is int);
+            DoTest<object, bool>(x => x is MyClass);
+            DoTest<Expression, bool>(x => x is TypeBinaryExpression);
+        }
     }
 }
