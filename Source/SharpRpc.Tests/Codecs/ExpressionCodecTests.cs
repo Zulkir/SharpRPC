@@ -23,6 +23,7 @@ THE SOFTWARE.
 #endregion
 
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using NUnit.Framework;
 using SharpRpc.Codecs;
@@ -74,6 +75,15 @@ namespace SharpRpc.Tests.Codecs
             var decoded = codec.DecodeSingle(data);
             Assert.That(decoded.ToString(), Is.EqualTo(expression.ToString()));
             Console.WriteLine(decoded);
+        }
+
+        private void DoTestBlock(BlockExpression blockExpression)
+        {
+            var data = codec.EncodeSingle(blockExpression);
+            var decoded = (BlockExpression)codec.DecodeSingle(data);
+            Assert.That(decoded.Type, Is.EqualTo(blockExpression.Type));
+            Assert.That(decoded.Variables.Select(x => x.ToString()).ToArray(), Is.EqualTo(blockExpression.Variables.Select(x => x.ToString()).ToArray()));
+            Assert.That(decoded.Expressions.Select(x => x.ToString()).ToArray(), Is.EqualTo(blockExpression.Expressions.Select(x => x.ToString()).ToArray()));
         }
 
         [Test]
@@ -169,6 +179,15 @@ namespace SharpRpc.Tests.Codecs
         public void TypeEqual()
         {
             DoTest(Expression.TypeEqual(Expression.Constant(123), typeof(int)));
+        }
+
+        [Test]
+        public void Block()
+        {
+            DoTestBlock(Expression.Block(Expression.Constant(123), Expression.Constant("asd")));
+            DoTestBlock(Expression.Block(new[] { Expression.Parameter(typeof(int), "a") }, new Expression[] { Expression.Constant(123) }));
+            DoTestBlock(Expression.Block(typeof(int), new Expression[] { Expression.Constant(123) }));
+            DoTestBlock(Expression.Block(typeof(int), new[] { Expression.Parameter(typeof(int), "a") }, new Expression[] { Expression.Constant(123) }));
         }
     }
 }

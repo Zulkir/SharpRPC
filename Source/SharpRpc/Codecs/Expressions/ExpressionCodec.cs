@@ -34,6 +34,7 @@ namespace SharpRpc.Codecs.Expressions
         private readonly IManualCodec<ExpressionType> expressionTypeCodec;
 
         private readonly BinaryExpressionSubcodec binarySubcodec;
+        private readonly BlockExpressionSubcodec blockSubcodec;
         private readonly ConditionalExpressionSubcodec conditionalSubcodec;
         private readonly ConstantExpressionSubcodec constantSubcodec;
         private readonly InvocationExpressionSubcodec invocationSubcodec;
@@ -55,6 +56,7 @@ namespace SharpRpc.Codecs.Expressions
             expressionTypeCodec = codecContainer.GetManualCodecFor<ExpressionType>();
 
             binarySubcodec = new BinaryExpressionSubcodec(this, codecContainer);
+            blockSubcodec = new BlockExpressionSubcodec(this, codecContainer);
             conditionalSubcodec = new ConditionalExpressionSubcodec(this, codecContainer);
             constantSubcodec = new ConstantExpressionSubcodec(this, codecContainer);
             invocationSubcodec= new InvocationExpressionSubcodec(this, codecContainer);
@@ -197,8 +199,7 @@ namespace SharpRpc.Codecs.Expressions
                 case ExpressionType.TypeEqual:
                     return typeEqualSubcodec;
                 case ExpressionType.Block:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitBlock((BlockExpression)expression);
+                    return blockSubcodec;
                 case ExpressionType.DebugInfo:
                     throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
                     //VisitDebugInfo((DebugInfoExpression)expression);
