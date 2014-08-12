@@ -37,6 +37,7 @@ namespace SharpRpc.Codecs.Expressions
         private readonly BlockExpressionSubcodec blockSubcodec;
         private readonly ConditionalExpressionSubcodec conditionalSubcodec;
         private readonly ConstantExpressionSubcodec constantSubcodec;
+        private readonly IndexExpressionSubcodec indexSubcodec;
         private readonly InvocationExpressionSubcodec invocationSubcodec;
         private readonly LambdaExpressionSubcodec lambdaSubcodec;
         private readonly ListInitExpressionSubcodec listInitSubcodec;
@@ -215,8 +216,7 @@ namespace SharpRpc.Codecs.Expressions
                     throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
                     //VisitGoto((GotoExpression)expression);
                 case ExpressionType.Index:
-                    throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
-                    //VisitIndex((IndexExpression)expression);
+                    return indexSubcodec;
                 case ExpressionType.Label:
                     throw new NotSupportedException(string.Format("ExpressionType.{0} is not supported", expressionType));
                     //VisitLabel((LabelExpression)expression);

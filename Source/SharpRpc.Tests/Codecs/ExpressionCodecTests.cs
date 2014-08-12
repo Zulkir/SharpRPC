@@ -189,5 +189,11 @@ namespace SharpRpc.Tests.Codecs
             DoTestBlock(Expression.Block(typeof(int), new Expression[] { Expression.Constant(123) }));
             DoTestBlock(Expression.Block(typeof(int), new[] { Expression.Parameter(typeof(int), "a") }, new Expression[] { Expression.Constant(123) }));
         }
+
+        [Test]
+        public void Index()
+        {
+            DoTest(Expression.MakeIndex(Expression.Constant(new int[123]), typeof(string).GetProperty("Item"), new Expression[] { Expression.Constant(23) }));
+        }
     }
 }
